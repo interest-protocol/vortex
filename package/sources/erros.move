@@ -9,3 +9,7 @@ public(package) macro fun invalid_package_version(): u64 {
 public(package) macro fun invalid_allowed_deposit_value(): u64 {
     2
 }
+
+public(package) macro fun invalid_allowed_sender(): u64 {
+    3
+}

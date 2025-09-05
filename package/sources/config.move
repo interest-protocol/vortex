@@ -2,12 +2,7 @@ module vortex::vortex_config;
 
 use interest_access_control::access_control::AdminWitness;
 use interest_bps::bps::{Self, BPS};
-use sui::{
-    balance::{Self, Balance},
-    sui:: SUI,
-    table::{Self, Table},
-    vec_set::{Self, VecSet}
-};
+use sui::{balance::{Self, Balance}, sui::SUI, table::{Self, Table}, vec_set::{Self, VecSet}};
 use vortex::vortex::VORTEX;
 
 // === Structs ===
@@ -19,6 +14,7 @@ public struct VortexConfig has key {
     version: u64,
     allowed_deposit_values: VecSet<u64>,
     fee_balance: Balance<SUI>,
+    allowed_senders: Table<address, bool>,
 }
 
 // === Initializer ===
@@ -33,6 +29,7 @@ fun init(ctx: &mut TxContext) {
         version: vortex::vortex_constants::package_version!(),
         allowed_deposit_values: vec_set::empty(),
         fee_balance: balance::zero(),
+        allowed_senders: table::new(ctx),
     };
 
     transfer::share_object(vortex_config);
@@ -51,6 +48,13 @@ public(package) fun assert_allowed_deposit_value(self: &VortexConfig, value: u64
     assert!(
         self.allowed_deposit_values.contains(&value),
         vortex::vortex_errors::invalid_allowed_deposit_value!(),
+    );
+}
+
+public(package) fun assert_allowed_sender(self: &VortexConfig, sender: address) {
+    assert!(
+        self.allowed_senders.contains(sender),
+        vortex::vortex_errors::invalid_allowed_sender!(),
     );
 }
 
@@ -115,4 +119,22 @@ public fun remove_allowed_deposit_value(
     _ctx: &mut TxContext,
 ) {
     self.allowed_deposit_values.remove(&value);
+}
+
+public fun add_allowed_sender(
+    self: &mut VortexConfig,
+    _: &AdminWitness<VORTEX>,
+    sender: address,
+    _ctx: &mut TxContext,
+) {
+    self.allowed_senders.add(sender, true);
+}
+
+public fun remove_allowed_sender(
+    self: &mut VortexConfig,
+    _: &AdminWitness<VORTEX>,
+    sender: address,
+    _ctx: &mut TxContext,
+) {
+    self.allowed_senders.remove(sender);
 }
