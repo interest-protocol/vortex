@@ -41,13 +41,7 @@ fun init(ctx: &mut TxContext) {
     transfer::share_object(vortex_merkle_tree);
 }
 
-// === Public Functions ===
-
-public fun share(self: VortexMerkleTree) {
-    transfer::share_object(self);
-}
-
-// === Package Only Functions ===
+// === Package Functions ===
 
 public(package) fun is_known_root(self: &VortexMerkleTree, root: u256): bool {
     if (root == 0) return false;
@@ -129,7 +123,6 @@ fun safe_history_add(self: &mut VortexMerkleTree, index: u64, value: u256) {
     self.root_history.add(index, value);
 }
 
-/// H(a,b) = Poseidon([a,b]) over BN254.
 fun poseidon2(a: u256, b: u256): u256 {
     poseidon::poseidon_bn254(&vector[a, b])
 }

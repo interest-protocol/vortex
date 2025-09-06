@@ -5,6 +5,7 @@ use sui::package;
 // === Structs ===
 
 public struct VORTEX() has drop;
+
 // === Initializer ===
 
 fun init(otw: VORTEX, ctx: &mut TxContext) {

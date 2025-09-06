@@ -74,7 +74,7 @@ public(package) fun take_withdraw_fee(self: &mut VortexConfig, balance: &mut Bal
     fee_value
 }
 
-// === Admin Only Functions ===
+// === Admin Functions ===
 
 public fun set_deposit_fee(
     self: &mut VortexConfig,
