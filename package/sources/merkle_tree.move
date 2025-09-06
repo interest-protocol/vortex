@@ -70,7 +70,7 @@ public(package) fun is_known_root(self: &VortexMerkleTree, root: u256): bool {
         if (i == self.root_index) break;
     };
 
-    true
+    false
 }
 
 public(package) fun append(self: &mut VortexMerkleTree, leaf: u256): vector<u256> {
