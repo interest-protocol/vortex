@@ -3,7 +3,7 @@ module vortex::vortex_config;
 use interest_access_control::access_control::AdminWitness;
 use interest_bps::bps::{Self, BPS};
 use sui::{balance::{Self, Balance}, sui::SUI, table::{Self, Table}, vec_set::{Self, VecSet}};
-use vortex::vortex::VORTEX;
+use vortex::vortex_admin::VORTEX_ADMIN;
 
 // === Structs ===
 
@@ -78,7 +78,7 @@ public(package) fun take_withdraw_fee(self: &mut VortexConfig, balance: &mut Bal
 
 public fun set_deposit_fee(
     self: &mut VortexConfig,
-    _: &AdminWitness<VORTEX>,
+    _: &AdminWitness<VORTEX_ADMIN>,
     fee_raw_value: u64,
     _ctx: &mut TxContext,
 ) {
@@ -87,7 +87,7 @@ public fun set_deposit_fee(
 
 public fun set_withdraw_fee(
     self: &mut VortexConfig,
-    _: &AdminWitness<VORTEX>,
+    _: &AdminWitness<VORTEX_ADMIN>,
     fee_raw_value: u64,
     _ctx: &mut TxContext,
 ) {
@@ -96,7 +96,7 @@ public fun set_withdraw_fee(
 
 public fun set_version(
     self: &mut VortexConfig,
-    _: &AdminWitness<VORTEX>,
+    _: &AdminWitness<VORTEX_ADMIN>,
     version: u64,
     _ctx: &mut TxContext,
 ) {
@@ -105,7 +105,7 @@ public fun set_version(
 
 public fun add_allowed_deposit_value(
     self: &mut VortexConfig,
-    _: &AdminWitness<VORTEX>,
+    _: &AdminWitness<VORTEX_ADMIN>,
     value: u64,
     _ctx: &mut TxContext,
 ) {
@@ -114,7 +114,7 @@ public fun add_allowed_deposit_value(
 
 public fun remove_allowed_deposit_value(
     self: &mut VortexConfig,
-    _: &AdminWitness<VORTEX>,
+    _: &AdminWitness<VORTEX_ADMIN>,
     value: u64,
     _ctx: &mut TxContext,
 ) {
@@ -123,7 +123,7 @@ public fun remove_allowed_deposit_value(
 
 public fun add_allowed_sender(
     self: &mut VortexConfig,
-    _: &AdminWitness<VORTEX>,
+    _: &AdminWitness<VORTEX_ADMIN>,
     sender: address,
     _ctx: &mut TxContext,
 ) {
@@ -132,7 +132,7 @@ public fun add_allowed_sender(
 
 public fun remove_allowed_sender(
     self: &mut VortexConfig,
-    _: &AdminWitness<VORTEX>,
+    _: &AdminWitness<VORTEX_ADMIN>,
     sender: address,
     _ctx: &mut TxContext,
 ) {
