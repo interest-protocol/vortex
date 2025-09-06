@@ -13,3 +13,7 @@ public(package) macro fun invalid_allowed_deposit_value(): u64 {
 public(package) macro fun invalid_allowed_sender(): u64 {
     3
 }
+
+public(package) macro fun merkle_tree_overflow(): u64 {
+    4
+}
