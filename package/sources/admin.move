@@ -1,15 +1,29 @@
 module vortex::vortex_admin;
 
-use interest_access_control::access_control;
-
 // === Structs ===
 
-public struct VORTEX_ADMIN() has drop;
+public struct VortexAdmin has key, store {
+    id: UID,
+}
 
 // === Initializer ===
 
-fun init(otw: VORTEX_ADMIN, ctx: &mut TxContext) {
-    // Creates {ACL} shared object and {SuperAdmin} using the default ACL module
-    // Source code: https://github.com/interest-protocol/interest-mvr/tree/main/access-control
-    transfer::public_share_object(access_control::default(&otw, ctx));
+fun init(ctx: &mut TxContext) {
+    // Create a new VortexAdmin object and transfer it to the sender (module publisher)
+    transfer::public_transfer(
+        VortexAdmin {
+            // Generate a new unique identifier for this admin object
+            id: object::new(ctx),
+        },
+        // Transfer the admin object to the transaction sender (module publisher)
+        ctx.sender(),
+    );
+}
+
+// === Public Functions ===
+
+public fun destroy(self: VortexAdmin) {
+    let VortexAdmin { id } = self;
+
+    id.delete();
 }
