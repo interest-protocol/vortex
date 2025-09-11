@@ -38,7 +38,7 @@ public(package) macro fun invalid_proof_public_amount(): u64 {
     9
 }
 
-public(package) macro fun invalid_proof_ext_data_hash(): u64 {  
+public(package) macro fun invalid_proof_ext_data_hash(): u64 {
     10
 }
 

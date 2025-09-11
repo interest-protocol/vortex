@@ -2,7 +2,7 @@ module vortex::vortex_config;
 
 use interest_bps::bps::{Self, BPS};
 use sui::{balance::Balance, sui::SUI, vec_set::{Self, VecSet}};
-use vortex::vortex_admin::VortexAdmin;
+use vortex::{vortex_admin::VortexAdmin, vortex_merkle_tree::VortexMerkleTree};
 
 // === Structs ===
 
@@ -11,6 +11,7 @@ public struct VortexConfig has key {
     deposit_fee: BPS,
     withdraw_fee: BPS,
     allowed_deposit_values: VecSet<u64>,
+    merkle_tree: VortexMerkleTree,
 }
 
 // === Initializer ===
@@ -23,6 +24,7 @@ fun init(ctx: &mut TxContext) {
         deposit_fee: bps::new(0),
         withdraw_fee: bps::new(0),
         allowed_deposit_values: vec_set::empty(),
+        merkle_tree: vortex::vortex_merkle_tree::new(ctx),
     };
 
     transfer::share_object(vortex_config);

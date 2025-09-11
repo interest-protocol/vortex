@@ -4,7 +4,7 @@ use sui::{poseidon, table::{Self, Table}};
 
 // === Structs ===
 
-public struct VortexMerkleTree has key {
+public struct VortexMerkleTree has key, store {
     id: UID,
     height: u64,
     next_index: u64,
@@ -15,9 +15,9 @@ public struct VortexMerkleTree has key {
     root_index: u64,
 }
 
-// === Initializer ===
+// === Package Functions ===
 
-fun init(ctx: &mut TxContext) {
+public(package) fun new(ctx: &mut TxContext): VortexMerkleTree {
     let zero_table = vortex::vortex_constants::zeros_table!();
     let height = vortex::vortex_constants::merkle_tree_height!();
 
@@ -27,7 +27,7 @@ fun init(ctx: &mut TxContext) {
 
     root_history.add(0, initial_root);
 
-    let vortex_merkle_tree = VortexMerkleTree {
+    VortexMerkleTree {
         id: object::new(ctx),
         height: vortex::vortex_constants::merkle_tree_height!(),
         next_index: 0,
@@ -36,12 +36,8 @@ fun init(ctx: &mut TxContext) {
         root_history,
         root_history_size: vortex::vortex_constants::merkle_tree_root_history_size!(),
         root_index: 0,
-    };
-
-    transfer::share_object(vortex_merkle_tree);
+    }
 }
-
-// === Package Functions ===
 
 public(package) fun is_known_root(self: &VortexMerkleTree, root: u256): bool {
     if (root == 0) return false;
