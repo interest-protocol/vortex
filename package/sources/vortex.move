@@ -13,3 +13,5 @@ fun init(otw: VORTEX, ctx: &mut TxContext) {
     // This is to allow us to create Display objects.
     package::claim_and_keep(otw, ctx);
 }
+
+// === Public Functions === 
