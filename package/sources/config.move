@@ -7,7 +7,7 @@ use sui::{
     sui::SUI,
     vec_set::{Self, VecSet}
 };
-use vortex::{vortex_admin::VortexAdmin, vortex_merkle_tree::VortexMerkleTree};
+use vortex::{vortex_admin::VortexAdmin, vortex_merkle_tree::{Self, VortexMerkleTree}};
 
 // === Structs ===
 
@@ -31,7 +31,7 @@ fun init(ctx: &mut TxContext) {
         deposit_fee: bps::new(0),
         withdraw_fee: bps::new(0),
         allowed_deposit_values: vec_set::empty(),
-        merkle_tree: vortex::vortex_merkle_tree::new(ctx),
+        merkle_tree: vortex_merkle_tree::new(ctx),
         groth16_vk: vector[],
         groth16_curve: groth16::bn254(),
     };
