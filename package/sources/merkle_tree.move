@@ -127,6 +127,29 @@ fun poseidon2(a: u256, b: u256): u256 {
 
 macro fun zeros_vector(): vector<u256> {
     vector[
+        // The zeros table is generated from scripts/src/make-zeros.ts using this TypeScript code:
+        // 
+        // const ZERO_VALUE = poseidon1(stringToField('vortex'));
+        // const zeros: bigint[] = [];
+        // 
+        // let currentZero = ZERO_VALUE;
+        // zeros.push(currentZero);
+        // 
+        // for (let i = 1; i < treeLevels; i++) {
+        //     currentZero = poseidon2(currentZero, currentZero); // hashLeftRight
+        //     zeros.push(currentZero);
+        // }
+        // 
+        // This creates a hierarchical structure where:
+        // - Level 0: ZERO_VALUE = Poseidon("vortex") 
+        // - Level 1: Poseidon(ZERO_VALUE, ZERO_VALUE)
+        // - Level 2: Poseidon(Level1_zero, Level1_zero)
+        // - Level i: Poseidon(Level(i-1)_zero, Level(i-1)_zero)
+        // 
+        // Each level's zero value represents the hash of two zeros from the level below.
+        // This ensures that when building Merkle proofs, we can use these precomputed
+        // zero values as placeholders for empty subtrees, maintaining the tree structure
+        // even when leaves haven't been inserted yet.
         18688842432741139442778047327644092677418528270738216181718229581494125774932u256,
         929670100605127589096201729966801143828059989180770638007278601230757123028u256,
         20059153686521406362481271315473498068253845102360114882796737328118528819600u256,
