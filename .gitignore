@@ -40,3 +40,8 @@ sui.log.*
 
 # Sui
 build
+Move.lock
+
+# IDE
+.idea
+.vscode

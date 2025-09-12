@@ -1,7 +1,12 @@
 module vortex::vortex_config;
 
 use interest_bps::bps::{Self, BPS};
-use sui::{balance::Balance, sui::SUI, vec_set::{Self, VecSet}};
+use sui::{
+    balance::Balance,
+    groth16::{Self, Curve as Groth16Curve},
+    sui::SUI,
+    vec_set::{Self, VecSet}
+};
 use vortex::{vortex_admin::VortexAdmin, vortex_merkle_tree::VortexMerkleTree};
 
 // === Structs ===
@@ -12,6 +17,8 @@ public struct VortexConfig has key {
     withdraw_fee: BPS,
     allowed_deposit_values: VecSet<u64>,
     merkle_tree: VortexMerkleTree,
+    groth16_vk: vector<vector<u8>>,
+    groth16_curve: Groth16Curve,
 }
 
 // === Initializer ===
@@ -25,6 +32,8 @@ fun init(ctx: &mut TxContext) {
         withdraw_fee: bps::new(0),
         allowed_deposit_values: vec_set::empty(),
         merkle_tree: vortex::vortex_merkle_tree::new(ctx),
+        groth16_vk: vector[],
+        groth16_curve: groth16::bn254(),
     };
 
     transfer::share_object(vortex_config);
@@ -37,6 +46,10 @@ public(package) fun assert_allowed_deposit_value(self: &VortexConfig, value: u64
         self.allowed_deposit_values.contains(&value),
         vortex::vortex_errors::invalid_allowed_deposit_value!(),
     );
+}
+
+public(package) fun assert_root_is_known(self: &VortexConfig, root: u256) {
+    assert!(self.merkle_tree.is_known_root(root), vortex::vortex_errors::proof_root_not_known!());
 }
 
 public(package) fun take_deposit_fee(
@@ -99,4 +112,13 @@ public fun remove_allowed_deposit_value(
     _ctx: &mut TxContext,
 ) {
     self.allowed_deposit_values.remove(&value);
+}
+
+public fun set_groth16_vk(
+    self: &mut VortexConfig,
+    _: &VortexAdmin,
+    vk: vector<vector<u8>>,
+    _ctx: &mut TxContext,
+) {
+    self.groth16_vk = vk;
 }

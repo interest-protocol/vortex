@@ -49,3 +49,11 @@ public(package) macro fun invalid_proof_input_nullifiers(): u64 {
 public(package) macro fun invalid_proof_output_commitments(): u64 {
     12
 }
+
+public(package) macro fun proof_root_not_known(): u64 {
+    13
+}
+
+public(package) macro fun invalid_poseidon_input(): u64 {
+    14
+}
