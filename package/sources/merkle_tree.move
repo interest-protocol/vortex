@@ -5,8 +5,11 @@ use sui::{poseidon, table::{Self, Table}};
 // === Constants ===
 
 const HEIGHT: u64 = 26;
+
 const ROOT_HISTORY_SIZE: u64 = 100;
-const F: u256 = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+
+const BN254_FIELD_MODULUS: u256 =
+    21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
 // === Structs ===
 
@@ -16,7 +19,12 @@ public struct VortexMerkleTree has key, store {
     subtrees: vector<u256>,
     root_history: Table<u64, u256>,
     root_index: u64,
-    zeros: vector<u256>,
+}
+
+// === Public View Functions ===
+
+public fun root_history(self: &VortexMerkleTree): &Table<u64, u256> {
+    &self.root_history
 }
 
 // === Package View Functions ===
@@ -55,7 +63,7 @@ public(package) fun new(ctx: &mut TxContext): VortexMerkleTree {
     let zeros_vector = zeros_vector!();
 
     let mut root_history = table::new(ctx);
-    root_history.add(0, zeros_vector[1]);
+    root_history.add(0, zeros_vector[HEIGHT - 1]);
 
     VortexMerkleTree {
         id: object::new(ctx),
@@ -63,7 +71,6 @@ public(package) fun new(ctx: &mut TxContext): VortexMerkleTree {
         subtrees: zeros_vector,
         root_history,
         root_index: 0,
-        zeros: zeros_vector,
     }
 }
 
@@ -73,6 +80,8 @@ public(package) fun append(self: &mut VortexMerkleTree, leaf: u256): u64 {
         1u64 << (HEIGHT as u8) > self.next_index,
         vortex::vortex_errors::merkle_tree_overflow!(),
     );
+
+    leaf.is_valid_poseidon_input!();
 
     let mut current_index = self.next_index;
     let mut current_level_hash = leaf;
@@ -113,39 +122,43 @@ fun safe_history_add(self: &mut VortexMerkleTree, index: u64, value: u256) {
         let old_value = &mut self.root_history[index];
 
         *old_value = value;
+    } else {
+        self.root_history.add(index, value);
     };
-
-    self.root_history.add(index, value);
 }
 
 fun poseidon2(a: u256, b: u256): u256 {
-    assert!(a < F, vortex::vortex_errors::invalid_poseidon_input!());
-    assert!(b < F, vortex::vortex_errors::invalid_poseidon_input!());
+    a.is_valid_poseidon_input!();
+    b.is_valid_poseidon_input!();
 
     poseidon::poseidon_bn254(&vector[a, b])
+}
+
+macro fun assert_poseidon_input($x: u256) {
+    assert!($x < BN254_FIELD_MODULUS, vortex::vortex_errors::invalid_poseidon_input!());
 }
 
 macro fun zeros_vector(): vector<u256> {
     vector[
         // The zeros table is generated from scripts/src/make-zeros.ts using this TypeScript code:
-        // 
+        //
         // const ZERO_VALUE = poseidon1(stringToField('vortex'));
         // const zeros: bigint[] = [];
-        // 
+        //
         // let currentZero = ZERO_VALUE;
         // zeros.push(currentZero);
-        // 
+        //
         // for (let i = 1; i < treeLevels; i++) {
         //     currentZero = poseidon2(currentZero, currentZero); // hashLeftRight
         //     zeros.push(currentZero);
         // }
-        // 
+        //
         // This creates a hierarchical structure where:
-        // - Level 0: ZERO_VALUE = Poseidon("vortex") 
+        // - Level 0: ZERO_VALUE = Poseidon("vortex")
         // - Level 1: Poseidon(ZERO_VALUE, ZERO_VALUE)
         // - Level 2: Poseidon(Level1_zero, Level1_zero)
         // - Level i: Poseidon(Level(i-1)_zero, Level(i-1)_zero)
-        // 
+        //
         // Each level's zero value represents the hash of two zeros from the level below.
         // This ensures that when building Merkle proofs, we can use these precomputed
         // zero values as placeholders for empty subtrees, maintaining the tree structure
@@ -178,3 +191,7 @@ macro fun zeros_vector(): vector<u256> {
         18344394662872801094289264994998928886741543433797415760903591256277307773470u256,
     ]
 }
+
+// === Aliases ===
+
+use fun assert_poseidon_input as u256.is_valid_poseidon_input;
