@@ -8,9 +8,6 @@ const HEIGHT: u64 = 26;
 
 const ROOT_HISTORY_SIZE: u64 = 100;
 
-const BN254_FIELD_MODULUS: u256 =
-    21888242871839275222246405745257275088548364400416034343698204186575808495617;
-
 // === Structs ===
 
 public struct VortexMerkleTree has key, store {
@@ -129,7 +126,7 @@ fun poseidon2(a: u256, b: u256): u256 {
 }
 
 macro fun assert_poseidon_input($x: u256) {
-    assert!($x < BN254_FIELD_MODULUS, vortex::vortex_errors::invalid_poseidon_input!());
+    assert!($x < vortex::vortex_constants::bn254_field_modulus!(), vortex::vortex_errors::invalid_poseidon_input!());
 }
 
 macro fun zeros_vector(): vector<u256> {

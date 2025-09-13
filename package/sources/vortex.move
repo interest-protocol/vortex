@@ -1,32 +1,25 @@
 module vortex::vortex;
 
 use interest_bps::bps::{Self, BPS};
-use std::bcs::to_bytes;
 use sui::{
     balance::{Self, Balance},
     coin::Coin,
     dynamic_object_field as dof,
     event::emit,
-    groth16::{Self, Curve as Groth16Curve, PublicProofInputs, ProofPoints, PreparedVerifyingKey},
+    groth16::{Self, Curve as Groth16Curve, PreparedVerifyingKey},
     sui::SUI,
     table::{Self, Table},
     vec_set::{Self, VecSet}
 };
-use vortex::{vortex_admin::VortexAdmin, vortex_merkle_tree::{Self, VortexMerkleTree}};
+use vortex::{
+    vortex_admin::VortexAdmin,
+    vortex_merkle_tree::{Self, VortexMerkleTree},
+    vortex_proof::Proof
+};
 
 // === Structs ===
 
 public struct MerkleTreeKey() has copy, drop, store;
-
-public struct Proof has copy, drop, store {
-    a: vector<u8>,
-    b: vector<u8>,
-    c: vector<u8>,
-    root: u256,
-    nullifier: u256,
-    recipient: address,
-    value: u64,
-}
 
 public struct Vortex has key {
     id: UID,
@@ -113,31 +106,11 @@ public fun deposit(
     });
 }
 
-public fun new_proof(
-    a: vector<u8>,
-    b: vector<u8>,
-    c: vector<u8>,
-    root: u256,
-    nullifier: u256,
-    recipient: address,
-    value: u64,
-): Proof {
-    Proof {
-        a,
-        b,
-        c,
-        root,
-        nullifier,
-        recipient,
-        value,
-    }
-}
-
 public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext): Coin<SUI> {
-    self.assert_root_is_known(proof.root);
-    self.assert_allowed_deposit_value(proof.value);
+    self.assert_root_is_known(proof.root());
+    self.assert_allowed_deposit_value(proof.value());
 
-    self.nullifiers.add(proof.nullifier, true);
+    self.nullifiers.add(proof.nullifier(), true);
 
     assert!(
         groth16::verify_groth16_proof(
@@ -149,20 +122,20 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext): Coin<
         vortex::vortex_errors::invalid_proof!(),
     );
 
-    let mut withdraw = self.balance.split(proof.value).into_coin(ctx);
+    let mut withdraw = self.balance.split(proof.value()).into_coin(ctx);
 
     let fee = self.take_withdraw_fee(&mut withdraw, ctx);
 
     let relayer_fee = self.balance.split(self.relayer_fee).into_coin(ctx);
 
-    transfer::public_transfer(withdraw, proof.recipient);
+    transfer::public_transfer(withdraw, proof.recipient());
 
     emit(Withdraw {
-        value: proof.value,
+        value: proof.value(),
         fee,
         relayer_fee: relayer_fee.value(),
-        recipient: proof.recipient,
-        nullifier: proof.nullifier,
+        recipient: proof.recipient(),
+        nullifier: proof.nullifier(),
     });
 
     relayer_fee
@@ -256,27 +229,6 @@ fun verifying_key(self: &Vortex): PreparedVerifyingKey {
     )
 }
 
-fun points(proof: Proof): ProofPoints {
-    let mut bytes = vector[];
-
-    bytes.append(to_bytes(&proof.a));
-    bytes.append(to_bytes(&proof.b));
-    bytes.append(to_bytes(&proof.c));
-
-    groth16::proof_points_from_bytes(bytes)
-}
-
-fun public_inputs(proof: Proof): PublicProofInputs {
-    let mut bytes = vector[];
-
-    bytes.append(vortex::vortex_utils::to_field_element_bytes!(proof.root));
-    bytes.append(vortex::vortex_utils::to_field_element_bytes!(proof.nullifier));
-    bytes.append(vortex::vortex_utils::to_field_element_bytes!(proof.recipient));
-    bytes.append(vortex::vortex_utils::to_field_element_bytes!(proof.value));
-
-    groth16::public_proof_inputs_from_bytes(bytes)
-}
-
 fun take_withdraw_fee(self: &Vortex, withdraw: &mut Coin<SUI>, ctx: &mut TxContext): u64 {
     let fee_value = self.withdraw_fee.calc_up(withdraw.value());
 
@@ -291,21 +243,4 @@ fun merkle_tree(self: &Vortex): &VortexMerkleTree {
 
 fun merkle_tree_mut(self: &mut Vortex): &mut VortexMerkleTree {
     dof::borrow_mut(&mut self.id, MerkleTreeKey())
-}
-
-// === Tests ===
-
-#[test]
-fun test_public_inputs() {
-    let proof = Proof {
-        root: 3093576600674025166632687611856035295983036479389107935500477543414283790352,
-        nullifier: 0x26152c6bf202a36b6e53f123cd67a28bd947050ba259674bc21c733decbd6e39,
-        recipient: @0x0db8426f6207d23dc75352be968894e986d156d017ba1a217fcb521effcde94f,
-        value: 100000000,
-        a: vector[],
-        b: vector[],
-        c: vector[],
-    };
-
-    proof.public_inputs();
 }
