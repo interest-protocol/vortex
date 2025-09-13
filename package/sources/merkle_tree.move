@@ -21,12 +21,6 @@ public struct VortexMerkleTree has key, store {
     root_index: u64,
 }
 
-// === Public View Functions ===
-
-public fun root_history(self: &VortexMerkleTree): &Table<u64, u256> {
-    &self.root_history
-}
-
 // === Package View Functions ===
 
 public(package) fun root(self: &VortexMerkleTree): u256 {
