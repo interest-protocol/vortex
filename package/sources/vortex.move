@@ -126,7 +126,7 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext): Coin<
 
     let fee = self.take_withdraw_fee(&mut withdraw, ctx);
 
-    let relayer_fee = self.balance.split(self.relayer_fee).into_coin(ctx);
+    let relayer_fee = withdraw.split(self.relayer_fee, ctx);
 
     transfer::public_transfer(withdraw, proof.recipient());
 

@@ -126,7 +126,10 @@ fun poseidon2(a: u256, b: u256): u256 {
 }
 
 macro fun assert_poseidon_input($x: u256) {
-    assert!($x < vortex::vortex_constants::bn254_field_modulus!(), vortex::vortex_errors::invalid_poseidon_input!());
+    assert!(
+        $x < vortex::vortex_constants::bn254_field_modulus!(),
+        vortex::vortex_errors::invalid_poseidon_input!(),
+    );
 }
 
 macro fun zeros_vector(): vector<u256> {
