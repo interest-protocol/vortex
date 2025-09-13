@@ -47,8 +47,10 @@ public struct Withdraw has copy, drop {
     value: u64,
     fee: u64,
     relayer_fee: u64,
+    relayer: address,
     recipient: address,
     nullifier: u256,
+    root: u256,
 }
 
 // === Initializer ===
@@ -132,6 +134,8 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext) {
         relayer_fee: relayer_fee.value(),
         recipient: proof.recipient(),
         nullifier: proof.nullifier(),
+        root: proof.root(),
+        relayer: proof.relayer(),
     });
 
     transfer::public_transfer(relayer_fee, proof.relayer());
