@@ -31,7 +31,6 @@ public struct Vortex has key {
     groth16_vk: vector<vector<u8>>,
     groth16_curve: Groth16Curve,
     balance: Balance<SUI>,
-    relayer_fee: u64,
 }
 
 // === Events ===
@@ -69,7 +68,6 @@ fun init(ctx: &mut TxContext) {
         nullifiers: table::new(ctx),
         commitments: table::new(ctx),
         balance: balance::zero(),
-        relayer_fee: 0,
     };
 
     dof::add(&mut vortex.id, MerkleTreeKey(), merkle_tree);
@@ -106,7 +104,7 @@ public fun deposit(
     });
 }
 
-public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext): Coin<SUI> {
+public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext) {
     self.assert_root_is_known(proof.root());
     self.assert_allowed_deposit_value(proof.value());
 
@@ -126,9 +124,7 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext): Coin<
 
     let fee = self.take_withdraw_fee(&mut withdraw, ctx);
 
-    let relayer_fee = withdraw.split(self.relayer_fee, ctx);
-
-    transfer::public_transfer(withdraw, proof.recipient());
+    let relayer_fee = withdraw.split(proof.relayer_fee(), ctx);
 
     emit(Withdraw {
         value: proof.value(),
@@ -138,7 +134,9 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext): Coin<
         nullifier: proof.nullifier(),
     });
 
-    relayer_fee
+    transfer::public_transfer(relayer_fee, proof.relayer());
+
+    transfer::public_transfer(withdraw, proof.recipient());
 }
 
 // === Admin Functions ===
@@ -186,15 +184,6 @@ public fun set_groth16_vk(
     _ctx: &mut TxContext,
 ) {
     self.groth16_vk = vk;
-}
-
-public fun set_relayer_fee(
-    self: &mut Vortex,
-    _: &VortexAdmin,
-    fee_raw_value: u64,
-    _ctx: &mut TxContext,
-) {
-    self.relayer_fee = fee_raw_value;
 }
 
 // === Private Functions ===

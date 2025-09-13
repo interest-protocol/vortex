@@ -12,6 +12,8 @@ public struct Proof has copy, drop, store {
     value: u64,
     points: ProofPoints,
     public_inputs: PublicProofInputs,
+    relayer: address,
+    relayer_fee: u64,
 }
 
 public fun new(
@@ -22,6 +24,8 @@ public fun new(
     nullifier: u256,
     recipient: address,
     value: u64,
+    relayer: address,
+    relayer_fee: u64,
 ): Proof {
     Proof {
         root,
@@ -29,7 +33,9 @@ public fun new(
         recipient,
         value,
         points: new_points(a, b, c),
-        public_inputs: new_public_inputs(root, nullifier, recipient, value),
+        public_inputs: new_public_inputs(root, nullifier, recipient, value, relayer, relayer_fee),
+        relayer,
+        relayer_fee,
     }
 }
 
@@ -41,6 +47,14 @@ public(package) fun recipient(self: Proof): address {
 
 public(package) fun value(self: Proof): u64 {
     self.value
+}
+
+public(package) fun relayer(self: Proof): address {
+    self.relayer
+}
+
+public(package) fun relayer_fee(self: Proof): u64 {
+    self.relayer_fee
 }
 
 public(package) fun root(self: Proof): u256 {
@@ -84,6 +98,8 @@ fun new_public_inputs(
     nullifier: u256,
     recipient: address,
     value: u64,
+    relayer: address,
+    relayer_fee: u64,
 ): PublicProofInputs {
     let mut bytes = vector[];
 
@@ -91,6 +107,8 @@ fun new_public_inputs(
     bytes.append(nullifier.to_field().to_32_bytes());
     bytes.append(recipient.to_field().to_32_bytes());
     bytes.append((value as u256).to_field().to_32_bytes());
+    bytes.append(relayer.to_field().to_32_bytes());
+    bytes.append((relayer_fee as u256).to_field().to_32_bytes());
 
     groth16::public_proof_inputs_from_bytes(bytes)
 }
@@ -132,5 +150,7 @@ fun test_public_inputs() {
         0x26152c6bf202a36b6e53f123cd67a28bd947050ba259674bc21c733decbd6e39,
         @0x0db8426f6207d23dc75352be968894e986d156d017ba1a217fcb521effcde94f,
         100000000,
+        @0x0db8426f6207d23dc75352be968894e986d156d017ba1a217fcb521effcde94f,
+        1,
     );
 }
