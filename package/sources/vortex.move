@@ -51,6 +51,14 @@ public struct Deposit has copy, drop {
     root: u256,
 }
 
+public struct Withdraw has copy, drop {
+    value: u64,
+    fee: u64,
+    relayer_fee: u64,
+    recipient: address,
+    nullifier: u256,
+}
+
 // === Initializer ===
 
 fun init(ctx: &mut TxContext) {
@@ -134,20 +142,30 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext): Coin<
     assert!(
         groth16::verify_groth16_proof(
             &self.groth16_curve,
-            &self.prepared_verifying_key(),
-            &proof.public_proof_inputs(),
-            &proof.proof_points(),
+            &self.verifying_key(),
+            &proof.public_inputs(),
+            &proof.points(),
         ),
         vortex::vortex_errors::invalid_proof!(),
     );
 
     let mut withdraw = self.balance.split(proof.value).into_coin(ctx);
 
-    self.take_withdraw_fee(&mut withdraw, ctx);
+    let fee = self.take_withdraw_fee(&mut withdraw, ctx);
+
+    let relayer_fee = self.balance.split(self.relayer_fee).into_coin(ctx);
 
     transfer::public_transfer(withdraw, proof.recipient);
 
-    self.balance.split(self.relayer_fee).into_coin(ctx)
+    emit(Withdraw {
+        value: proof.value,
+        fee,
+        relayer_fee: relayer_fee.value(),
+        recipient: proof.recipient,
+        nullifier: proof.nullifier,
+    });
+
+    relayer_fee
 }
 
 // === Admin Functions ===
@@ -229,7 +247,7 @@ fun take_deposit_fee(self: &Vortex, deposit: &mut Coin<SUI>, ctx: &mut TxContext
     (deposit_value, fee_value)
 }
 
-fun prepared_verifying_key(self: &Vortex): PreparedVerifyingKey {
+fun verifying_key(self: &Vortex): PreparedVerifyingKey {
     groth16::pvk_from_bytes(
         self.groth16_vk[0],
         self.groth16_vk[1],
@@ -238,7 +256,7 @@ fun prepared_verifying_key(self: &Vortex): PreparedVerifyingKey {
     )
 }
 
-fun proof_points(proof: Proof): ProofPoints {
+fun points(proof: Proof): ProofPoints {
     let mut bytes = vector[];
 
     bytes.append(to_bytes(&proof.a));
@@ -248,7 +266,7 @@ fun proof_points(proof: Proof): ProofPoints {
     groth16::proof_points_from_bytes(bytes)
 }
 
-fun public_proof_inputs(proof: Proof): PublicProofInputs {
+fun public_inputs(proof: Proof): PublicProofInputs {
     let mut bytes = vector[];
 
     bytes.append(to_bytes(&proof.root));
