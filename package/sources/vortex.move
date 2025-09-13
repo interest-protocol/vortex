@@ -269,10 +269,10 @@ fun points(proof: Proof): ProofPoints {
 fun public_inputs(proof: Proof): PublicProofInputs {
     let mut bytes = vector[];
 
-    bytes.append(to_bytes(&proof.root));
-    bytes.append(to_bytes(&proof.nullifier));
-    bytes.append(to_bytes(&proof.recipient));
-    bytes.append(to_bytes(&proof.value));
+    bytes.append(vortex::vortex_utils::to_field_element_bytes!(proof.root));
+    bytes.append(vortex::vortex_utils::to_field_element_bytes!(proof.nullifier));
+    bytes.append(vortex::vortex_utils::to_field_element_bytes!(proof.recipient));
+    bytes.append(vortex::vortex_utils::to_field_element_bytes!(proof.value));
 
     groth16::public_proof_inputs_from_bytes(bytes)
 }
@@ -291,4 +291,21 @@ fun merkle_tree(self: &Vortex): &VortexMerkleTree {
 
 fun merkle_tree_mut(self: &mut Vortex): &mut VortexMerkleTree {
     dof::borrow_mut(&mut self.id, MerkleTreeKey())
+}
+
+// === Tests ===
+
+#[test]
+fun test_public_inputs() {
+    let proof = Proof {
+        root: 3093576600674025166632687611856035295983036479389107935500477543414283790352,
+        nullifier: 0x26152c6bf202a36b6e53f123cd67a28bd947050ba259674bc21c733decbd6e39,
+        recipient: @0x0db8426f6207d23dc75352be968894e986d156d017ba1a217fcb521effcde94f,
+        value: 100000000,
+        a: vector[],
+        b: vector[],
+        c: vector[],
+    };
+
+    proof.public_inputs();
 }
