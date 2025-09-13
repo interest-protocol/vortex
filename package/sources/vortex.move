@@ -7,7 +7,7 @@ use sui::{
     coin::Coin,
     dynamic_object_field as dof,
     event::emit,
-    groth16::{Self, Curve as Groth16Curve, PublicProofInputs, ProofPoints},
+    groth16::{Self, Curve as Groth16Curve, PublicProofInputs, ProofPoints, PreparedVerifyingKey},
     sui::SUI,
     table::{Self, Table},
     vec_set::{Self, VecSet}
@@ -78,26 +78,6 @@ fun init(ctx: &mut TxContext) {
 
 // === Public Functions ===
 
-public fun new_proof(
-    a: vector<u8>,
-    b: vector<u8>,
-    c: vector<u8>,
-    root: u256,
-    nullifier: u256,
-    recipient: address,
-    value: u64,
-): Proof {
-    Proof {
-        a,
-        b,
-        c,
-        root,
-        nullifier,
-        recipient,
-        value,
-    }
-}
-
 public fun deposit(
     self: &mut Vortex,
     mut deposit: Coin<SUI>,
@@ -125,6 +105,26 @@ public fun deposit(
     });
 }
 
+public fun new_proof(
+    a: vector<u8>,
+    b: vector<u8>,
+    c: vector<u8>,
+    root: u256,
+    nullifier: u256,
+    recipient: address,
+    value: u64,
+): Proof {
+    Proof {
+        a,
+        b,
+        c,
+        root,
+        nullifier,
+        recipient,
+        value,
+    }
+}
+
 public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext): Coin<SUI> {
     self.assert_root_is_known(proof.root);
     self.assert_allowed_deposit_value(proof.value);
@@ -134,12 +134,7 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext): Coin<
     assert!(
         groth16::verify_groth16_proof(
             &self.groth16_curve,
-            &groth16::pvk_from_bytes(
-                self.groth16_vk[0],
-                self.groth16_vk[1],
-                self.groth16_vk[2],
-                self.groth16_vk[3],
-            ),
+            &self.prepared_verifying_key(),
             &proof.public_proof_inputs(),
             &proof.proof_points(),
         ),
@@ -232,6 +227,15 @@ fun take_deposit_fee(self: &Vortex, deposit: &mut Coin<SUI>, ctx: &mut TxContext
     transfer::public_transfer(deposit.split(fee_value, ctx), @treasury);
 
     (deposit_value, fee_value)
+}
+
+fun prepared_verifying_key(self: &Vortex): PreparedVerifyingKey {
+    groth16::pvk_from_bytes(
+        self.groth16_vk[0],
+        self.groth16_vk[1],
+        self.groth16_vk[2],
+        self.groth16_vk[3],
+    )
 }
 
 fun proof_points(proof: Proof): ProofPoints {
