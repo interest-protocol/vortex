@@ -1,12 +1,13 @@
 module vortex::vortex;
 
 use interest_bps::bps::{Self, BPS};
+use std::bcs::to_bytes;
 use sui::{
     balance::{Self, Balance},
     coin::Coin,
     dynamic_object_field as dof,
     event::emit,
-    groth16::{Self, Curve as Groth16Curve},
+    groth16::{Self, Curve as Groth16Curve, PublicProofInputs, ProofPoints},
     sui::SUI,
     table::{Self, Table},
     vec_set::{Self, VecSet}
@@ -17,16 +18,27 @@ use vortex::{vortex_admin::VortexAdmin, vortex_merkle_tree::{Self, VortexMerkleT
 
 public struct MerkleTreeKey() has copy, drop, store;
 
+public struct Proof has copy, drop, store {
+    a: vector<u8>,
+    b: vector<u8>,
+    c: vector<u8>,
+    root: u256,
+    nullifier: u256,
+    recipient: address,
+    value: u64,
+}
+
 public struct Vortex has key {
     id: UID,
     deposit_fee: BPS,
     withdraw_fee: BPS,
     allowed_deposit_values: VecSet<u64>,
-    nullifiers: Table<vector<u8>, bool>,
+    nullifiers: Table<u256, bool>,
     commitments: Table<u256, bool>,
     groth16_vk: vector<vector<u8>>,
     groth16_curve: Groth16Curve,
     balance: Balance<SUI>,
+    relayer_fee: u64,
 }
 
 // === Events ===
@@ -56,6 +68,7 @@ fun init(ctx: &mut TxContext) {
         nullifiers: table::new(ctx),
         commitments: table::new(ctx),
         balance: balance::zero(),
+        relayer_fee: 0,
     };
 
     dof::add(&mut vortex.id, MerkleTreeKey(), merkle_tree);
@@ -64,6 +77,26 @@ fun init(ctx: &mut TxContext) {
 }
 
 // === Public Functions ===
+
+public fun new_proof(
+    a: vector<u8>,
+    b: vector<u8>,
+    c: vector<u8>,
+    root: u256,
+    nullifier: u256,
+    recipient: address,
+    value: u64,
+): Proof {
+    Proof {
+        a,
+        b,
+        c,
+        root,
+        nullifier,
+        recipient,
+        value,
+    }
+}
 
 public fun deposit(
     self: &mut Vortex,
@@ -90,6 +123,36 @@ public fun deposit(
         fee: fee_value,
         root: merkle_tree.root(),
     });
+}
+
+public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext): Coin<SUI> {
+    self.assert_root_is_known(proof.root);
+    self.assert_allowed_deposit_value(proof.value);
+
+    self.nullifiers.add(proof.nullifier, true);
+
+    assert!(
+        groth16::verify_groth16_proof(
+            &self.groth16_curve,
+            &groth16::pvk_from_bytes(
+                self.groth16_vk[0],
+                self.groth16_vk[1],
+                self.groth16_vk[2],
+                self.groth16_vk[3],
+            ),
+            &proof.public_proof_inputs(),
+            &proof.proof_points(),
+        ),
+        vortex::vortex_errors::invalid_proof!(),
+    );
+
+    let mut withdraw = self.balance.split(proof.value).into_coin(ctx);
+
+    self.take_withdraw_fee(&mut withdraw, ctx);
+
+    transfer::public_transfer(withdraw, proof.recipient);
+
+    self.balance.split(self.relayer_fee).into_coin(ctx)
 }
 
 // === Admin Functions ===
@@ -139,6 +202,15 @@ public fun set_groth16_vk(
     self.groth16_vk = vk;
 }
 
+public fun set_relayer_fee(
+    self: &mut Vortex,
+    _: &VortexAdmin,
+    fee_raw_value: u64,
+    _ctx: &mut TxContext,
+) {
+    self.relayer_fee = fee_raw_value;
+}
+
 // === Private Functions ===
 
 fun assert_allowed_deposit_value(self: &Vortex, value: u64) {
@@ -162,10 +234,31 @@ fun take_deposit_fee(self: &Vortex, deposit: &mut Coin<SUI>, ctx: &mut TxContext
     (deposit_value, fee_value)
 }
 
-fun take_withdraw_fee(self: &Vortex, balance: &mut Balance<SUI>, ctx: &mut TxContext): u64 {
-    let fee_value = self.withdraw_fee.calc_up(balance.value());
+fun proof_points(proof: Proof): ProofPoints {
+    let mut bytes = vector[];
 
-    transfer::public_transfer(balance.split(fee_value).into_coin(ctx), @treasury);
+    bytes.append(to_bytes(&proof.a));
+    bytes.append(to_bytes(&proof.b));
+    bytes.append(to_bytes(&proof.c));
+
+    groth16::proof_points_from_bytes(bytes)
+}
+
+fun public_proof_inputs(proof: Proof): PublicProofInputs {
+    let mut bytes = vector[];
+
+    bytes.append(to_bytes(&proof.root));
+    bytes.append(to_bytes(&proof.nullifier));
+    bytes.append(to_bytes(&proof.recipient));
+    bytes.append(to_bytes(&proof.value));
+
+    groth16::public_proof_inputs_from_bytes(bytes)
+}
+
+fun take_withdraw_fee(self: &Vortex, withdraw: &mut Coin<SUI>, ctx: &mut TxContext): u64 {
+    let fee_value = self.withdraw_fee.calc_up(withdraw.value());
+
+    transfer::public_transfer(withdraw.split(fee_value, ctx), @treasury);
 
     fee_value
 }

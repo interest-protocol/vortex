@@ -57,3 +57,7 @@ public(package) macro fun proof_root_not_known(): u64 {
 public(package) macro fun invalid_poseidon_input(): u64 {
     14
 }
+
+public(package) macro fun invalid_proof(): u64 {
+    15
+}
