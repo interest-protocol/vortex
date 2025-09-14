@@ -28,7 +28,7 @@ public struct Vortex has key {
     allowed_deposit_values: VecSet<u64>,
     nullifiers: Table<u256, bool>,
     commitments: Table<u256, bool>,
-    groth16_vk: vector<vector<u8>>,
+    groth16_vk: vector<u8>,
     groth16_curve: Groth16Curve,
     balance: Balance<SUI>,
 }
@@ -36,21 +36,21 @@ public struct Vortex has key {
 // === Events ===
 
 public struct Deposit has copy, drop {
+    root: u256,
     commitment: u256,
     index: u64,
     value: u64,
     fee: u64,
-    root: u256,
 }
 
 public struct Withdraw has copy, drop {
+    root: u256,
     value: u64,
+    recipient: address,
     fee: u64,
     relayer_fee: u64,
     relayer: address,
-    recipient: address,
     nullifier: u256,
-    root: u256,
 }
 
 // === Initializer ===
@@ -184,7 +184,7 @@ public fun remove_allowed_deposit_value(
 public fun set_groth16_vk(
     self: &mut Vortex,
     _: &VortexAdmin,
-    vk: vector<vector<u8>>,
+    vk: vector<u8>,
     _ctx: &mut TxContext,
 ) {
     self.groth16_vk = vk;
@@ -204,11 +204,9 @@ fun assert_root_is_known(self: &Vortex, root: u256) {
 }
 
 fun verifying_key(self: &Vortex): PreparedVerifyingKey {
-    groth16::pvk_from_bytes(
-        self.groth16_vk[0],
-        self.groth16_vk[1],
-        self.groth16_vk[2],
-        self.groth16_vk[3],
+    groth16::prepare_verifying_key(
+        &self.groth16_curve,
+        &self.groth16_vk,
     )
 }
 

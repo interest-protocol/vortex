@@ -86,13 +86,21 @@ fun u256_to_field(value: u256): vector<u8> {
 }
 
 fun new_points(a: vector<u8>, b: vector<u8>, c: vector<u8>): ProofPoints {
-    let mut bytes = vector[];
+    // For arkworks format, if 'a' contains the full 128-byte proof, use it directly
+    // Otherwise concatenate the components
+    let points = if (a.length() == 128 && b.length() == 0 && c.length() == 0) {
+        a
+    } else {
+        let mut bytes = vector[];
+        // Directly append the raw bytes, not BCS-encoded
+        bytes.append(a);
+        bytes.append(b);
+        bytes.append(c);
 
-    bytes.append(bcs::to_bytes(&a));
-    bytes.append(bcs::to_bytes(&b));
-    bytes.append(bcs::to_bytes(&c));
+        bytes
+    };
 
-    groth16::proof_points_from_bytes(bytes)
+    groth16::proof_points_from_bytes(points)
 }
 
 fun new_public_inputs(
