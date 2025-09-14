@@ -16,6 +16,8 @@ public struct Proof has copy, drop, store {
     relayer_fee: u64,
 }
 
+// === Public Functions ===
+
 public fun new(
     a: vector<u8>,
     b: vector<u8>,

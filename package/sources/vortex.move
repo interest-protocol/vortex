@@ -203,6 +203,15 @@ fun assert_root_is_known(self: &Vortex, root: u256) {
     assert!(self.merkle_tree().is_known_root(root), vortex::vortex_errors::proof_root_not_known!());
 }
 
+fun verifying_key(self: &Vortex): PreparedVerifyingKey {
+    groth16::pvk_from_bytes(
+        self.groth16_vk[0],
+        self.groth16_vk[1],
+        self.groth16_vk[2],
+        self.groth16_vk[3],
+    )
+}
+
 fun take_deposit_fee(self: &Vortex, deposit: &mut Coin<SUI>, ctx: &mut TxContext): (u64, u64) {
     let deposit_value = deposit.value();
 
@@ -211,15 +220,6 @@ fun take_deposit_fee(self: &Vortex, deposit: &mut Coin<SUI>, ctx: &mut TxContext
     transfer::public_transfer(deposit.split(fee_value, ctx), @treasury);
 
     (deposit_value, fee_value)
-}
-
-fun verifying_key(self: &Vortex): PreparedVerifyingKey {
-    groth16::pvk_from_bytes(
-        self.groth16_vk[0],
-        self.groth16_vk[1],
-        self.groth16_vk[2],
-        self.groth16_vk[3],
-    )
 }
 
 fun take_withdraw_fee(self: &Vortex, withdraw: &mut Coin<SUI>, ctx: &mut TxContext): u64 {
