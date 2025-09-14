@@ -10,7 +10,7 @@ const ROOT_HISTORY_SIZE: u64 = 100;
 
 // === Structs ===
 
-public struct VortexMerkleTree has key, store {
+public struct MerkleTree has key, store {
     id: UID,
     next_index: u64,
     subtrees: vector<u256>,
@@ -20,11 +20,11 @@ public struct VortexMerkleTree has key, store {
 
 // === Package View Functions ===
 
-public(package) fun root(self: &VortexMerkleTree): u256 {
+public(package) fun root(self: &MerkleTree): u256 {
     self.root_history[self.root_index]
 }
 
-public(package) fun is_known_root(self: &VortexMerkleTree, root: u256): bool {
+public(package) fun is_known_root(self: &MerkleTree, root: u256): bool {
     if (root == 0) return false;
 
     let mut i = self.root_index;
@@ -50,13 +50,13 @@ public(package) fun is_known_root(self: &VortexMerkleTree, root: u256): bool {
 
 // === Package Mutative Functions ===
 
-public(package) fun new(ctx: &mut TxContext): VortexMerkleTree {
+public(package) fun new(ctx: &mut TxContext): MerkleTree {
     let zeros_vector = zeros_vector!();
 
     let mut root_history = table::new(ctx);
     root_history.add(0, zeros_vector[HEIGHT - 1]);
 
-    VortexMerkleTree {
+    MerkleTree {
         id: object::new(ctx),
         next_index: 0,
         subtrees: zeros_vector,
@@ -65,7 +65,7 @@ public(package) fun new(ctx: &mut TxContext): VortexMerkleTree {
     }
 }
 
-public(package) fun append(self: &mut VortexMerkleTree, leaf: u256): u64 {
+public(package) fun append(self: &mut MerkleTree, leaf: u256): u64 {
     // Maximum capacity is 2^height leaves.
     assert!(
         1u64 << (HEIGHT as u8) > self.next_index,
@@ -108,7 +108,7 @@ public(package) fun append(self: &mut VortexMerkleTree, leaf: u256): u64 {
 
 // === Private Functions ===
 
-fun safe_history_add(self: &mut VortexMerkleTree, index: u64, value: u256) {
+fun safe_history_add(self: &mut MerkleTree, index: u64, value: u256) {
     if (self.root_history.contains(index)) {
         let old_value = &mut self.root_history[index];
 

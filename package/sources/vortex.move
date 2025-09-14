@@ -12,7 +12,7 @@ use sui::{
 use vortex::{
     bps::{Self, BPS},
     vortex_admin::VortexAdmin,
-    vortex_merkle_tree::{Self, VortexMerkleTree},
+    vortex_merkle_tree::{Self, MerkleTree},
     vortex_proof::Proof
 };
 
@@ -206,10 +206,10 @@ fun take_withdraw_fee(self: &Vortex, withdraw: &mut Coin<SUI>, ctx: &mut TxConte
     fee_value
 }
 
-fun merkle_tree(self: &Vortex): &VortexMerkleTree {
+fun merkle_tree(self: &Vortex): &MerkleTree {
     dof::borrow(&self.id, MerkleTreeKey())
 }
 
-fun merkle_tree_mut(self: &mut Vortex): &mut VortexMerkleTree {
+fun merkle_tree_mut(self: &mut Vortex): &mut MerkleTree {
     dof::borrow_mut(&mut self.id, MerkleTreeKey())
 }
