@@ -5,11 +5,7 @@ license = "MIT"
 authors = ["Jose Cerqueira (jose@interestprotocol.com)"]   
 
 [dependencies]
-interest_bps = { r.mvr = "@interest/bps" }
 
 [addresses]
 vortex = "0x0"
 treasury = "0x7"
-
-[r.mvr]
-network = "mainnet"

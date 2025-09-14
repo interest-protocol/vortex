@@ -1,6 +1,5 @@
 module vortex::vortex;
 
-use interest_bps::bps::{Self, BPS};
 use sui::{
     balance::{Self, Balance},
     coin::Coin,
@@ -8,10 +7,10 @@ use sui::{
     event::emit,
     groth16::{Self, Curve as Groth16Curve, PreparedVerifyingKey},
     sui::SUI,
-    table::{Self, Table},
-    vec_set::{Self, VecSet}
+    table::{Self, Table}
 };
 use vortex::{
+    bps::{Self, BPS},
     vortex_admin::VortexAdmin,
     vortex_merkle_tree::{Self, VortexMerkleTree},
     vortex_proof::Proof
@@ -25,7 +24,7 @@ public struct Vortex has key {
     id: UID,
     deposit_fee: BPS,
     withdraw_fee: BPS,
-    allowed_deposit_values: VecSet<u64>,
+    allowed_value: u64,
     nullifiers: Table<u256, bool>,
     commitments: Table<u256, bool>,
     groth16_vk: vector<u8>,
@@ -51,30 +50,6 @@ public struct Withdraw has copy, drop {
     relayer_fee: u64,
     relayer: address,
     nullifier: u256,
-}
-
-// === Initializer ===
-
-fun init(ctx: &mut TxContext) {
-    // Creates the global configuration object with initial settings
-    // Sets deposit and withdraw fees to 0% (no fees initially)
-    let merkle_tree = vortex_merkle_tree::new(ctx);
-
-    let mut vortex = Vortex {
-        id: object::new(ctx),
-        deposit_fee: bps::new(0),
-        withdraw_fee: bps::new(0),
-        allowed_deposit_values: vec_set::empty(),
-        groth16_vk: vector[],
-        groth16_curve: groth16::bn254(),
-        nullifiers: table::new(ctx),
-        commitments: table::new(ctx),
-        balance: balance::zero(),
-    };
-
-    dof::add(&mut vortex.id, MerkleTreeKey(), merkle_tree);
-
-    transfer::share_object(vortex);
 }
 
 // === Public Functions ===
@@ -145,6 +120,30 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext) {
 
 // === Admin Functions ===
 
+public fun new(_: &VortexAdmin, value: u64, ctx: &mut TxContext): Vortex {
+    let merkle_tree = vortex_merkle_tree::new(ctx);
+
+    let mut vortex = Vortex {
+        id: object::new(ctx),
+        deposit_fee: bps::new(0),
+        withdraw_fee: bps::new(0),
+        allowed_value: value,
+        groth16_vk: vector[],
+        groth16_curve: groth16::bn254(),
+        nullifiers: table::new(ctx),
+        commitments: table::new(ctx),
+        balance: balance::zero(),
+    };
+
+    dof::add(&mut vortex.id, MerkleTreeKey(), merkle_tree);
+
+    vortex
+}
+
+public fun share(self: Vortex) {
+    transfer::share_object(self);
+}
+
 public fun set_deposit_fee(
     self: &mut Vortex,
     _: &VortexAdmin,
@@ -163,24 +162,6 @@ public fun set_withdraw_fee(
     self.withdraw_fee = bps::new(fee_raw_value);
 }
 
-public fun add_allowed_deposit_value(
-    self: &mut Vortex,
-    _: &VortexAdmin,
-    value: u64,
-    _ctx: &mut TxContext,
-) {
-    self.allowed_deposit_values.insert(value);
-}
-
-public fun remove_allowed_deposit_value(
-    self: &mut Vortex,
-    _: &VortexAdmin,
-    value: u64,
-    _ctx: &mut TxContext,
-) {
-    self.allowed_deposit_values.remove(&value);
-}
-
 public fun set_groth16_vk(
     self: &mut Vortex,
     _: &VortexAdmin,
@@ -193,10 +174,7 @@ public fun set_groth16_vk(
 // === Private Functions ===
 
 fun assert_allowed_deposit_value(self: &Vortex, value: u64) {
-    assert!(
-        self.allowed_deposit_values.contains(&value),
-        vortex::vortex_errors::invalid_allowed_deposit_value!(),
-    );
+    assert!(value == self.allowed_value, vortex::vortex_errors::invalid_allowed_deposit_value!());
 }
 
 fun assert_root_is_known(self: &Vortex, root: u256) {
