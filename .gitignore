@@ -16,7 +16,7 @@ storage/
 
 # Rust target directory
 **/target
-keys/**
+keys/*
 
 # Environment Variables 
 .env 
