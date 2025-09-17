@@ -11,7 +11,7 @@ public struct Proof has copy, drop, store {
     recipient: address,
     value: u64,
     points: ProofPoints,
-    public_inputs: PublicProofInputs,
+    public_inputs: vector<u8>,
     relayer: address,
     relayer_fee: u64,
 }
@@ -71,8 +71,12 @@ public(package) fun points(self: Proof): ProofPoints {
     self.points
 }
 
-public(package) fun public_inputs(self: Proof): PublicProofInputs {
-    self.public_inputs
+public(package) fun get_public_inputs(self: Proof, vortex: address): PublicProofInputs {
+    let mut public_inputs = self.public_inputs;
+
+    public_inputs.append(vortex.to_field());
+
+    groth16::public_proof_inputs_from_bytes(self.public_inputs)
 }
 
 // === Private Functions ===
@@ -109,7 +113,7 @@ fun new_public_inputs(
     recipient: address,
     relayer: address,
     relayer_fee: u64,
-): PublicProofInputs {
+): vector<u8> {
     let mut bytes = vector[];
 
     bytes.append(root.to_field());
@@ -118,7 +122,7 @@ fun new_public_inputs(
     bytes.append(relayer.to_field());
     bytes.append((relayer_fee as u256).to_field());
 
-    groth16::public_proof_inputs_from_bytes(bytes)
+    bytes
 }
 
 // === Aliases ===

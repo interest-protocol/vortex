@@ -91,7 +91,7 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext) {
         groth16::verify_groth16_proof(
             &self.groth16_curve,
             &self.verifying_key(),
-            &proof.public_inputs(),
+            &proof.get_public_inputs(self.id.to_address()),
             &proof.points(),
         ),
         vortex::vortex_errors::invalid_proof!(),
