@@ -1,24 +1,23 @@
 {
-  "name": "vortex-scripts",
+  "name": "vortex-sdk",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "make-zeros": "tsx ./src/make-zeros.ts"
+    "make-zeros": "tsx ./src/index.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@mysten/sui": "^1.38.0",
+    "@mysten/sui": "^1.16.0",
     "@polymedia/suitcase-core": "^0.0.67",
-    "circomlibjs": "^0.1.7",
     "poseidon-hash": "^1.0.1",
+    "poseidon-lite": "^0.3.0",
     "ramda": "^0.30.1",
     "tiny-invariant": "^1.3.3"
   },
   "devDependencies": {
-    "@types/circomlibjs": "^0.1.6",
     "@types/node": "^22.7.6",
     "@types/ramda": "^0.30.2",
     "dotenv": "^16.4.5",
