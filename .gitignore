@@ -14,6 +14,10 @@ build
 storage/
 !narwhal/storage 
 
+# Rust target directory
+**/target
+keys/**
+
 # Environment Variables 
 .env 
 .env*
