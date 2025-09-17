@@ -144,5 +144,5 @@ fun test_public_inputs() {
         100000000,
         @0x0db8426f6207d23dc75352be968894e986d156d017ba1a217fcb521effcde94f,
         1,
-    );
+    ).get_public_inputs(@0x2);
 }
