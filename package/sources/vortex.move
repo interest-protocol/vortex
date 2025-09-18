@@ -118,6 +118,12 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext) {
     transfer::public_transfer(withdraw, proof.recipient());
 }
 
+// === Public Views ===
+
+public fun root(self: &Vortex): u256 {
+    self.merkle_tree().root()
+}
+
 // === Admin Functions ===
 
 public fun new(_: &VortexAdmin, value: u64, ctx: &mut TxContext): Vortex {
