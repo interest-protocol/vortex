@@ -35,6 +35,7 @@ public struct Vortex has key {
 // === Events ===
 
 public struct Deposit has copy, drop {
+    vortex: address,
     root: u256,
     commitment: u256,
     index: u64,
@@ -43,6 +44,7 @@ public struct Deposit has copy, drop {
 }
 
 public struct Withdraw has copy, drop {
+    vortex: address,
     root: u256,
     value: u64,
     recipient: address,
@@ -68,11 +70,14 @@ public fun deposit(
 
     self.balance.join(deposit.into_balance());
 
+    let vortex = self.id.to_address();
+
     let merkle_tree = self.merkle_tree_mut();
 
     let index = merkle_tree.append(commitment);
 
     emit(Deposit {
+        vortex,
         commitment,
         index,
         value: deposit_value,
@@ -104,6 +109,7 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext) {
     let relayer_fee = withdraw.split(proof.relayer_fee(), ctx);
 
     emit(Withdraw {
+        vortex: self.id.to_address(),
         value: proof.value(),
         fee,
         relayer_fee: relayer_fee.value(),

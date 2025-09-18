@@ -161,11 +161,11 @@ fn main() -> Result<()> {
             println!("Recipient address: {}", recipient_address);
 
             // Load proving key
-            let pk_bytes = fs::read("proving_key.bin")?;
+            let pk_bytes = fs::read("../keys/proving_key.bin")?;
             let pk = ProvingKey::<Bn254>::deserialize_uncompressed(&pk_bytes[..])?;
 
             // Load deposit info
-            let deposit_json = fs::read_to_string("deposit_devnet.json")?;
+            let deposit_json = fs::read_to_string("../payload/deposit.json")?;
             let deposit: serde_json::Value = serde_json::from_str(&deposit_json)?;
 
             // Extract values from deposit JSON
@@ -225,7 +225,7 @@ fn main() -> Result<()> {
 
             // PROPER SOLUTION: Reconstruct tree state with actual Poseidon hashing
             println!("Reconstructing tree state with proper Poseidon hashing...");
-            let tree_state_json = fs::read_to_string("tree_state.json").map_err(|e| {
+            let tree_state_json = fs::read_to_string("../payload/tree.json").map_err(|e| {
                 anyhow!("Failed to read tree_state.json. Please run 'node rebuild_tree_state.js' first: {}", e)
             })?;
             let tree_state: serde_json::Value = serde_json::from_str(&tree_state_json)?;
@@ -394,12 +394,12 @@ fn main() -> Result<()> {
             // Save proof
             let mut proof_bytes = Vec::new();
             proof.serialize_compressed(&mut proof_bytes)?;
-            fs::write("proof.bin", &proof_bytes)?;
+            fs::write("../proofs/proof.bin", &proof_bytes)?;
             println!("✅ Proof saved to proof.bin ({} bytes)", proof_bytes.len());
 
             // Save proof hex for Sui
             let proof_hex = hex::encode(&proof_bytes);
-            fs::write("proof.hex", &proof_hex)?;
+            fs::write("../proofs/proof.hex", &proof_hex)?;
             println!("✅ Proof hex saved to proof.hex");
             println!("Proof: 0x{}", proof_hex);
 
@@ -411,10 +411,11 @@ fn main() -> Result<()> {
                 ("recipient", recipient_field), // Use the dynamic recipient from command line
                 ("relayer", recipient_field),   // Use same address for relayer
                 ("relayer_fee", Fr::from(0u64)),
+                ("vortex", vortex_field),
             ];
 
             // Save value separately for the contract call
-            fs::write("value.txt", amount.to_string())?;
+            fs::write("../proofs/value.txt", amount.to_string())?;
 
             let mut public_lines = Vec::new();
             for (name, input) in &public_inputs {
@@ -427,7 +428,7 @@ fn main() -> Result<()> {
                 public_lines.push(decimal_str);
             }
 
-            fs::write("public_inputs.txt", public_lines.join("\n"))?;
+            fs::write("../proofs/public_inputs.txt", public_lines.join("\n"))?;
             println!("✅ Public inputs saved to public_inputs.txt");
         }
 
