@@ -37,7 +37,7 @@ importers:
         specifier: ^0.30.2
         version: 0.30.2
       dotenv:
-        specifier: ^16.4.5
+        specifier: ^16.6.1
         version: 16.6.1
       eslint:
         specifier: ^8.0.1
