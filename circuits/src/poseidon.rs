@@ -243,7 +243,8 @@ pub fn poseidon_bn254() -> PoseidonConfig<Fr> {
         .chunks(3)
         .map(|chunk| chunk.to_vec())
         .collect();
-    let config = PoseidonConfig::<Fr> {
+
+    PoseidonConfig::<Fr> {
         full_rounds: 8,
         partial_rounds: 57,
         alpha: 5,
@@ -256,9 +257,7 @@ pub fn poseidon_bn254() -> PoseidonConfig<Fr> {
             .to_vec(),
         rate: 2,
         capacity: 1,
-    };
-
-    config
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -300,6 +299,13 @@ impl PoseidonHashVar {
             sponge.squeeze_field_elements(1)?;
             Ok(sponge.state[0].clone())
         }
+    }
+
+    pub fn hash1(&self, left: &FpVar<Fr>) -> Result<FpVar<Fr>, SynthesisError> {
+        let mut sponge = PoseidonSpongeVar::new(left.cs(), &self.config.parameters);
+        sponge.absorb(left)?;
+        sponge.squeeze_field_elements(1)?;
+        Ok(sponge.state[0].clone())
     }
 }
 
