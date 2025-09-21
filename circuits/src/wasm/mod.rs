@@ -6,7 +6,7 @@ use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::thread_rng;
 use num_bigint::BigUint;
-use num_traits::{Num, ToPrimitive};
+use num_traits::ToPrimitive;
 use serde_json::{json, Value};
 
 use std::str::FromStr;
@@ -37,7 +37,7 @@ impl ProveParams {
     pub fn add_leafs(&mut self, leafs: Vec<String>) {
         self.merkle_leafs.extend(leafs.iter().map(|s| {
             // Convert hex string back to decimal, then to field element
-            let bigint = BigUint::from_str_radix(s, 16).expect("Invalid hex string");
+            let bigint = BigUint::from_str(s).expect("Invalid hex string");
             Fr::from(bigint)
         }));
     }

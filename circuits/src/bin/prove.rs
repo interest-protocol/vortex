@@ -64,7 +64,7 @@ pub fn main() -> anyhow::Result<()> {
         .iter()
         .map(|s| {
             let bigint = BigUint::from_str(s).expect("Invalid decimal string");
-            bigint.to_str_radix(16)
+            bigint.to_string()
         })
         .collect();
 
