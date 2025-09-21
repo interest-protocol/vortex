@@ -277,6 +277,14 @@ impl PoseidonHash {
         sponge.squeeze_field_elements::<Fr>(1);
         sponge.state[0]
     }
+
+    pub fn hash1(&self, input: &Fr) -> Fr {
+        // Single-input Poseidon hash to match JavaScript poseidon1 implementation
+        let mut sponge = PoseidonSponge::new(&self.config);
+        sponge.absorb(input);
+        sponge.squeeze_field_elements::<Fr>(1);
+        sponge.state[0]
+    }
 }
 
 pub struct PoseidonHashVar {
@@ -302,10 +310,18 @@ impl PoseidonHashVar {
     }
 
     pub fn hash1(&self, left: &FpVar<Fr>) -> Result<FpVar<Fr>, SynthesisError> {
-        let mut sponge = PoseidonSpongeVar::new(left.cs(), &self.config.parameters);
-        sponge.absorb(left)?;
-        sponge.squeeze_field_elements(1)?;
-        Ok(sponge.state[0].clone())
+        let cs = left.cs();
+
+        if cs.is_none() {
+            Ok(FpVar::Constant(
+                PoseidonHash::new(self.config.parameters.clone()).hash1(&left.value()?),
+            ))
+        } else {
+            let mut sponge = PoseidonSpongeVar::new(cs, &self.config.parameters);
+            sponge.absorb(left)?;
+            sponge.squeeze_field_elements(1)?;
+            Ok(sponge.state[0].clone())
+        }
     }
 }
 

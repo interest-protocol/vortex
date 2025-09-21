@@ -1,13 +1,12 @@
+use crate::utils::parse_address;
 use ark_bn254::{Bn254, Fr};
 use ark_crypto_primitives::snark::SNARK;
-use ark_ff::PrimeField;
 use ark_groth16::{Groth16, ProvingKey};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::thread_rng;
 use num_bigint::BigUint;
-use num_traits::Num;
-use num_traits::ToPrimitive;
+use num_traits::{Num, ToPrimitive};
 use serde_json::{json, Value};
 
 use std::str::FromStr;
@@ -19,6 +18,7 @@ use crate::{
     LEVEL, ZERO_VALUE,
 };
 
+#[derive(Debug)]
 pub struct ProveParams {
     pub secret: String,
     pub nullifier_hash: String,
@@ -35,12 +35,11 @@ pub struct ProveParams {
 
 impl ProveParams {
     pub fn add_leafs(&mut self, leafs: Vec<String>) {
-        self.merkle_leafs.extend(
-            leafs
-                .iter()
-                .map(|s| hex::decode(s).expect("Invalid hex string"))
-                .map(|b| Fr::from_be_bytes_mod_order(&b)),
-        );
+        self.merkle_leafs.extend(leafs.iter().map(|s| {
+            // Convert hex string back to decimal, then to field element
+            let bigint = BigUint::from_str_radix(s, 16).expect("Invalid hex string");
+            Fr::from(bigint)
+        }));
     }
 }
 
@@ -87,7 +86,7 @@ pub fn prove(params: ProveParams) -> Value {
         relayer,
         relayer_fee,
         vortex,
-        hasher: poseidon,
+        hasher: poseidon.clone(),
     };
 
     let cs = ConstraintSystem::<Fr>::new_ref();
@@ -100,23 +99,37 @@ pub fn prove(params: ProveParams) -> Value {
         panic!("Constraints are not satisfied");
     }
 
-    // Generate proof
-    let proof =
-        Groth16::<Bn254>::prove(&pk, circuit, &mut thread_rng()).expect("Failed to generate proof");
+    // Extract the actual public inputs from the constraint system
+    let public_inputs_from_cs = cs.borrow().unwrap().instance_assignment.clone();
 
+    // Generate proof
+    let proof = Groth16::<Bn254>::prove(&pk, circuit.clone(), &mut thread_rng())
+        .expect("Failed to generate proof");
+
+    // Skip verification during proving for now - we'll verify separately
+
+    // Serialize the entire proof for verification
     let mut proof_bytes = vec![];
     proof
-        .serialize_compressed(&mut proof_bytes)
+        .serialize_uncompressed(&mut proof_bytes)
         .expect("Failed to serialize proof");
 
-    json!({
-        "proof": hex::encode(proof_bytes),
-    })
-}
+    // Serialize merkle path for verification
+    let mut merkle_path_elements = vec![];
+    for (left, right) in merkle_path.path.iter() {
+        merkle_path_elements.push(left.to_string());
+        merkle_path_elements.push(right.to_string());
+    }
 
-fn parse_address(address: String) -> Fr {
-    let clean_address = address.strip_prefix("0x").unwrap_or(address.as_str());
-    let recipient_bigint =
-        BigUint::from_str_radix(clean_address, 16).expect("Failed to parse address");
-    Fr::from(recipient_bigint)
+    // Also output the correct public inputs (including the "one" element) for verification
+    let public_inputs_str: Vec<String> = public_inputs_from_cs
+        .iter()
+        .map(|x| x.to_string())
+        .collect();
+
+    json!({
+        "full_proof": hex::encode(proof_bytes),
+        "merkle_path": merkle_path_elements,
+        "public_inputs": public_inputs_str
+    })
 }

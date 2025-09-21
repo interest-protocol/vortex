@@ -3,6 +3,7 @@ use circuit::Circuit;
 pub mod circuit;
 pub mod merkle_tree;
 pub mod poseidon;
+pub mod utils;
 pub mod wasm;
 
 pub const LEVEL: usize = 26;

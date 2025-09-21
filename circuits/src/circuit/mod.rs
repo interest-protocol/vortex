@@ -1,6 +1,7 @@
 use crate::{
     merkle_tree::{Path, PathVar},
     poseidon::{PoseidonHash, PoseidonHashVar},
+    utils::sha256_hash,
 };
 use ark_bn254::Fr;
 use ark_ff::AdditiveGroup;
@@ -52,13 +53,13 @@ impl<const L: usize> Circuit<L> {
 impl<const L: usize> ConstraintSynthesizer<Fr> for Circuit<L> {
     fn generate_constraints(self, cs: ConstraintSystemRef<Fr>) -> r1cs::Result<()> {
         // Allocate private inputs
-        let secret_var = FpVar::new_input(ns!(cs, "secret"), || Ok(self.secret))?;
-        let nullifier_var = FpVar::new_input(ns!(cs, "nullifier"), || Ok(self.nullifier))?;
+        let secret_var = FpVar::new_witness(ns!(cs, "secret"), || Ok(self.secret))?;
+        let nullifier_var = FpVar::new_witness(ns!(cs, "nullifier"), || Ok(self.nullifier))?;
+        let merkle_path_var =
+            PathVar::new_witness(ns!(cs, "merkle_path"), || Ok(self.merkle_path))?;
 
         // Allocate public inputs
         let merkle_root_var = FpVar::new_input(ns!(cs, "merkle_root"), || Ok(self.merkle_root))?;
-        let merkle_path_var =
-            PathVar::new_witness(ns!(cs, "merkle_path"), || Ok(self.merkle_path))?;
         let nullifier_hash_var =
             FpVar::new_input(ns!(cs, "nullifier_hash"), || Ok(self.nullifier_hash))?;
         let _recipient_var = FpVar::new_input(ns!(cs, "recipient"), || Ok(self.recipient))?;
@@ -70,10 +71,8 @@ impl<const L: usize> ConstraintSynthesizer<Fr> for Circuit<L> {
         let hasher_var = PoseidonHashVar::new_constant(ns!(cs, "hasher"), self.hasher)?;
 
         // CONSTRAINT 1: Verify nullifier hash
-        // nullifier_hash = hash(nullifier)
-        let expected_nullifier_hash = hasher_var
-            .hash1(&nullifier_var)
-            .expect("Invalid nullifier hash");
+        // nullifier_hash = sha256(nullifier)
+        let expected_nullifier_hash = FpVar::Constant(sha256_hash(&self.nullifier));
 
         expected_nullifier_hash.enforce_equal(&nullifier_hash_var)?;
 

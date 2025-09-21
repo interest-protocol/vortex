@@ -828,6 +828,7 @@ dependencies = [
  "anyhow",
  "ark-bn254",
  "ark-crypto-primitives",
+ "ark-ec",
  "ark-ff",
  "ark-groth16",
  "ark-r1cs-std",
@@ -843,6 +844,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "sha2",
  "wasm-bindgen",
 ]
 

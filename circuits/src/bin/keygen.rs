@@ -18,27 +18,29 @@ pub fn main() -> anyhow::Result<()> {
 
     let (pk, vk) = Groth16::<Bn254>::setup(circuit, &mut thread_rng())?;
 
-    // pk uncompressed
+    // Serialize PK uncompressed
     let mut pk_bytes = vec![];
     pk.serialize_uncompressed(&mut pk_bytes)?;
 
-    // vk compressed
+    // Serialize VK compressed
     let mut vk_bytes = vec![];
-    vk.serialize_compressed(&mut vk_bytes)?;
-
-    println!("PK size: {} bytes", pk_bytes.len());
-    println!("VK size: {} bytes", vk_bytes.len());
+    vk.serialize_uncompressed(&mut vk_bytes)?;
 
     // Save PK to file
-    let mut pk_file = File::create("./keys/pk.full.bin")?;
+    let mut pk_file = File::create("./keys/pk.bin")?;
     pk_file.write_all(&pk_bytes)?;
 
-    // Save VK as hex string
+    // Save VK as uncompressed binary bytes
+    let mut vk_file = File::create("./keys/vk.bin")?;
+    vk_file.write_all(&vk_bytes)?;
+
+    // Also save VK as compressed for reference
+
     let vk_hex = hex::encode(&vk_bytes);
     let mut vk_hex_file = File::create("./keys/vk.hex.bin")?;
     vk_hex_file.write_all(vk_hex.as_bytes())?;
 
-    println!("Keys saved to ./keys/pk.full.bin, ./keys/vk.hex.bin");
+    println!("Keys saved to ./keys/pk.bin, ./keys/vk.bin and ./keys/vk.hex.bin");
 
     Ok(())
 }

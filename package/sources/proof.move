@@ -100,17 +100,16 @@ fun u256_to_field(value: u256): vector<u8> {
 }
 
 fun new_points(a: vector<u8>, b: vector<u8>, c: vector<u8>): ProofPoints {
-    // For arkworks format, if 'a' contains the full 128-byte proof, use it directly
-    // Otherwise concatenate the components
-    let points = if (a.length() == 128 && b.length() == 0 && c.length() == 0) {
+    // Handle both old format (single proof) and new format (A, B, C components)
+    let points = if (b.length() == 0 && c.length() == 0) {
+        // Old format: single proof string
         a
     } else {
+        // New format: concatenate A, B, C components
         let mut bytes = vector[];
-        // Directly append the raw bytes, not BCS-encoded
         bytes.append(a);
         bytes.append(b);
         bytes.append(c);
-
         bytes
     };
 
