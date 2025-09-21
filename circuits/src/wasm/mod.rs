@@ -70,7 +70,7 @@ pub fn prove(params: ProveParams) -> Value {
     )
     .expect("Invalid merkle tree construction");
 
-    assert!(merkle_tree.root() == merkle_root);
+    assert!(merkle_tree.root().eq(&merkle_root));
 
     let merkle_path = deposit_index
         .to_usize()
