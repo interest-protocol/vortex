@@ -99,9 +99,6 @@ pub fn prove(params: ProveParams) -> Value {
         panic!("Constraints are not satisfied");
     }
 
-    // Extract the actual public inputs from the constraint system
-    let public_inputs_from_cs = cs.borrow().unwrap().instance_assignment.clone();
-
     // Generate proof
     let proof = Groth16::<Bn254>::prove(&pk, circuit.clone(), &mut thread_rng())
         .expect("Failed to generate proof");
@@ -121,15 +118,9 @@ pub fn prove(params: ProveParams) -> Value {
         merkle_path_elements.push(right.to_string());
     }
 
-    // Also output the correct public inputs (including the "one" element) for verification
-    let public_inputs_str: Vec<String> = public_inputs_from_cs
-        .iter()
-        .map(|x| x.to_string())
-        .collect();
-
     json!({
         "full_proof": hex::encode(proof_bytes),
         "merkle_path": merkle_path_elements,
-        "public_inputs": public_inputs_str
+
     })
 }

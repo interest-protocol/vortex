@@ -9,7 +9,6 @@ pub struct Params {
     pub nullifier: String,
     pub secret: String,
     pub root: String,
-    pub amount: u64,
     pub index: String,
     pub vortex: String,
     pub leafs: Vec<String>,
