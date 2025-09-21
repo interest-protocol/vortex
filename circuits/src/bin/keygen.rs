@@ -30,15 +30,15 @@ pub fn main() -> anyhow::Result<()> {
     println!("VK size: {} bytes", vk_bytes.len());
 
     // Save PK to file
-    let mut pk_file = File::create("pk.full.bin")?;
+    let mut pk_file = File::create("./keys/pk.full.bin")?;
     pk_file.write_all(&pk_bytes)?;
 
     // Save VK as hex string
     let vk_hex = hex::encode(&vk_bytes);
-    let mut vk_hex_file = File::create("vk.hex.bin")?;
+    let mut vk_hex_file = File::create("./keys/vk.hex.bin")?;
     vk_hex_file.write_all(vk_hex.as_bytes())?;
 
-    println!("Keys saved to pk.full.bin, vk.hex.bin");
+    println!("Keys saved to ./keys/pk.full.bin, ./keys/vk.hex.bin");
 
     Ok(())
 }
