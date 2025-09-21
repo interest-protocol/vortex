@@ -7,13 +7,14 @@ use sui::groth16::{Self, PublicProofInputs, ProofPoints};
 
 public struct Proof has copy, drop, store {
     root: u256,
-    nullifier: u256,
+    nullifier_hash: u256,
     recipient: address,
     value: u64,
     points: ProofPoints,
-    public_inputs: vector<u8>,
+    public_inputs: PublicProofInputs,
     relayer: address,
     relayer_fee: u64,
+    vortex: address,
 }
 
 // === Public Functions ===
@@ -23,21 +24,30 @@ public fun new(
     b: vector<u8>,
     c: vector<u8>,
     root: u256,
-    nullifier: u256,
+    nullifier_hash: u256,
     recipient: address,
     value: u64,
     relayer: address,
     relayer_fee: u64,
+    vortex: address,
 ): Proof {
     Proof {
         root,
-        nullifier,
+        nullifier_hash,
         recipient,
         value,
         points: new_points(a, b, c),
-        public_inputs: new_public_inputs(root, nullifier, recipient, relayer, relayer_fee),
+        public_inputs: new_public_inputs(
+            root,
+            nullifier_hash,
+            recipient,
+            relayer,
+            relayer_fee,
+            vortex,
+        ),
         relayer,
         relayer_fee,
+        vortex,
     }
 }
 
@@ -63,20 +73,20 @@ public(package) fun root(self: Proof): u256 {
     self.root
 }
 
-public(package) fun nullifier(self: Proof): u256 {
-    self.nullifier
+public(package) fun nullifier_hash(self: Proof): u256 {
+    self.nullifier_hash
+}
+
+public(package) fun vortex(self: Proof): address {
+    self.vortex
 }
 
 public(package) fun points(self: Proof): ProofPoints {
     self.points
 }
 
-public(package) fun get_public_inputs(self: Proof, vortex: address): PublicProofInputs {
-    let mut public_inputs = self.public_inputs;
-
-    public_inputs.append(vortex.to_field());
-
-    groth16::public_proof_inputs_from_bytes(self.public_inputs)
+public(package) fun public_inputs(self: Proof): PublicProofInputs {
+    self.public_inputs
 }
 
 // === Private Functions ===
@@ -109,20 +119,22 @@ fun new_points(a: vector<u8>, b: vector<u8>, c: vector<u8>): ProofPoints {
 
 fun new_public_inputs(
     root: u256,
-    nullifier: u256,
+    nullifier_hash: u256,
     recipient: address,
     relayer: address,
     relayer_fee: u64,
-): vector<u8> {
+    vortex: address,
+): PublicProofInputs {
     let mut bytes = vector[];
 
     bytes.append(root.to_field());
-    bytes.append(nullifier.to_field());
+    bytes.append(nullifier_hash.to_field());
     bytes.append(recipient.to_field());
     bytes.append(relayer.to_field());
     bytes.append((relayer_fee as u256).to_field());
+    bytes.append(vortex.to_field());
 
-    bytes
+    groth16::public_proof_inputs_from_bytes(bytes)
 }
 
 // === Aliases ===
@@ -144,5 +156,6 @@ fun test_public_inputs() {
         100000000,
         @0x0db8426f6207d23dc75352be968894e986d156d017ba1a217fcb521effcde94f,
         1,
-    ).get_public_inputs(@0x2);
+        @0x2,
+    ).public_inputs();
 }

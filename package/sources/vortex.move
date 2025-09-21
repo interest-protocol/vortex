@@ -25,7 +25,7 @@ public struct Vortex has key {
     deposit_fee: BPS,
     withdraw_fee: BPS,
     allowed_value: u64,
-    nullifiers: Table<u256, bool>,
+    nullifier_hashes: Table<u256, bool>,
     commitments: Table<u256, bool>,
     groth16_vk: vector<u8>,
     groth16_curve: Groth16Curve,
@@ -51,7 +51,7 @@ public struct Withdraw has copy, drop {
     fee: u64,
     relayer_fee: u64,
     relayer: address,
-    nullifier: u256,
+    nullifier_hash: u256,
 }
 
 // === Public Functions ===
@@ -87,16 +87,17 @@ public fun deposit(
 }
 
 public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext) {
+    self.assert_proof_vortex(proof.vortex());
     self.assert_root_is_known(proof.root());
     self.assert_allowed_deposit_value(proof.value());
 
-    self.nullifiers.add(proof.nullifier(), true);
+    self.nullifier_hashes.add(proof.nullifier_hash(), true);
 
     assert!(
         groth16::verify_groth16_proof(
             &self.groth16_curve,
             &self.verifying_key(),
-            &proof.get_public_inputs(self.id.to_address()),
+            &proof.public_inputs(),
             &proof.points(),
         ),
         vortex::vortex_errors::invalid_proof!(),
@@ -114,7 +115,7 @@ public fun withdraw(self: &mut Vortex, proof: Proof, ctx: &mut TxContext) {
         fee,
         relayer_fee: relayer_fee.value(),
         recipient: proof.recipient(),
-        nullifier: proof.nullifier(),
+        nullifier_hash: proof.nullifier_hash(),
         root: proof.root(),
         relayer: proof.relayer(),
     });
@@ -142,7 +143,7 @@ public fun new(_: &VortexAdmin, value: u64, ctx: &mut TxContext): Vortex {
         allowed_value: value,
         groth16_vk: vector[],
         groth16_curve: groth16::bn254(),
-        nullifiers: table::new(ctx),
+        nullifier_hashes: table::new(ctx),
         commitments: table::new(ctx),
         balance: balance::zero(),
     };
@@ -184,6 +185,10 @@ public fun set_groth16_vk(
 }
 
 // === Private Functions ===
+
+fun assert_proof_vortex(self: &Vortex, vortex: address) {
+    assert!(vortex == self.id.to_address(), vortex::vortex_errors::invalid_proof_vortex!());
+}
 
 fun assert_allowed_deposit_value(self: &Vortex, value: u64) {
     assert!(value == self.allowed_value, vortex::vortex_errors::invalid_allowed_deposit_value!());

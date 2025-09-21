@@ -21,3 +21,7 @@ public(package) macro fun invalid_poseidon_input(): u64 {
 public(package) macro fun invalid_proof(): u64 {
     5
 }
+
+public(package) macro fun invalid_proof_vortex(): u64 {
+    6
+}
