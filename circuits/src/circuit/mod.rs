@@ -18,10 +18,10 @@ pub struct Circuit<const L: usize> {
     // Private inputs
     pub secret: Fr,
     pub nullifier: Fr,
-    pub merkle_path: Path<L>,
 
     // Public inputs
     pub merkle_root: Fr,
+    pub merkle_path: Path<L>,
     pub nullifier_hash: Fr,
     pub recipient: Fr,
     pub relayer: Fr,
@@ -66,19 +66,22 @@ impl<const L: usize> ConstraintSynthesizer<Fr> for Circuit<L> {
         let _relayer_fee_var = FpVar::new_input(ns!(cs, "relayer_fee"), || Ok(self.relayer_fee))?;
         let _vortex_var = FpVar::new_input(ns!(cs, "vortex"), || Ok(self.vortex))?;
 
+        // Allocate constants
         let hasher_var = PoseidonHashVar::new_constant(ns!(cs, "hasher"), self.hasher)?;
 
+        // CONSTRAINT 1: Verify nullifier hash
+        // nullifier_hash = hash(nullifier)
         let expected_nullifier_hash = hasher_var
             .hash1(&nullifier_var)
             .expect("Invalid nullifier hash");
 
-        // CONSTRAINT 1: Verify nullifier hash
-        // nullifier_hash = hash(nullifier)
         expected_nullifier_hash.enforce_equal(&nullifier_hash_var)?;
 
-        // Compute commitment = Poseidon(secret, nullifier_secret)
+        // Compute commitment = Poseidon(secret, nullifier)
         let commitment = hasher_var.hash(&secret_var, &nullifier_var)?;
 
+        // CONSTRAINT 2: Verify Merkle path
+        // merkle_path = Merkle path for commitment in merkle tree
         let is_valid_merkle_path = merkle_path_var
             .check_membership(&merkle_root_var, &commitment, &hasher_var)
             .expect("Invalid Merkle path");
