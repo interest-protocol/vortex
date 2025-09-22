@@ -39,3 +39,7 @@ path = "src/bin/keygen.rs"
 [[bin]]
 name = "prove"
 path = "src/bin/prove.rs"
+
+[[bin]]
+name = "verify"
+path = "src/bin/verify.rs"
