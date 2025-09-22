@@ -48,6 +48,3 @@ build
 # IDE
 .idea
 .vscode
-
-# Circuits
-circuits/keys/*
