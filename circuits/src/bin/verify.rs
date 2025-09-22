@@ -6,7 +6,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::str::FromStr;
 
-use vortex::utils::{parse_address, sha256_hash};
+use vortex::{poseidon, utils::parse_address};
 
 #[derive(Deserialize, Debug)]
 pub struct Params {
@@ -57,7 +57,8 @@ fn main() -> anyhow::Result<()> {
     // Verify nullifier hash computation
     let nullifier =
         Fr::from_str(&config.prove_params.nullifier).expect("Failed to parse nullifier");
-    let expected_nullifier_hash = sha256_hash(&nullifier);
+    let expected_nullifier_hash =
+        poseidon::PoseidonHash::new(poseidon::poseidon_bn254()).hash(&nullifier, &nullifier);
 
     assert_eq!(expected_nullifier_hash, nullifier_hash);
     println!("✓ Nullifier hash verification passed");

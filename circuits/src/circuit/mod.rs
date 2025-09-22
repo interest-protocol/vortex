@@ -1,7 +1,6 @@
 use crate::{
     merkle_tree::{Path, PathVar},
     poseidon::{PoseidonHash, PoseidonHashVar},
-    utils::sha256_hash,
 };
 use ark_bn254::Fr;
 use ark_ff::AdditiveGroup;
@@ -72,7 +71,7 @@ impl<const L: usize> ConstraintSynthesizer<Fr> for Circuit<L> {
 
         // CONSTRAINT 1: Verify nullifier hash
         // nullifier_hash = sha256(nullifier)
-        let expected_nullifier_hash = FpVar::Constant(sha256_hash(&self.nullifier));
+        let expected_nullifier_hash = hasher_var.hash(&nullifier_var, &nullifier_var)?;
 
         expected_nullifier_hash.enforce_equal(&nullifier_hash_var)?;
 

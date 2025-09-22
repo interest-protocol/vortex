@@ -1,3 +1,8 @@
+use std::{
+    borrow::Borrow,
+    collections::{BTreeMap, BTreeSet},
+};
+
 use anyhow::anyhow;
 use ark_bn254::Fr;
 use ark_ff::{AdditiveGroup, Field};
@@ -7,16 +12,8 @@ use ark_r1cs_std::{
     select::CondSelectGadget,
 };
 use ark_relations::r1cs::{Namespace, SynthesisError};
-use std::str::FromStr;
-use std::{
-    borrow::Borrow,
-    collections::{BTreeMap, BTreeSet},
-};
 
-use crate::{
-    poseidon::{PoseidonHash, PoseidonHashVar},
-    ZERO_VALUE,
-};
+use crate::poseidon::{PoseidonHash, PoseidonHashVar};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Path<const N: usize> {
@@ -156,8 +153,7 @@ impl<const N: usize> SparseMerkleTree<N> {
         // Initialize the merkle tree
         let tree: BTreeMap<u64, Fr> = BTreeMap::new();
         let empty_hashes = {
-            let mut empty_hashes =
-                [Fr::from_str(ZERO_VALUE).expect("Failed to parse ZERO_VALUE"); N];
+            let mut empty_hashes = [Fr::ZERO; N];
 
             let mut empty_hash = *empty_leaf;
             empty_hashes[0] = empty_hash;

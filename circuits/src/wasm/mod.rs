@@ -78,10 +78,10 @@ pub fn prove(params: ProveParams) -> Value {
 
     let circuit = Circuit {
         secret,
-        nullifier_hash,
+        nullifier,
         merkle_root,
         merkle_path,
-        nullifier,
+        nullifier_hash,
         recipient,
         relayer,
         relayer_fee,
@@ -113,14 +113,13 @@ pub fn prove(params: ProveParams) -> Value {
 
     // Serialize merkle path for verification
     let mut merkle_path_elements = vec![];
-    for (left, right) in merkle_path.path.iter() {
-        merkle_path_elements.push(left.to_string());
-        merkle_path_elements.push(right.to_string());
+    for i in 0..merkle_path.path.len() {
+        merkle_path_elements.push(merkle_path.path[i].0.to_string());
+        merkle_path_elements.push(merkle_path.path[i].1.to_string());
     }
 
     json!({
         "full_proof": hex::encode(proof_bytes),
         "merkle_path": merkle_path_elements,
-
     })
 }
