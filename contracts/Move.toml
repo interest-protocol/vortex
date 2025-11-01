@@ -1,0 +1,9 @@
+[package]
+name = "vortex"
+edition = "2024.beta"
+license = "MIT"  
+
+[dependencies]
+
+[addresses]
+vortex = "0x0"
