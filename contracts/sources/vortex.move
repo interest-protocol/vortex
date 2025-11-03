@@ -1,35 +1,29 @@
 module vortex::vortex;
 
-use interest_bps::bps::{Self, BPS};
 use sui::{
     balance::{Self, Balance},
     coin::Coin,
     dynamic_object_field as dof,
     event::emit,
-    groth16::{Self, Curve as Groth16Curve, PreparedVerifyingKey},
+    groth16::{Self, PreparedVerifyingKey},
     sui::SUI,
     table::{Self, Table}
 };
-use vortex::{
-    vortex_admin::VortexAdmin,
-    vortex_ext_data::ExtData,
-    vortex_merkle_tree::{Self, MerkleTree},
-    vortex_proof::Proof
-};
+use vortex::{vortex_ext_data::ExtData, vortex_merkle_tree::{Self, MerkleTree}, vortex_proof::Proof};
 
 // === Structs ===
 
 public struct MerkleTreeKey() has copy, drop, store;
 
+public struct InitCap has key {
+    id: UID,
+}
+
 public struct Vortex has key {
     id: UID,
-    deposit_fee: BPS,
-    withdraw_fee: BPS,
     nullifier_hashes: Table<u256, bool>,
-    groth16_vk: vector<u8>,
-    groth16_curve: Groth16Curve,
+    vk: PreparedVerifyingKey,
     balance: Balance<SUI>,
-    treasury: Balance<SUI>,
 }
 
 // === Events ===
@@ -42,7 +36,43 @@ public struct NewCommitment has copy, drop {
     encrypted_output: u256,
 }
 
+// === Initializer ===
+
+fun init(ctx: &mut TxContext) {
+    let init_cap = InitCap {
+        id: object::new(ctx),
+    };
+
+    transfer::transfer(init_cap, ctx.sender());
+}
+
 // === Mutative Functions ===
+
+public fun new(init_cap: InitCap, vk: vector<u8>, ctx: &mut TxContext): Vortex {
+    let InitCap { id } = init_cap;
+
+    id.delete();
+
+    let merkle_tree = vortex_merkle_tree::new(ctx);
+
+    let mut vortex = Vortex {
+        id: object::new(ctx),
+        vk: groth16::prepare_verifying_key(
+            &groth16::bn254(),
+            &vk,
+        ),
+        nullifier_hashes: table::new(ctx),
+        balance: balance::zero(),
+    };
+
+    dof::add(&mut vortex.id, MerkleTreeKey(), merkle_tree);
+
+    vortex
+}
+
+public fun share(self: Vortex) {
+    transfer::share_object(self);
+}
 
 public fun transact(self: &mut Vortex, proof: Proof, ext_data: ExtData, ctx: &mut TxContext) {
     self.assert_root_is_known(proof.root());
@@ -56,62 +86,6 @@ public fun root(self: &Vortex): u256 {
     self.merkle_tree().root()
 }
 
-// === Admin Functions ===
-
-public fun new(_: &VortexAdmin, ctx: &mut TxContext): Vortex {
-    let merkle_tree = vortex_merkle_tree::new(ctx);
-
-    let mut vortex = Vortex {
-        id: object::new(ctx),
-        deposit_fee: bps::new(0),
-        withdraw_fee: bps::new(0),
-        groth16_vk: vector[],
-        groth16_curve: groth16::bn254(),
-        nullifier_hashes: table::new(ctx),
-        balance: balance::zero(),
-        treasury: balance::zero(),
-    };
-
-    dof::add(&mut vortex.id, MerkleTreeKey(), merkle_tree);
-
-    vortex
-}
-
-public fun share(self: Vortex) {
-    transfer::share_object(self);
-}
-
-public fun set_deposit_fee(
-    self: &mut Vortex,
-    _: &VortexAdmin,
-    fee_raw_value: u64,
-    _ctx: &mut TxContext,
-) {
-    self.deposit_fee = bps::new(fee_raw_value);
-}
-
-public fun set_withdraw_fee(
-    self: &mut Vortex,
-    _: &VortexAdmin,
-    fee_raw_value: u64,
-    _ctx: &mut TxContext,
-) {
-    self.withdraw_fee = bps::new(fee_raw_value);
-}
-
-public fun set_groth16_vk(
-    self: &mut Vortex,
-    _: &VortexAdmin,
-    vk: vector<u8>,
-    _ctx: &mut TxContext,
-) {
-    self.groth16_vk = vk;
-}
-
-public fun collect_treasury(self: &mut Vortex, _: &VortexAdmin, ctx: &mut TxContext): Coin<SUI> {
-    self.treasury.withdraw_all().into_coin(ctx)
-}
-
 // === Private Functions ===
 
 fun assert_ext_data_hash(ext_data: ExtData, ext_data_hash: vector<u8>) {
@@ -122,19 +96,18 @@ fun assert_root_is_known(self: &Vortex, root: u256) {
     assert!(self.merkle_tree().is_known_root(root), vortex::vortex_errors::proof_root_not_known!());
 }
 
-fun verifying_key(self: &Vortex): PreparedVerifyingKey {
-    groth16::prepare_verifying_key(
-        &self.groth16_curve,
-        &self.groth16_vk,
-    )
-}
+fun assert_public_amount(self: &Vortex, ext_data: ExtData) {}
 
-fun take_fee(self: &mut Vortex, coin: &mut Balance<SUI>, bps: BPS): u64 {
-    let fee_value = bps.calc_up(coin.value());
+fun calculate_public_amount(self: &Vortex, ext_data: ExtData): u64 {
+    let value = ext_data.value();
+    let relayer_fee = ext_data.relayer_fee();
 
-    self.treasury.join(coin.split(fee_value));
-
-    fee_value
+    if (ext_data.value_sign()) {
+        value - relayer_fee;
+        0
+    } else {
+        0
+    }
 }
 
 fun merkle_tree(self: &Vortex): &MerkleTree {

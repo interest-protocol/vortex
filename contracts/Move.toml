@@ -5,10 +5,5 @@ license = "MIT"
 
 [dependencies]
 
-interest_bps = { r.mvr = "@interest/bps" }
-
 [addresses]
 vortex = "0x0"
-
-[r.mvr]
-network = "testnet"
