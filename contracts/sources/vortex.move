@@ -27,6 +27,8 @@ public struct Vortex has key {
     treasury: Balance<SUI>,
 }
 
+// === Mutative Functions ===
+
 // === Public Views ===
 
 public fun root(self: &Vortex): u256 {
@@ -83,6 +85,10 @@ public fun set_groth16_vk(
     _ctx: &mut TxContext,
 ) {
     self.groth16_vk = vk;
+}
+
+public fun collect_treasury(self: &mut Vortex, _: &VortexAdmin, ctx: &mut TxContext): Coin<SUI> {
+    self.treasury.withdraw_all().into_coin(ctx)
 }
 
 // === Private Functions ===
