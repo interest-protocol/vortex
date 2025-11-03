@@ -25,3 +25,11 @@ public(package) macro fun invalid_proof(): u64 {
 public(package) macro fun invalid_proof_vortex(): u64 {
     6
 }
+
+public(package) macro fun invalid_address(): u64 {
+    7
+}
+
+public(package) macro fun invalid_zero_value(): u64 {
+    8
+}

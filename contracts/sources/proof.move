@@ -14,7 +14,7 @@ public struct Proof has copy, drop, store {
     ext_data_hash: vector<u8>,
 }
 
-// === Public Functions ===
+// === Public Mutative Functions ===
 
 public fun new(
     a: vector<u8>,
@@ -39,12 +39,6 @@ public fun new(
 }
 
 // === Package View Functions ===
-// root: u256,
-// points: ProofPoints,
-// input_nullifiers: vector<u256>,
-// output_commitments: vector<u256>,
-// public_value: u64,
-// ext_data_hash: vector<u8>,
 
 public(package) fun root(self: Proof): u256 {
     self.root
