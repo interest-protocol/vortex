@@ -17,7 +17,7 @@ fun init(ctx: &mut TxContext) {
     );
 }
 
-// === Public Functions ===
+// === Public Mutative Functions ===
 
 public fun destroy(self: VortexAdmin) {
     let VortexAdmin { id } = self;

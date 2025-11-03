@@ -14,7 +14,7 @@ public struct Proof has copy, drop, store {
     ext_data_hash: vector<u8>,
 }
 
-// === Public Mutative Functions ===
+// === Public View Functions ===
 
 public fun new(
     a: vector<u8>,
@@ -80,10 +80,6 @@ public(package) fun public_inputs(self: Proof): PublicProofInputs {
 
 // === Private Functions ===
 
-fun u256_to_bytes(value: u256): vector<u8> {
-    bcs::to_bytes(&(value))
-}
-
 fun new_points(a: vector<u8>, b: vector<u8>, c: vector<u8>): ProofPoints {
     // Handle both old format (single proof) and new format (A, B, C components)
     let points = if (b.length() == 0 && c.length() == 0) {
@@ -103,4 +99,4 @@ fun new_points(a: vector<u8>, b: vector<u8>, c: vector<u8>): ProofPoints {
 
 // === Aliases ===
 
-use fun u256_to_bytes as u256.to_bytes;
+use fun vortex::vortex_utils::u256_to_bytes as u256.to_bytes;

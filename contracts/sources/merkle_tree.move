@@ -19,36 +19,6 @@ public struct MerkleTree has key, store {
     root_index: u64,
 }
 
-// === Package View Functions ===
-
-public(package) fun root(self: &MerkleTree): u256 {
-    self.root_history[self.root_index]
-}
-
-public(package) fun is_known_root(self: &MerkleTree, root: u256): bool {
-    if (root == 0) return false;
-
-    let mut i = self.root_index;
-
-    loop {
-        if (self.root_history.contains(i)) {
-            if (self.root_history[i] == root) {
-                return true
-            };
-        };
-
-        if (i == 0) {
-            i = ROOT_HISTORY_SIZE - 1;
-        } else {
-            i = i - 1;
-        };
-
-        if (i == self.root_index) break;
-    };
-
-    false
-}
-
 // === Package Mutative Functions ===
 
 public(package) fun new(ctx: &mut TxContext): MerkleTree {
@@ -107,6 +77,36 @@ public(package) fun append(self: &mut MerkleTree, leaf1: u256, leaf2: u256): u64
     self.next_index = self.next_index + 2;
 
     self.next_index
+}
+
+// === Package View Functions ===
+
+public(package) fun root(self: &MerkleTree): u256 {
+    self.root_history[self.root_index]
+}
+
+public(package) fun is_known_root(self: &MerkleTree, root: u256): bool {
+    if (root == 0) return false;
+
+    let mut i = self.root_index;
+
+    loop {
+        if (self.root_history.contains(i)) {
+            if (self.root_history[i] == root) {
+                return true
+            };
+        };
+
+        if (i == 0) {
+            i = ROOT_HISTORY_SIZE - 1;
+        } else {
+            i = i - 1;
+        };
+
+        if (i == self.root_index) break;
+    };
+
+    false
 }
 
 // === Private Functions ===

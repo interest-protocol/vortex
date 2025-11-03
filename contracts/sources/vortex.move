@@ -10,7 +10,12 @@ use sui::{
     sui::SUI,
     table::{Self, Table}
 };
-use vortex::{vortex_admin::VortexAdmin, vortex_merkle_tree::{Self, MerkleTree}};
+use vortex::{
+    vortex_admin::VortexAdmin,
+    vortex_ext_data::ExtData,
+    vortex_merkle_tree::{Self, MerkleTree},
+    vortex_proof::Proof
+};
 
 // === Structs ===
 
@@ -27,7 +32,23 @@ public struct Vortex has key {
     treasury: Balance<SUI>,
 }
 
+// === Events ===
+
+public struct NewNullifier(u256) has copy, drop;
+
+public struct NewCommitment has copy, drop {
+    commitment: u256,
+    index: u64,
+    encrypted_output: u256,
+}
+
 // === Mutative Functions ===
+
+public fun transact(self: &mut Vortex, proof: Proof, ext_data: ExtData, ctx: &mut TxContext) {
+    self.assert_root_is_known(proof.root());
+
+    ext_data.assert_hash(proof.ext_data_hash());
+}
 
 // === Public Views ===
 
@@ -93,8 +114,8 @@ public fun collect_treasury(self: &mut Vortex, _: &VortexAdmin, ctx: &mut TxCont
 
 // === Private Functions ===
 
-fun assert_proof_vortex(self: &Vortex, vortex: address) {
-    assert!(vortex == self.id.to_address(), vortex::vortex_errors::invalid_proof_vortex!());
+fun assert_ext_data_hash(ext_data: ExtData, ext_data_hash: vector<u8>) {
+    assert!(ext_data.to_hash() == ext_data_hash, vortex::vortex_errors::invalid_ext_data_hash!());
 }
 
 fun assert_root_is_known(self: &Vortex, root: u256) {
@@ -123,3 +144,7 @@ fun merkle_tree(self: &Vortex): &MerkleTree {
 fun merkle_tree_mut(self: &mut Vortex): &mut MerkleTree {
     dof::borrow_mut(&mut self.id, MerkleTreeKey())
 }
+
+// === Aliases ===
+
+use fun assert_ext_data_hash as ExtData.assert_hash;
