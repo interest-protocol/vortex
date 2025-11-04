@@ -104,10 +104,11 @@ public fun transact(
 
     let ext_value = ext_data.value();
     let relayer_fee = ext_data.relayer_fee();
+    let ext_value_is_non_zero = ext_value > 0;
 
-    if (ext_data.value_sign() && ext_value > 0) {
+    if (ext_data.value_sign() && ext_value_is_non_zero) {
         assert!(deposit.value() == ext_value, vortex::vortex_errors::invalid_deposit_value!());
-    } else if (!ext_data.value_sign() && ext_value > 0) {
+    } else if (!ext_data.value_sign() && ext_value_is_non_zero) {
         transfer::public_transfer(
             self.balance.split(ext_value - relayer_fee).into_coin(ctx),
             ext_data.recipient(),
@@ -129,7 +130,7 @@ public fun transact(
         self.nullifier_hashes.add(nullifier, true);
     });
 
-    if (relayer_fee > 0)
+    if (relayer_fee > 0 && ext_value_is_non_zero)
         transfer::public_transfer(
             self.balance.split(relayer_fee).into_coin(ctx),
             ext_data.relayer(),
