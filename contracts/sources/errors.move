@@ -42,7 +42,7 @@ public(package) macro fun invalid_ext_data_value(): u64 {
     9
 }
 
-public(package) macro fun invalid_public_amount(): u64 {
+public(package) macro fun invalid_public_value(): u64 {
     10
 }
 

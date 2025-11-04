@@ -99,7 +99,7 @@ public(package) fun to_hash(self: ExtData): vector<u8> {
     hash::blake2b256(&data)
 }
 
-public(package) fun public_amount(ext_data: ExtData): u64 {
+public(package) fun public_value(ext_data: ExtData): u64 {
     let value = ext_data.value();
     let relayer_fee = ext_data.relayer_fee();
 

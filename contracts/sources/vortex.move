@@ -2,7 +2,7 @@ module vortex::vortex;
 
 use sui::{
     balance::{Self, Balance},
-    coin::{Self, Coin},
+    coin::Coin,
     dynamic_object_field as dof,
     event::emit,
     groth16::{Self, PreparedVerifyingKey},
@@ -78,12 +78,12 @@ public fun transact(
     ext_data: ExtData,
     deposit: Coin<SUI>,
     ctx: &mut TxContext,
-): Coin<SUI> {
+) {
     self.assert_root_is_known(proof.root());
 
     ext_data.assert_hash(proof.ext_data_hash());
 
-    proof.assert_public_amount(ext_data);
+    proof.assert_public_value(ext_data);
 
     proof.input_nullifiers().do!(|nullifier| {
         assert!(
@@ -125,16 +125,15 @@ public fun transact(
 
     let second_index = next_index_to_insert + 1;
 
-    let relayer_fee_coin = if (relayer_fee > 0) {
-        assert!(ctx.sender() == ext_data.relayer(), vortex::vortex_errors::invalid_relayer!());
-        self.balance.split(relayer_fee).into_coin(ctx)
-    } else {
-        coin::zero(ctx)
-    };
-
     proof.input_nullifiers().do!(|nullifier| {
         self.nullifier_hashes.add(nullifier, true);
     });
+
+    if (relayer_fee > 0)
+        transfer::public_transfer(
+            self.balance.split(relayer_fee).into_coin(ctx),
+            ext_data.relayer(),
+        );
 
     emit(NewCommitment {
         commitment: commitments[0],
@@ -147,8 +146,6 @@ public fun transact(
         index: second_index,
         encrypted_output: ext_data.encrypted_output2(),
     });
-
-    relayer_fee_coin
 }
 
 // === Public Views ===
@@ -167,10 +164,10 @@ fun assert_root_is_known(self: &Vortex, root: u256) {
     assert!(self.merkle_tree().is_known_root(root), vortex::vortex_errors::proof_root_not_known!());
 }
 
-fun assert_public_amount(proof: Proof, ext_data: ExtData) {
+fun assert_public_value(proof: Proof, ext_data: ExtData) {
     assert!(
-        proof.public_value() == ext_data.public_amount(),
-        vortex::vortex_errors::invalid_public_amount!(),
+        proof.public_value() == ext_data.public_value(),
+        vortex::vortex_errors::invalid_public_value!(),
     );
 }
 
@@ -185,4 +182,4 @@ fun merkle_tree_mut(self: &mut Vortex): &mut MerkleTree {
 // === Aliases ===
 
 use fun assert_ext_data_hash as ExtData.assert_hash;
-use fun assert_public_amount as Proof.assert_public_amount;
+use fun assert_public_value as Proof.assert_public_value;
