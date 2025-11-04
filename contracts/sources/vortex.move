@@ -116,14 +116,14 @@ public fun transact(
 
     self.balance.join(deposit.into_balance());
 
-    let nex_index_to_insert = self.merkle_tree().next_index();
+    let next_index_to_insert = self.merkle_tree().next_index();
     let merkle_tree_mut = self.merkle_tree_mut();
     let commitments = proof.output_commitments();
 
     merkle_tree_mut.append(commitments[0]);
     merkle_tree_mut.append(commitments[1]);
 
-    let second_index = nex_index_to_insert + 1;
+    let second_index = next_index_to_insert + 1;
 
     let relayer_fee_coin = if (relayer_fee > 0) {
         assert!(ctx.sender() == ext_data.relayer(), vortex::vortex_errors::invalid_relayer!());
@@ -138,7 +138,7 @@ public fun transact(
 
     emit(NewCommitment {
         commitment: commitments[0],
-        index: nex_index_to_insert,
+        index: next_index_to_insert,
         encrypted_output: ext_data.encrypted_output1(),
     });
 
