@@ -92,10 +92,6 @@ public fun transact(
         );
     });
 
-    proof.input_nullifiers().do!(|nullifier| {
-        self.nullifier_hashes.add(nullifier, true);
-    });
-
     assert!(
         groth16::verify_groth16_proof(
             &groth16::bn254(),
@@ -121,7 +117,6 @@ public fun transact(
     self.balance.join(deposit.into_balance());
 
     let nex_index_to_insert = self.merkle_tree().next_index();
-
     let merkle_tree_mut = self.merkle_tree_mut();
     let commitments = proof.output_commitments();
 
@@ -136,6 +131,10 @@ public fun transact(
     } else {
         coin::zero(ctx)
     };
+
+    proof.input_nullifiers().do!(|nullifier| {
+        self.nullifier_hashes.add(nullifier, true);
+    });
 
     emit(NewCommitment {
         commitment: commitments[0],
