@@ -2,7 +2,7 @@ module vortex::vortex;
 
 use sui::{
     balance::{Self, Balance},
-    coin::Coin,
+    coin::{Self, Coin},
     dynamic_object_field as dof,
     event::emit,
     groth16::{Self, PreparedVerifyingKey},
@@ -27,8 +27,6 @@ public struct Vortex has key {
 }
 
 // === Events ===
-
-public struct NewNullifier(u256) has copy, drop;
 
 public struct NewCommitment has copy, drop {
     commitment: u256,
@@ -74,10 +72,84 @@ public fun share(self: Vortex) {
     transfer::share_object(self);
 }
 
-public fun transact(self: &mut Vortex, proof: Proof, ext_data: ExtData, ctx: &mut TxContext) {
+public fun transact(
+    self: &mut Vortex,
+    proof: Proof,
+    ext_data: ExtData,
+    deposit: Coin<SUI>,
+    ctx: &mut TxContext,
+): Coin<SUI> {
     self.assert_root_is_known(proof.root());
 
     ext_data.assert_hash(proof.ext_data_hash());
+
+    proof.assert_public_amount(ext_data);
+
+    proof.input_nullifiers().do!(|nullifier| {
+        assert!(
+            !self.nullifier_hashes.contains(nullifier),
+            vortex::vortex_errors::nullifier_already_spent!(),
+        );
+    });
+
+    proof.input_nullifiers().do!(|nullifier| {
+        self.nullifier_hashes.add(nullifier, true);
+    });
+
+    assert!(
+        groth16::verify_groth16_proof(
+            &groth16::bn254(),
+            &self.vk,
+            &proof.public_inputs(),
+            &proof.points(),
+        ),
+        vortex::vortex_errors::invalid_proof!(),
+    );
+
+    let ext_value = ext_data.value();
+    let relayer_fee = ext_data.relayer_fee();
+
+    if (ext_data.value_sign() && ext_value > 0) {
+        assert!(deposit.value() == ext_value, vortex::vortex_errors::invalid_deposit_value!());
+    } else if (!ext_data.value_sign() && ext_value > 0) {
+        transfer::public_transfer(
+            self.balance.split(ext_value - relayer_fee).into_coin(ctx),
+            ext_data.recipient(),
+        );
+    };
+
+    self.balance.join(deposit.into_balance());
+
+    let nex_index_to_insert = self.merkle_tree().next_index();
+
+    let merkle_tree_mut = self.merkle_tree_mut();
+    let commitments = proof.output_commitments();
+
+    merkle_tree_mut.append(commitments[0]);
+    merkle_tree_mut.append(commitments[1]);
+
+    let second_index = nex_index_to_insert + 1;
+
+    let relayer_fee_coin = if (relayer_fee > 0) {
+        assert!(ctx.sender() == ext_data.relayer(), vortex::vortex_errors::invalid_relayer!());
+        self.balance.split(relayer_fee).into_coin(ctx)
+    } else {
+        coin::zero(ctx)
+    };
+
+    emit(NewCommitment {
+        commitment: commitments[0],
+        index: nex_index_to_insert,
+        encrypted_output: ext_data.encrypted_output1(),
+    });
+
+    emit(NewCommitment {
+        commitment: commitments[1],
+        index: second_index,
+        encrypted_output: ext_data.encrypted_output2(),
+    });
+
+    relayer_fee_coin
 }
 
 // === Public Views ===
@@ -96,18 +168,11 @@ fun assert_root_is_known(self: &Vortex, root: u256) {
     assert!(self.merkle_tree().is_known_root(root), vortex::vortex_errors::proof_root_not_known!());
 }
 
-fun assert_public_amount(self: &Vortex, ext_data: ExtData) {}
-
-fun calculate_public_amount(self: &Vortex, ext_data: ExtData): u64 {
-    let value = ext_data.value();
-    let relayer_fee = ext_data.relayer_fee();
-
-    if (ext_data.value_sign()) {
-        value - relayer_fee;
-        0
-    } else {
-        0
-    }
+fun assert_public_amount(proof: Proof, ext_data: ExtData) {
+    assert!(
+        proof.public_value() == ext_data.public_amount(),
+        vortex::vortex_errors::invalid_public_amount!(),
+    );
 }
 
 fun merkle_tree(self: &Vortex): &MerkleTree {
@@ -121,3 +186,4 @@ fun merkle_tree_mut(self: &mut Vortex): &mut MerkleTree {
 // === Aliases ===
 
 use fun assert_ext_data_hash as ExtData.assert_hash;
+use fun assert_public_amount as Proof.assert_public_amount;

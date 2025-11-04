@@ -33,6 +33,11 @@ public fun new(
     value.validate!();
     relayer_fee.validate!();
 
+    assert!(
+        vortex::vortex_constants::mist!() * 10 >= value,
+        vortex::vortex_errors::invalid_ext_data_value!(),
+    );
+
     ExtData {
         vortex,
         recipient,
@@ -92,6 +97,19 @@ public(package) fun to_hash(self: ExtData): vector<u8> {
     data.append(self.encrypted_output2.to_bytes());
 
     hash::blake2b256(&data)
+}
+
+public(package) fun public_amount(ext_data: ExtData): u64 {
+    let value = ext_data.value();
+    let relayer_fee = ext_data.relayer_fee();
+
+    if (ext_data.value_sign()) {
+        // If it is a deposit, the pool should get value - fee.
+        value - relayer_fee
+    } else {
+        // If it is a withdrawal, the pool should get value + fee.
+        value + relayer_fee
+    }
 }
 
 // === Private Functions ===

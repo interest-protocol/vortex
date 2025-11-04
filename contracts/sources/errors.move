@@ -37,3 +37,23 @@ public(package) macro fun invalid_zero_value(): u64 {
 public(package) macro fun invalid_ext_data_hash(): u64 {
     8
 }
+
+public(package) macro fun invalid_ext_data_value(): u64 {
+    9
+}
+
+public(package) macro fun invalid_public_amount(): u64 {
+    10
+}
+
+public(package) macro fun nullifier_already_spent(): u64 {
+    11
+}
+
+public(package) macro fun invalid_deposit_value(): u64 {
+    12
+}
+
+public(package) macro fun invalid_relayer(): u64 {
+    13
+}

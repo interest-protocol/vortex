@@ -1,6 +1,5 @@
 module vortex::vortex_proof;
 
-use std::bcs;
 use sui::groth16::{Self, PublicProofInputs, ProofPoints};
 
 // === Structs ===

@@ -36,23 +36,22 @@ public(package) fun new(ctx: &mut TxContext): MerkleTree {
     }
 }
 
-public(package) fun append(self: &mut MerkleTree, leaf1: u256, leaf2: u256): u64 {
+public(package) fun append(self: &mut MerkleTree, leaf: u256) {
     // Maximum capacity is 2^height leaves.
     assert!(
         1u64 << (HEIGHT as u8) > self.next_index,
         vortex::vortex_errors::merkle_tree_overflow!(),
     );
 
-    leaf1.is_valid_poseidon_input!();
-    leaf2.is_valid_poseidon_input!();
+    leaf.is_valid_poseidon_input!();
 
-    let mut current_index = self.next_index / 2;
-    let mut current_level_hash = poseidon2(leaf1, leaf2);
+    let mut current_index = self.next_index;
+    let mut current_level_hash = leaf;
     let mut left: u256;
     let mut right: u256;
     let zeros_vector = vortex::vortex_constants::zeros_vector!();
 
-    u64::range_do_eq!(1, HEIGHT, |i| {
+    u64::range_do_eq!(0, HEIGHT, |i| {
         let subtree = &mut self.subtrees[i];
 
         if (current_index % 2 == 0) {
@@ -73,16 +72,17 @@ public(package) fun append(self: &mut MerkleTree, leaf1: u256, leaf2: u256): u64
 
     self.root_index = new_root_index;
     self.safe_history_add(new_root_index, current_level_hash);
-
-    self.next_index = self.next_index + 2;
-
-    self.next_index
+    self.next_index = self.next_index + 1;
 }
 
 // === Package View Functions ===
 
 public(package) fun root(self: &MerkleTree): u256 {
     self.root_history[self.root_index]
+}
+
+public(package) fun next_index(self: &MerkleTree): u64 {
+    self.next_index
 }
 
 public(package) fun is_known_root(self: &MerkleTree, root: u256): bool {
