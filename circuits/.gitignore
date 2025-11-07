@@ -1,0 +1,6 @@
+node_modules/
+build/
+keys/*.zkey
+keys/*.r1cs
+*.log
+.DS_Store
