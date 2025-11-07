@@ -22,5 +22,3 @@ template Signature() {
     hasher.inputs[2] <== merklePath;
     signal output out <== hasher.out;
 }
-
-component main = Keypair();
