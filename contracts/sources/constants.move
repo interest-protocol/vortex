@@ -2,7 +2,7 @@ module vortex::vortex_constants;
 
 // === Package View Functions ===
 
-public(package) macro fun mist(): u64 {
+public(package) macro fun one_sui_in_mist(): u64 {
     1_000_000_000
 }
 
@@ -10,7 +10,7 @@ public(package) macro fun bn254_field_modulus(): u256 {
     21888242871839275222246405745257275088548364400416034343698204186575808495617
 }
 
-public(package) macro fun zeros_vector(): vector<u256> {
+public(package) macro fun empty_subtree_hashes(): vector<u256> {
     vector[
         18688842432741139442778047327644092677418528270738216181718229581494125774932,
         929670100605127589096201729966801143828059989180770638007278601230757123028,

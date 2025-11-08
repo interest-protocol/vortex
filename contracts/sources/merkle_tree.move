@@ -22,15 +22,15 @@ public struct MerkleTree has key, store {
 // === Package Mutative Functions ===
 
 public(package) fun new(ctx: &mut TxContext): MerkleTree {
-    let zeros_vector = vortex::vortex_constants::zeros_vector!();
+    let empty_subtree_hashes = vortex::vortex_constants::empty_subtree_hashes!();
 
     let mut root_history = table::new(ctx);
-    root_history.add(0, zeros_vector[HEIGHT]);
+    root_history.add(0, empty_subtree_hashes[HEIGHT]);
 
     MerkleTree {
         id: object::new(ctx),
         next_index: 0,
-        subtrees: zeros_vector,
+        subtrees: empty_subtree_hashes,
         root_history,
         root_index: 0,
     }
@@ -49,14 +49,14 @@ public(package) fun append(self: &mut MerkleTree, leaf: u256) {
     let mut current_level_hash = leaf;
     let mut left: u256;
     let mut right: u256;
-    let zeros_vector = vortex::vortex_constants::zeros_vector!();
+    let empty_subtree_hashes = vortex::vortex_constants::empty_subtree_hashes!();
 
     u64::range_do_eq!(0, HEIGHT, |i| {
         let subtree = &mut self.subtrees[i];
 
         if (current_index % 2 == 0) {
             left = current_level_hash;
-            right = zeros_vector[i];
+            right = empty_subtree_hashes[i];
 
             *subtree = current_level_hash;
         } else {

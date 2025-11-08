@@ -34,7 +34,7 @@ public fun new(
     relayer_fee.validate!();
 
     assert!(
-        vortex::vortex_constants::mist!() * 10 >= value,
+        vortex::vortex_constants::one_sui_in_mist!() >= value,
         vortex::vortex_errors::invalid_ext_data_value!(),
     );
 
