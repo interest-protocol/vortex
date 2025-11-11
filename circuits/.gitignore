@@ -4,3 +4,4 @@ keys/*.zkey
 keys/*.r1cs
 *.log
 .DS_Store
+artifacts
