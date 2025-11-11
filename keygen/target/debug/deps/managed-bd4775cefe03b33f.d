@@ -1,0 +1,9 @@
+/Users/josemanuelcerqueira/Desktop/vortex-v2/keygen/target/debug/deps/managed-bd4775cefe03b33f.d: /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/lib.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/object.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/slice.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/slotmap.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/map.rs
+
+/Users/josemanuelcerqueira/Desktop/vortex-v2/keygen/target/debug/deps/libmanaged-bd4775cefe03b33f.rmeta: /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/lib.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/object.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/slice.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/slotmap.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/map.rs
+
+/Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/lib.rs:
+/Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/object.rs:
+/Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/slice.rs:
+/Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/slotmap.rs:
+/Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/managed-0.8.0/src/map.rs:

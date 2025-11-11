@@ -1,0 +1,13 @@
+[package]
+name = "keygen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ark-bn254 = "0.5"
+ark-groth16 = "0.5"
+ark-circom = "0.5"
+ark-serialize = "0.5"
+rand = "0.8"
+hex = "0.4"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

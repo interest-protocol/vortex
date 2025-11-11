@@ -1,0 +1,10 @@
+/Users/josemanuelcerqueira/Desktop/vortex-v2/groth16_vk/target/release/deps/fs_extra-d384f7980d69214e.d: /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/lib.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/error.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/file.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/dir.rs
+
+/Users/josemanuelcerqueira/Desktop/vortex-v2/groth16_vk/target/release/deps/libfs_extra-d384f7980d69214e.rlib: /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/lib.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/error.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/file.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/dir.rs
+
+/Users/josemanuelcerqueira/Desktop/vortex-v2/groth16_vk/target/release/deps/libfs_extra-d384f7980d69214e.rmeta: /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/lib.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/error.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/file.rs /Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/dir.rs
+
+/Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/lib.rs:
+/Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/error.rs:
+/Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/file.rs:
+/Users/josemanuelcerqueira/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fs_extra-1.3.0/src/dir.rs:

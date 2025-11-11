@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "circom ./src/transaction2.circom --json --r1cs --wasm --sym --c -o ./artifacts"
   },
   "keywords": [],
   "author": "",

@@ -46,7 +46,7 @@ fun init(ctx: &mut TxContext) {
 
 // === Mutative Functions ===
 
-public fun new(init_cap: InitCap, vk: vector<u8>, ctx: &mut TxContext): Vortex {
+public fun new(init_cap: InitCap, vk: PreparedVerifyingKey, ctx: &mut TxContext): Vortex {
     let InitCap { id } = init_cap;
 
     id.delete();
@@ -55,10 +55,7 @@ public fun new(init_cap: InitCap, vk: vector<u8>, ctx: &mut TxContext): Vortex {
 
     let mut vortex = Vortex {
         id: object::new(ctx),
-        vk: groth16::prepare_verifying_key(
-            &groth16::bn254(),
-            &vk,
-        ),
+        vk,
         nullifier_hashes: table::new(ctx),
         balance: balance::zero(),
     };
