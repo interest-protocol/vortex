@@ -1,1 +1,0 @@
-{"rustc":17575471286409424799,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[17549246233215124240,"build_script_build",false,14667201848928803624]],"local":[{"RerunIfChanged":{"output":"release/build/wai-bindgen-gen-rust-wasm-fcfe4e9352c670da/output","paths":["build.rs"]}}],"rustflags":[],"config":0,"compile_kind":0}
