@@ -5,7 +5,7 @@ use sui::{
     coin::Coin,
     dynamic_object_field as dof,
     event::emit,
-    groth16::{Self, PreparedVerifyingKey},
+    groth16::{bn254, Curve, PreparedVerifyingKey},
     sui::SUI,
     table::{Self, Table}
 };
@@ -22,6 +22,7 @@ public struct InitCap has key {
 public struct Vortex has key {
     id: UID,
     nullifier_hashes: Table<u256, bool>,
+    curve: Curve,
     vk: PreparedVerifyingKey,
     balance: Balance<SUI>,
 }
@@ -56,6 +57,7 @@ public fun new(init_cap: InitCap, vk: PreparedVerifyingKey, ctx: &mut TxContext)
     let mut vortex = Vortex {
         id: object::new(ctx),
         vk,
+        curve: bn254(),
         nullifier_hashes: table::new(ctx),
         balance: balance::zero(),
     };
@@ -90,12 +92,13 @@ public fun transact(
     });
 
     assert!(
-        groth16::verify_groth16_proof(
-            &groth16::bn254(),
-            &self.vk,
-            &proof.public_inputs(),
-            &proof.points(),
-        ),
+        self
+            .curve
+            .verify_groth16_proof(
+                &self.vk,
+                &proof.public_inputs(),
+                &proof.points(),
+            ),
         vortex::vortex_errors::invalid_proof!(),
     );
 
