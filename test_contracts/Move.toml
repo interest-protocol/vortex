@@ -1,0 +1,10 @@
+[package]
+name = "vortex_test"
+edition = "2024.beta" 
+
+[dependencies]
+
+vortex = { local = "../contracts" }
+
+[addresses]
+vortex_test = "0x0"
