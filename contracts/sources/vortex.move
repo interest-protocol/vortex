@@ -1,5 +1,6 @@
 module vortex::vortex;
 
+use std::string::String;
 use sui::{
     balance::{Self, Balance},
     coin::Coin,
@@ -21,19 +22,28 @@ public struct InitCap has key {
 
 public struct Vortex has key {
     id: UID,
-    nullifier_hashes: Table<u256, bool>,
     curve: Curve,
     vk: PreparedVerifyingKey,
     balance: Balance<SUI>,
+    nullifier_hashes: Table<u256, bool>,
+}
+
+public struct Registry has key {
+    id: UID,
+    accounts: Table<address, String>,
 }
 
 // === Events ===
 
 public struct NewCommitment has copy, drop {
-    commitment: u256,
     index: u64,
+    commitment: u256,
     encrypted_output: u256,
 }
+
+public struct NullifierSpent(u256) has copy, drop;
+
+public struct NewKey(address, String) has copy, drop;
 
 // === Initializer ===
 
@@ -43,9 +53,29 @@ fun init(ctx: &mut TxContext) {
     };
 
     transfer::transfer(init_cap, ctx.sender());
+
+    let registry = Registry {
+        id: object::new(ctx),
+        accounts: table::new(ctx),
+    };
+
+    transfer::share_object(registry);
 }
 
 // === Mutative Functions ===
+
+public fun register(registry: &mut Registry, key: String, ctx: &mut TxContext) {
+    let sender = ctx.sender();
+
+    if (registry.accounts.contains(sender)) {
+        let existing_key = &mut registry.accounts[sender];
+        *existing_key = key;
+    } else {
+        registry.accounts.add(sender, key);
+    };
+
+    emit(NewKey(sender, key));
+}
 
 public fun new(init_cap: InitCap, vk: PreparedVerifyingKey, ctx: &mut TxContext): Vortex {
     let InitCap { id } = init_cap;
@@ -58,8 +88,8 @@ public fun new(init_cap: InitCap, vk: PreparedVerifyingKey, ctx: &mut TxContext)
         id: object::new(ctx),
         vk,
         curve: bn254(),
-        nullifier_hashes: table::new(ctx),
         balance: balance::zero(),
+        nullifier_hashes: table::new(ctx),
     };
 
     dof::add(&mut vortex.id, MerkleTreeKey(), merkle_tree);
@@ -86,7 +116,7 @@ public fun transact(
 
     proof.input_nullifiers().do!(|nullifier| {
         assert!(
-            !self.nullifier_hashes.contains(nullifier),
+            !self.is_nullifier_spent(nullifier),
             vortex::vortex_errors::nullifier_already_spent!(),
         );
     });
@@ -128,6 +158,7 @@ public fun transact(
 
     proof.input_nullifiers().do!(|nullifier| {
         self.nullifier_hashes.add(nullifier, true);
+        emit(NullifierSpent(nullifier));
     });
 
     if (relayer_fee > 0 && ext_value_is_non_zero)
@@ -153,6 +184,22 @@ public fun transact(
 
 public fun root(self: &Vortex): u256 {
     self.merkle_tree().root()
+}
+
+public fun is_nullifier_spent(self: &Vortex, nullifier: u256): bool {
+    self.nullifier_hashes.contains(nullifier)
+}
+
+public fun next_index(self: &Vortex): u64 {
+    self.merkle_tree().next_index()
+}
+
+public fun account_key(registry: &Registry, address: address): Option<String> {
+    if (registry.accounts.contains(address)) {
+        option::some(registry.accounts[address])
+    } else {
+        option::none()
+    }
 }
 
 // === Private Functions ===
