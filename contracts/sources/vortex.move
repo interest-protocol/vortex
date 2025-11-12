@@ -39,7 +39,7 @@ public struct NewCommitment has copy, drop {
 
 public struct NullifierSpent(u256) has copy, drop;
 
-public struct NewKey(address, String) has copy, drop;
+public struct NewAccountKey(address, String) has copy, drop;
 
 // === Initializer ===
 
@@ -77,7 +77,7 @@ public fun register(registry: &mut Registry, key: String, ctx: &mut TxContext) {
         registry.accounts.add(sender, key);
     };
 
-    emit(NewKey(sender, key));
+    emit(NewAccountKey(sender, key));
 }
 
 public fun transact(
