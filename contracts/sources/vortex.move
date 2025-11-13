@@ -126,15 +126,6 @@ public fun transact(
 
     self.balance.join(deposit.into_balance());
 
-    let next_index_to_insert = self.merkle_tree().next_index();
-    let merkle_tree_mut = self.merkle_tree_mut();
-    let commitments = proof.output_commitments();
-
-    merkle_tree_mut.append(commitments[0]);
-    merkle_tree_mut.append(commitments[1]);
-
-    let second_index = next_index_to_insert + 1;
-
     proof.input_nullifiers().do!(|nullifier| {
         self.nullifier_hashes.add(nullifier, true);
         emit(NullifierSpent(nullifier));
@@ -146,17 +137,15 @@ public fun transact(
             ext_data.relayer(),
         );
 
-    emit(NewCommitment {
-        commitment: commitments[0],
-        index: next_index_to_insert,
-        encrypted_output: ext_data.encrypted_output1(),
-    });
+    if (proof.has_no_outputs()) return;
 
-    emit(NewCommitment {
-        commitment: commitments[1],
-        index: second_index,
-        encrypted_output: ext_data.encrypted_output2(),
-    });
+    let merkle_tree_mut = self.merkle_tree_mut();
+    let commitments = proof.output_commitments();
+
+    // Only append non-zero commitments (withdrawals have 0 commitments)
+    merkle_tree_mut.append_commitment(commitments[0], ext_data.encrypted_output1());
+
+    merkle_tree_mut.append_commitment(commitments[1], ext_data.encrypted_output2());
 }
 
 // === Public Views ===
@@ -198,6 +187,18 @@ fun assert_public_value(proof: Proof, ext_data: ExtData) {
     );
 }
 
+fun append_commitment(tree: &mut MerkleTree, commitment: u256, encrypted_output: u256) {
+    if (commitment != 0) {
+        let index = tree.next_index();
+        tree.append(commitment);
+        emit(NewCommitment {
+            commitment,
+            index,
+            encrypted_output,
+        });
+    };
+}
+
 fun merkle_tree(self: &Vortex): &MerkleTree {
     dof::borrow(&self.id, MerkleTreeKey())
 }
@@ -210,3 +211,4 @@ fun merkle_tree_mut(self: &mut Vortex): &mut MerkleTree {
 
 use fun assert_ext_data_hash as ExtData.assert_hash;
 use fun assert_public_value as Proof.assert_public_value;
+use fun append_commitment as MerkleTree.append_commitment;

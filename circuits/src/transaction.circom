@@ -18,13 +18,18 @@ nullifier = hash(commitment, merklePath, sign(privKey, commitment, merklePath))
 
 // Universal JoinSplit transaction with nIns inputs and nOuts outputs
 // SECURITY NOTE: nOuts and nIns should always be less than 16, otherwise sumOuts might overflow.
-template Transaction(levels, nIns, nOuts) {
+template Transaction(levels, nIns, nOuts, EMPTY_COMMITMENT) {
     signal input root;
     // extAmount = external amount used for deposits and withdrawals
     // correct extAmount range is enforced on the smart contract
     // publicAmount = extAmount - fee
     signal input publicAmount;
     signal input extDataHash;
+
+    // NEW: flag to allow "no-output" (exit-only) transactions
+    signal input noOutputs;
+    // make sure it's 0 or 1
+    noOutputs * (noOutputs - 1) === 0;
 
     // data for transaction inputs
     signal input inputNullifier[nIns];
@@ -99,7 +104,20 @@ template Transaction(levels, nIns, nOuts) {
         outCommitmentHasher[tx].inputs[0] <== outAmount[tx];
         outCommitmentHasher[tx].inputs[1] <== outPubkey[tx];
         outCommitmentHasher[tx].inputs[2] <== outBlinding[tx];
-        outCommitmentHasher[tx].out === outputCommitment[tx];
+
+        // NEW: conditional commitment check
+        // - if noOutputs == 0: outputCommitment[tx] == real commitment
+        // - if noOutputs == 1: outputCommitment[tx] == EMPTY_COMMITMENT
+        signal expectedCommit;
+        expectedCommit <== (1 - noOutputs) * outCommitmentHasher[tx].out
+                         +     noOutputs   * EMPTY_COMMITMENT;
+        outputCommitment[tx] === expectedCommit;
+
+        // NEW: in noOutputs mode, forbid any non-zero output amount
+        // noOutputs * outAmount[tx] == 0
+        signal outZeroIfNoOutputs;
+        outZeroIfNoOutputs <== noOutputs * outAmount[tx];
+        outZeroIfNoOutputs === 0;
 
         // Check that amount fits into 248 bits to prevent overflow
         outAmountCheck[tx] = Num2Bits(248);
@@ -121,7 +139,9 @@ template Transaction(levels, nIns, nOuts) {
       }
     }
 
-    // verify amount invariant
+    // verify amount invariant (unchanged)
+    // normal mode: sumIns + publicAmount === sumOuts
+    // exit-only mode (noOutputs==1): outAmount[*] = 0 → sumOuts = 0 → publicAmount == -sumIns
     sumIns + publicAmount === sumOuts;
 
     // optional safety constraint to make sure extDataHash cannot be changed

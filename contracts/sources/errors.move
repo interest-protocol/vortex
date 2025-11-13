@@ -57,3 +57,7 @@ public(package) macro fun invalid_deposit_value(): u64 {
 public(package) macro fun invalid_relayer(): u64 {
     13
 }
+
+public(package) macro fun invalid_no_outputs_flag(): u64 {
+    14
+}
