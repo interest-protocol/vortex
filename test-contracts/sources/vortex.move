@@ -26,7 +26,7 @@ public struct Vortex has key {
 
 public struct Registry has key {
     id: UID,
-    accounts: Table<address, String>,
+    encryption_keys: Table<address, String>,
 }
 
 // === Events ===
@@ -39,7 +39,7 @@ public struct NewCommitment has copy, drop {
 
 public struct NullifierSpent(u256) has copy, drop;
 
-public struct NewAccountKey(address, String) has copy, drop;
+public struct NewEncryptionKey(address, String) has copy, drop;
 
 // === Initializer ===
 
@@ -58,7 +58,7 @@ fun init(ctx: &mut TxContext) {
 
     let registry = Registry {
         id: object::new(ctx),
-        accounts: table::new(ctx),
+        encryption_keys: table::new(ctx),
     };
 
     transfer::share_object(vortex);
@@ -67,17 +67,18 @@ fun init(ctx: &mut TxContext) {
 
 // === Mutative Functions ===
 
-public fun register(registry: &mut Registry, key: String, ctx: &mut TxContext) {
+public fun register(registry: &mut Registry, encryption_key: String, ctx: &mut TxContext) {
     let sender = ctx.sender();
 
-    if (registry.accounts.contains(sender)) {
-        let existing_key = &mut registry.accounts[sender];
-        *existing_key = key;
+    if (registry.encryption_keys.contains(sender)) {
+        let existing_key = &mut registry.encryption_keys[sender];
+        assert!(existing_key != &encryption_key, vortex::vortex_errors::key_already_registered!());
+        *existing_key = encryption_key;
     } else {
-        registry.accounts.add(sender, key);
+        registry.encryption_keys.add(sender, encryption_key);
     };
 
-    emit(NewAccountKey(sender, key));
+    emit(NewEncryptionKey(sender, encryption_key));
 }
 
 public fun transact(
@@ -126,37 +127,23 @@ public fun transact(
 
     self.balance.join(deposit.into_balance());
 
-    let next_index_to_insert = self.merkle_tree().next_index();
-    let merkle_tree_mut = self.merkle_tree_mut();
-    let commitments = proof.output_commitments();
-
-    merkle_tree_mut.append(commitments[0]);
-    merkle_tree_mut.append(commitments[1]);
-
-    let second_index = next_index_to_insert + 1;
-
     proof.input_nullifiers().do!(|nullifier| {
         self.nullifier_hashes.add(nullifier, true);
         emit(NullifierSpent(nullifier));
     });
+
+    let merkle_tree_mut = self.merkle_tree_mut();
+    let commitments = proof.output_commitments();
+
+    merkle_tree_mut.append_commitment(commitments[0], ext_data.encrypted_output1());
+
+    merkle_tree_mut.append_commitment(commitments[1], ext_data.encrypted_output2());
 
     if (relayer_fee > 0 && ext_value_is_non_zero)
         transfer::public_transfer(
             self.balance.split(relayer_fee).into_coin(ctx),
             ext_data.relayer(),
         );
-
-    emit(NewCommitment {
-        commitment: commitments[0],
-        index: next_index_to_insert,
-        encrypted_output: ext_data.encrypted_output1(),
-    });
-
-    emit(NewCommitment {
-        commitment: commitments[1],
-        index: second_index,
-        encrypted_output: ext_data.encrypted_output2(),
-    });
 }
 
 // === Public Views ===
@@ -173,9 +160,9 @@ public fun next_index(self: &Vortex): u64 {
     self.merkle_tree().next_index()
 }
 
-public fun account_key(registry: &Registry, address: address): Option<String> {
-    if (registry.accounts.contains(address)) {
-        option::some(registry.accounts[address])
+public fun encryption_key(registry: &Registry, address: address): Option<String> {
+    if (registry.encryption_keys.contains(address)) {
+        option::some(registry.encryption_keys[address])
     } else {
         option::none()
     }
@@ -198,6 +185,18 @@ fun assert_public_value(proof: Proof, ext_data: ExtData) {
     );
 }
 
+fun append_commitment(tree: &mut MerkleTree, commitment: u256, encrypted_output: u256) {
+    let index = tree.next_index();
+
+    tree.append(commitment);
+
+    emit(NewCommitment {
+        commitment,
+        index,
+        encrypted_output,
+    });
+}
+
 fun merkle_tree(self: &Vortex): &MerkleTree {
     dof::borrow(&self.id, MerkleTreeKey())
 }
@@ -210,3 +209,4 @@ fun merkle_tree_mut(self: &mut Vortex): &mut MerkleTree {
 
 use fun assert_ext_data_hash as ExtData.assert_hash;
 use fun assert_public_value as Proof.assert_public_value;
+use fun append_commitment as MerkleTree.append_commitment;

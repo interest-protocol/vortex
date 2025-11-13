@@ -5,7 +5,7 @@ use sui::{poseidon, table::{Self, Table}};
 
 // === Constants ===
 
-const HEIGHT: u64 = 31;
+const HEIGHT: u64 = 26;
 
 const ROOT_HISTORY_SIZE: u64 = 100;
 
