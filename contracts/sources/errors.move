@@ -61,3 +61,7 @@ public(package) macro fun invalid_relayer(): u64 {
 public(package) macro fun invalid_no_outputs_flag(): u64 {
     14
 }
+
+public(package) macro fun key_already_registered(): u64 {
+    15
+}

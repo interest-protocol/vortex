@@ -72,6 +72,7 @@ public fun register(registry: &mut Registry, key: String, ctx: &mut TxContext) {
 
     if (registry.accounts.contains(sender)) {
         let existing_key = &mut registry.accounts[sender];
+        assert!(existing_key != &key, vortex::vortex_errors::key_already_registered!());
         *existing_key = key;
     } else {
         registry.accounts.add(sender, key);
