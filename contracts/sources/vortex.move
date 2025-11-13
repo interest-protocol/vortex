@@ -186,17 +186,15 @@ fun assert_public_value(proof: Proof, ext_data: ExtData) {
 }
 
 fun append_commitment(tree: &mut MerkleTree, commitment: u256, encrypted_output: u256) {
-    
-        let index = tree.next_index();
-        
-        tree.append(commitment);
+    let index = tree.next_index();
 
-        emit(NewCommitment {
-            commitment,
-            index,
-            encrypted_output,
-        });
-    
+    tree.append(commitment);
+
+    emit(NewCommitment {
+        commitment,
+        index,
+        encrypted_output,
+    });
 }
 
 fun merkle_tree(self: &Vortex): &MerkleTree {
