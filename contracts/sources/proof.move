@@ -11,8 +11,6 @@ public struct Proof has copy, drop, store {
     output_commitments: vector<u256>,
     public_value: u64,
     ext_data_hash: vector<u8>,
-    // 0 has outputs, 1 has no outputs
-    no_outputs: u64,
 }
 
 // === Public View Functions ===
@@ -28,26 +26,14 @@ public fun new(
     output_commitment2: u256,
     public_value: u64,
     ext_data_hash: vector<u8>,
-    no_outputs: u64,
 ): Proof {
-    assert!(
-        vortex::vortex_constants::has_no_outputs_flag!() >= no_outputs,
-        vortex::vortex_errors::invalid_no_outputs_flag!(),
-    );
-
     Proof {
         root,
         points: new_points(a, b, c),
         input_nullifiers: vector[input_nullifier1, input_nullifier2],
-        output_commitments: if (
-            no_outputs == vortex::vortex_constants::has_no_outputs_flag!()
-        ) vector[
-            vortex::vortex_constants::empty_commitment!(),
-            vortex::vortex_constants::empty_commitment!(),
-        ] else vector[output_commitment1, output_commitment2],
+        output_commitments: vector[output_commitment1, output_commitment2],
         public_value,
         ext_data_hash,
-        no_outputs,
     }
 }
 
@@ -77,10 +63,6 @@ public(package) fun ext_data_hash(self: Proof): vector<u8> {
     self.ext_data_hash
 }
 
-public(package) fun has_no_outputs(self: Proof): bool {
-    self.no_outputs == vortex::vortex_constants::has_no_outputs_flag!()
-}
-
 public(package) fun public_inputs(self: Proof): PublicProofInputs {
     let mut bytes = vector[];
 
@@ -91,7 +73,6 @@ public(package) fun public_inputs(self: Proof): PublicProofInputs {
     bytes.append(self.input_nullifiers[1].to_bytes());
     bytes.append(self.output_commitments[0].to_bytes());
     bytes.append(self.output_commitments[1].to_bytes());
-    bytes.append((self.no_outputs as u256).to_bytes());
 
     groth16::public_proof_inputs_from_bytes(bytes)
 }
