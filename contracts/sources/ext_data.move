@@ -5,7 +5,6 @@ use sui::hash;
 // === Structs ===
 
 public struct ExtData has copy, drop, store {
-    vortex: address,
     recipient: address,
     value: u64,
     value_sign: bool,
@@ -18,7 +17,6 @@ public struct ExtData has copy, drop, store {
 // === Public Mutative Functions ===
 
 public fun new(
-    vortex: address,
     recipient: address,
     value: u64,
     value_sign: bool,
@@ -27,7 +25,6 @@ public fun new(
     encrypted_output1: u256,
     encrypted_output2: u256,
 ): ExtData {
-    vortex.validate!();
     recipient.validate!();
     relayer.validate!();
     value.validate!();
@@ -39,7 +36,6 @@ public fun new(
     );
 
     ExtData {
-        vortex,
         recipient,
         value_sign,
         value,
@@ -50,11 +46,13 @@ public fun new(
     }
 }
 
-// === Package View Functions ===
+//! === TEST FUNCTIONS ===
 
-public(package) fun vortex(self: ExtData): address {
-    self.vortex
+public fun assert_hash(self: ExtData, hash: vector<u8>) {
+    assert!(self.to_hash() == hash);
 }
+
+// === Package View Functions ===
 
 public(package) fun recipient(self: ExtData): address {
     self.recipient
@@ -87,7 +85,6 @@ public(package) fun encrypted_output2(self: ExtData): u256 {
 public(package) fun to_hash(self: ExtData): vector<u8> {
     let mut data = vector[];
 
-    data.append(self.vortex.to_bytes());
     data.append(self.recipient.to_bytes());
     data.append(self.value.to_bytes());
     data.append(self.value_sign.to_bytes());

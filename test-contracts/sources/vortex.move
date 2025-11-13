@@ -1,16 +1,16 @@
 module vortex::vortex;
 
 use std::string::String;
-use sui::{
-    balance::{Self, Balance},
-    coin::Coin,
-    dynamic_object_field as dof,
-    event::emit,
-    groth16::{Self, Curve, PreparedVerifyingKey},
-    sui::SUI,
-    table::{Self, Table}
-};
-use vortex::{vortex_ext_data::ExtData, vortex_merkle_tree::{Self, MerkleTree}, vortex_proof::Proof};
+use sui::balance::{Self, Balance};
+use sui::coin::Coin;
+use sui::dynamic_object_field as dof;
+use sui::event::emit;
+use sui::groth16::{Self, Curve, PreparedVerifyingKey};
+use sui::sui::SUI;
+use sui::table::{Self, Table};
+use vortex::vortex_ext_data::ExtData;
+use vortex::vortex_merkle_tree::{Self, MerkleTree};
+use vortex::vortex_proof::Proof;
 
 // === Structs ===
 
