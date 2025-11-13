@@ -50,6 +50,12 @@ public fun new(
     }
 }
 
+//! === TEST FUNCTIONS ===
+
+public fun assert_hash(self: ExtData, hash: vector<u8>) {
+    assert!(self.to_hash() == hash);
+}
+
 // === Package View Functions ===
 
 public(package) fun vortex(self: ExtData): address {

@@ -6,7 +6,7 @@ use sui::{
     coin::Coin,
     dynamic_object_field as dof,
     event::emit,
-    groth16::{bn254, Curve, PreparedVerifyingKey},
+    groth16::{Self, Curve, PreparedVerifyingKey},
     sui::SUI,
     table::{Self, Table}
 };
@@ -15,10 +15,6 @@ use vortex::{vortex_ext_data::ExtData, vortex_merkle_tree::{Self, MerkleTree}, v
 // === Structs ===
 
 public struct MerkleTreeKey() has copy, drop, store;
-
-public struct InitCap has key {
-    id: UID,
-}
 
 public struct Vortex has key {
     id: UID,
@@ -43,22 +39,29 @@ public struct NewCommitment has copy, drop {
 
 public struct NullifierSpent(u256) has copy, drop;
 
-public struct NewKey(address, String) has copy, drop;
+public struct NewAccountKey(address, String) has copy, drop;
 
 // === Initializer ===
 
 fun init(ctx: &mut TxContext) {
-    let init_cap = InitCap {
+    let curve = groth16::bn254();
+
+    let mut vortex = Vortex {
         id: object::new(ctx),
+        vk: groth16::prepare_verifying_key(&curve, &vortex::vortex_constants::verifying_key!()),
+        curve,
+        balance: balance::zero(),
+        nullifier_hashes: table::new(ctx),
     };
 
-    transfer::transfer(init_cap, ctx.sender());
+    dof::add(&mut vortex.id, MerkleTreeKey(), vortex_merkle_tree::new(ctx));
 
     let registry = Registry {
         id: object::new(ctx),
         accounts: table::new(ctx),
     };
 
+    transfer::share_object(vortex);
     transfer::share_object(registry);
 }
 
@@ -74,31 +77,7 @@ public fun register(registry: &mut Registry, key: String, ctx: &mut TxContext) {
         registry.accounts.add(sender, key);
     };
 
-    emit(NewKey(sender, key));
-}
-
-public fun new(init_cap: InitCap, vk: PreparedVerifyingKey, ctx: &mut TxContext): Vortex {
-    let InitCap { id } = init_cap;
-
-    id.delete();
-
-    let merkle_tree = vortex_merkle_tree::new(ctx);
-
-    let mut vortex = Vortex {
-        id: object::new(ctx),
-        vk,
-        curve: bn254(),
-        balance: balance::zero(),
-        nullifier_hashes: table::new(ctx),
-    };
-
-    dof::add(&mut vortex.id, MerkleTreeKey(), merkle_tree);
-
-    vortex
-}
-
-public fun share(self: Vortex) {
-    transfer::share_object(self);
+    emit(NewAccountKey(sender, key));
 }
 
 public fun transact(
