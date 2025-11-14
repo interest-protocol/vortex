@@ -300,6 +300,16 @@ impl PoseidonHash {
         let out = sponge.squeeze_field_elements::<Fr>(1);
         out[0]
     }
+
+    /// Hash an array/slice of field elements into a single field element
+    pub fn hash_array(&self, elements: &[Fr]) -> Fr {
+        let mut sponge = PoseidonSponge::new(&self.config);
+        for elem in elements {
+            sponge.absorb(elem);
+        }
+        let out = sponge.squeeze_field_elements::<Fr>(1);
+        out[0]
+    }
 }
 
 /// Constraint gadget for Poseidon hash (BN254) with 1-, 2-, and 3-input helpers.
@@ -367,6 +377,36 @@ impl PoseidonHashVar {
         sponge.absorb(a)?;
         sponge.absorb(b)?;
         sponge.absorb(c)?;
+        let out = sponge.squeeze_field_elements(1)?;
+        Ok(out[0].clone())
+    }
+
+    /// Hash an array/slice of field elements into a single field element
+    pub fn hash_array(&self, elements: &[FpVar<Fr>]) -> Result<FpVar<Fr>, SynthesisError> {
+        if elements.is_empty() {
+            return Err(SynthesisError::AssignmentMissing);
+        }
+
+        // Get constraint system from first element (like hash1 does with x.cs())
+        let cs = elements[0].cs();
+
+        // If all are constants, compute natively
+        if cs.is_none() {
+            let native_elements: Vec<Fr> = elements
+                .iter()
+                .map(|e| e.value())
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let native =
+                PoseidonHash::new(self.config.parameters.clone()).hash_array(&native_elements);
+            return Ok(FpVar::Constant(native));
+        }
+
+        // At least one witness: use sponge gadget
+        let mut sponge = PoseidonSpongeVar::new(cs, &self.config.parameters);
+        for elem in elements {
+            sponge.absorb(elem)?;
+        }
         let out = sponge.squeeze_field_elements(1)?;
         Ok(out[0].clone())
     }
