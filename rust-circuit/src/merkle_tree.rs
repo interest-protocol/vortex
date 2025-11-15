@@ -3,12 +3,12 @@ use std::{
     collections::{BTreeMap, BTreeSet},
 };
 
-use anyhow::{anyhow, Context}; // FIXED: Added Context import
+use anyhow::{anyhow, Context};
 use ark_bn254::Fr;
 use ark_ff::AdditiveGroup;
 use ark_r1cs_std::{
     fields::fp::FpVar,
-    prelude::{AllocVar, AllocationMode, Boolean, EqGadget, FieldVar},
+    prelude::{AllocVar, AllocationMode, Boolean, EqGadget},
     select::CondSelectGadget,
 };
 use ark_relations::r1cs::{Namespace, SynthesisError};
@@ -39,33 +39,23 @@ impl<const N: usize> Path<N> {
     ) -> anyhow::Result<bool> {
         let root = self
             .calculate_root(leaf, hasher)
-            .context("Failed to calculate Merkle root during membership check")?; // FIXED: Better error context
+            .context("Failed to calculate Merkle root during membership check")?;
         Ok(root == *root_hash)
     }
 
     pub fn calculate_root(&self, leaf: &Fr, hasher: &PoseidonHash) -> anyhow::Result<Fr> {
-        // FIXED: More descriptive error message
+        // Validate leaf is in path[0]
         if *leaf != self.path[0].0 && *leaf != self.path[0].1 {
-            return Err(anyhow!(
-                "Invalid leaf: {:?} not found in path[0]: [{:?}, {:?}]",
-                leaf,
-                self.path[0].0,
-                self.path[0].1
-            ));
+            return Err(anyhow!("Invalid leaf: not found in path[0] siblings"));
         }
 
         let mut prev = *leaf;
         // Check levels between leaf level and root
         for (level, (left_hash, right_hash)) in self.path.iter().enumerate() {
-            // FIXED: Added enumerate for better errors
             if &prev != left_hash && &prev != right_hash {
-                // FIXED: More descriptive error message with level information
                 return Err(anyhow!(
-                    "Invalid path at level {}: prev={:?} doesn't match left={:?} or right={:?}",
-                    level,
-                    prev,
-                    left_hash,
-                    right_hash
+                    "Invalid path at level {}: current hash doesn't match either sibling",
+                    level
                 ));
             }
             prev = hasher.hash2(left_hash, right_hash);
@@ -85,16 +75,13 @@ impl<const N: usize> Path<N> {
     ) -> anyhow::Result<Fr> {
         if !self.check_membership(root_hash, leaf, hasher)? {
             return Err(anyhow!(
-                "Cannot get index: leaf {:?} is not a member of tree with root {:?}",
-                leaf,
-                root_hash
+                "Cannot get index: leaf is not a member of tree with given root"
             ));
         }
 
         let mut prev = *leaf;
         let mut index = Fr::ZERO;
 
-        // FIXED: More explicit and safe index calculation
         // Check levels between leaf level and root
         for (level, (left_hash, right_hash)) in self.path.iter().enumerate() {
             // Check if the previous hash is for a left node or right node
@@ -173,7 +160,6 @@ impl<const N: usize> SparseMerkleTree<N> {
         let tree_size = 2 * last_level_size - 1;
         let tree_height = ark_std::log2(tree_size);
 
-        // FIXED: Better error message
         if tree_height > N as u32 {
             return Err(anyhow!(
                 "Tree height {} exceeds maximum level N={}. Reduce number of leaves or increase N.",
@@ -307,33 +293,6 @@ impl<const N: usize> PathVar<N> {
         }
 
         Ok(previous_hash)
-    }
-
-    /// Creates circuit to get index of a leaf hash
-    /// NOTE: This method is currently unused in the circuit but kept for potential future use
-    pub fn get_index(
-        &self,
-        leaf: &FpVar<Fr>,
-        hasher: &PoseidonHashVar,
-    ) -> Result<FpVar<Fr>, SynthesisError> {
-        let mut index = FpVar::<Fr>::zero();
-        let mut twopower = FpVar::<Fr>::one();
-        let mut rightvalue: FpVar<Fr>;
-
-        // Check levels between leaf level and root.
-        let mut previous_hash = leaf.clone();
-        for (left_hash, right_hash) in self.path.iter() {
-            // Check if the previous_hash is for a left node.
-            let previous_is_left = previous_hash.is_eq(left_hash)?;
-
-            rightvalue = &index + &twopower;
-            index = FpVar::<Fr>::conditionally_select(&previous_is_left, &index, &rightvalue)?;
-            twopower = &twopower + &twopower;
-
-            previous_hash = hasher.hash2(left_hash, right_hash)?;
-        }
-
-        Ok(index)
     }
 }
 
