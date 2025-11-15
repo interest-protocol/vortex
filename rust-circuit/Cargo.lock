@@ -835,6 +835,8 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "rand",
+ "rand_chacha",
+ "rand_core",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",

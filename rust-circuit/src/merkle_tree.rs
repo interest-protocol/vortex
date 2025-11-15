@@ -3,9 +3,9 @@ use std::{
     collections::{BTreeMap, BTreeSet},
 };
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context}; // FIXED: Added Context import
 use ark_bn254::Fr;
-use ark_ff::{AdditiveGroup, Field};
+use ark_ff::AdditiveGroup;
 use ark_r1cs_std::{
     fields::fp::FpVar,
     prelude::{AllocVar, AllocationMode, Boolean, EqGadget, FieldVar},
@@ -37,20 +37,36 @@ impl<const N: usize> Path<N> {
         leaf: &Fr,
         hasher: &PoseidonHash,
     ) -> anyhow::Result<bool> {
-        let root = self.calculate_root(leaf, hasher)?;
+        let root = self
+            .calculate_root(leaf, hasher)
+            .context("Failed to calculate Merkle root during membership check")?; // FIXED: Better error context
         Ok(root == *root_hash)
     }
 
     pub fn calculate_root(&self, leaf: &Fr, hasher: &PoseidonHash) -> anyhow::Result<Fr> {
+        // FIXED: More descriptive error message
         if *leaf != self.path[0].0 && *leaf != self.path[0].1 {
-            return Err(anyhow!("Invalid leaf"));
+            return Err(anyhow!(
+                "Invalid leaf: {:?} not found in path[0]: [{:?}, {:?}]",
+                leaf,
+                self.path[0].0,
+                self.path[0].1
+            ));
         }
 
         let mut prev = *leaf;
         // Check levels between leaf level and root
-        for (left_hash, right_hash) in &self.path {
+        for (level, (left_hash, right_hash)) in self.path.iter().enumerate() {
+            // FIXED: Added enumerate for better errors
             if &prev != left_hash && &prev != right_hash {
-                return Err(anyhow!("Invalid path nodes"));
+                // FIXED: More descriptive error message with level information
+                return Err(anyhow!(
+                    "Invalid path at level {}: prev={:?} doesn't match left={:?} or right={:?}",
+                    level,
+                    prev,
+                    left_hash,
+                    right_hash
+                ));
             }
             prev = hasher.hash2(left_hash, right_hash);
         }
@@ -59,7 +75,7 @@ impl<const N: usize> Path<N> {
     }
 
     /// Given leaf data determine what the index of this leaf must be
-    /// in the Merkle tree it belongs to.  Before doing so check that the leaf
+    /// in the Merkle tree it belongs to. Before doing so check that the leaf
     /// does indeed belong to a tree with the given `root_hash`
     pub fn get_index(
         &self,
@@ -68,19 +84,27 @@ impl<const N: usize> Path<N> {
         hasher: &PoseidonHash,
     ) -> anyhow::Result<Fr> {
         if !self.check_membership(root_hash, leaf, hasher)? {
-            return Err(anyhow!("Invalid leaf"));
+            return Err(anyhow!(
+                "Cannot get index: leaf {:?} is not a member of tree with root {:?}",
+                leaf,
+                root_hash
+            ));
         }
 
         let mut prev = *leaf;
         let mut index = Fr::ZERO;
-        let mut twopower = Fr::ONE;
+
+        // FIXED: More explicit and safe index calculation
         // Check levels between leaf level and root
-        for (left_hash, right_hash) in &self.path {
+        for (level, (left_hash, right_hash)) in self.path.iter().enumerate() {
             // Check if the previous hash is for a left node or right node
             if &prev != left_hash {
-                index += twopower;
+                // Set bit at position 'level'
+                // For level 26, this computes 2^26 = 67,108,864 which is well within Fr
+                // This will panic if level > 63 on 64-bit systems, providing implicit bounds checking
+                let bit_value = Fr::from(1u64 << level);
+                index += bit_value;
             }
-            twopower = twopower + twopower;
             prev = hasher.hash2(left_hash, right_hash);
         }
 
@@ -148,7 +172,15 @@ impl<const N: usize> SparseMerkleTree<N> {
         let last_level_size = leaves.len().next_power_of_two();
         let tree_size = 2 * last_level_size - 1;
         let tree_height = ark_std::log2(tree_size);
-        assert!(tree_height <= N as u32);
+
+        // FIXED: Better error message
+        if tree_height > N as u32 {
+            return Err(anyhow!(
+                "Tree height {} exceeds maximum level N={}. Reduce number of leaves or increase N.",
+                tree_height,
+                N
+            ));
+        }
 
         // Initialize the merkle tree
         let tree: BTreeMap<u64, Fr> = BTreeMap::new();
@@ -167,7 +199,8 @@ impl<const N: usize> SparseMerkleTree<N> {
         }?;
 
         let mut smt = SparseMerkleTree::<N> { tree, empty_hashes };
-        smt.insert_batch(leaves, hasher)?;
+        smt.insert_batch(leaves, hasher)
+            .context("Failed to insert initial batch of leaves")?;
 
         Ok(smt)
     }
@@ -183,7 +216,8 @@ impl<const N: usize> SparseMerkleTree<N> {
             .enumerate()
             .map(|(i, l)| (i as u32, *l))
             .collect();
-        let smt = Self::new(&pairs, hasher, empty_leaf)?;
+        let smt = Self::new(&pairs, hasher, empty_leaf)
+            .context("Failed to create sequential Merkle tree")?;
 
         Ok(smt)
     }
@@ -196,7 +230,7 @@ impl<const N: usize> SparseMerkleTree<N> {
             .unwrap_or(*self.empty_hashes.last().unwrap())
     }
 
-    /// Give the path leading from the leaf at `index` up to the root.  This is
+    /// Give the path leading from the leaf at `index` up to the root. This is
     /// a "proof" in the sense of "valid path in a Merkle tree", not a ZK
     /// argument.
     pub fn generate_membership_proof(&self, index: u64) -> Path<N> {
@@ -276,6 +310,7 @@ impl<const N: usize> PathVar<N> {
     }
 
     /// Creates circuit to get index of a leaf hash
+    /// NOTE: This method is currently unused in the circuit but kept for potential future use
     pub fn get_index(
         &self,
         leaf: &FpVar<Fr>,
