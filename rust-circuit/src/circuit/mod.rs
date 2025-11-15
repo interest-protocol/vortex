@@ -4,7 +4,7 @@ use ark_bn254::Fr;
 use ark_ff::AdditiveGroup;
 use ark_r1cs_std::{
     fields::fp::FpVar,
-    prelude::{AllocVar, Boolean, EqGadget, FieldVar},
+    prelude::{AllocVar, Boolean, EqGadget, FieldVar, ToBitsGadget},
 };
 use ark_relations::{
     ns,
@@ -12,10 +12,6 @@ use ark_relations::{
 };
 
 pub const LEVEL: usize = 26;
-
-pub const ZERO_VALUE: &str =
-    "18688842432741139442778047327644092677418528270738216181718229581494125774932";
-
 pub const N_INS: usize = 2;
 pub const N_OUTS: usize = 2;
 
@@ -37,6 +33,10 @@ pub struct TransactionCircuit {
     pub in_blindings: [Fr; N_INS],
     pub in_path_indices: [Fr; N_INS],
     pub merkle_paths: [Path<LEVEL>; N_INS],
+
+    pub out_public_keys: [Fr; N_OUTS],
+    pub out_amounts: [Fr; N_OUTS],
+    pub out_blindings: [Fr; N_OUTS],
 }
 
 impl TransactionCircuit {
@@ -55,6 +55,10 @@ impl TransactionCircuit {
             in_blindings: [Fr::ZERO; N_INS],
             in_path_indices: [Fr::ZERO; N_INS],
             merkle_paths: [Path::empty(); N_INS],
+
+            out_public_keys: [Fr::ZERO; N_OUTS],
+            out_amounts: [Fr::ZERO; N_OUTS],
+            out_blindings: [Fr::ZERO; N_OUTS],
         }
     }
 }
@@ -150,6 +154,63 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
 
             sum_ins += &in_amount;
         }
+
+        let mut sum_outs = FpVar::<Fr>::zero();
+
+        let out_public_key = [
+            FpVar::new_input(ns!(cs, "out_public_key_0"), || Ok(self.out_public_keys[0]))?,
+            FpVar::new_input(ns!(cs, "out_public_key_1"), || Ok(self.out_public_keys[1]))?,
+        ];
+
+        let out_amounts = [
+            FpVar::new_input(ns!(cs, "out_amount_0"), || Ok(self.out_amounts[0]))?,
+            FpVar::new_input(ns!(cs, "out_amount_1"), || Ok(self.out_amounts[1]))?,
+        ];
+
+        let out_blindings = [
+            FpVar::new_input(ns!(cs, "out_blinding_0"), || Ok(self.out_blindings[0]))?,
+            FpVar::new_input(ns!(cs, "out_blinding_1"), || Ok(self.out_blindings[1]))?,
+        ];
+
+        for i in 0..N_OUTS {
+            let out_amount = out_amounts[i].clone();
+
+            let expected_commitment =
+                hasher.hash3(&out_amount, &out_public_key[i], &out_blindings[i])?;
+
+            expected_commitment.enforce_equal(&output_commitment[i])?;
+
+            // Check that out_amount fits into 248 bits
+            // BN254 field has 254 bits, so we check bits 248..254 (indices 248-253) are zero
+            let bits = out_amount.to_bits_le()?;
+            // Ensure we have enough bits (should be 254 for BN254)
+            if bits.len() < 254 {
+                return Err(r1cs::SynthesisError::Unsatisfiable);
+            }
+            // Check that the top 6 bits (248-253) are all zero
+            for bit in &bits[248..254] {
+                bit.enforce_equal(&Boolean::constant(false))?;
+            }
+
+            sum_outs += &out_amount;
+        }
+
+        // Check that there are no same nullifiers among all inputs
+        // Equivalent to Circom: sameNullifiers[index].out === 0 (i.e., values are NOT equal)
+        // Only check pairs where j > i to avoid duplicate checks (nIns * (nIns - 1) / 2 pairs)
+        for i in 0..(N_INS - 1) {
+            for j in (i + 1)..N_INS {
+                let are_not_equal = input_nullifiers[i].is_neq(&input_nullifiers[j])?;
+                // Enforce that they are NOT equal (equivalent to IsEqual().out === 0 in Circom)
+                are_not_equal.enforce_equal(&Boolean::constant(true))?;
+            }
+        }
+
+        (sum_ins + public_amount).enforce_equal(&sum_outs)?;
+
+        // optional safety constraint to make sure extDataHash cannot be changed
+        // This creates a constraint that ext_data_hash^2 = ext_data_square
+        let _ext_data_square = &ext_data_hash * &ext_data_hash;
 
         Ok(())
     }
