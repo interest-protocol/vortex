@@ -1,5 +1,8 @@
-use crate::merkle_tree::{Path, PathVar};
-use crate::poseidon::{PoseidonHash, PoseidonHashVar};
+use crate::{
+    constants::{LEVEL, N_INS, N_OUTS},
+    merkle_tree::{Path, PathVar},
+    poseidon::{PoseidonHash, PoseidonHashVar},
+};
 use ark_bn254::Fr;
 use ark_ff::AdditiveGroup;
 use ark_r1cs_std::{
@@ -10,10 +13,6 @@ use ark_relations::{
     ns,
     r1cs::{self, ConstraintSynthesizer, ConstraintSystemRef},
 };
-
-pub const LEVEL: usize = 26;
-pub const N_INS: usize = 2;
-pub const N_OUTS: usize = 2;
 
 #[derive(Debug, Clone)]
 pub struct TransactionCircuit {
