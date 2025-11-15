@@ -94,28 +94,28 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         ];
 
         let in_private_key = [
-            FpVar::new_input(ns!(cs, "in_private_key_0"), || Ok(self.in_private_keys[0]))?,
-            FpVar::new_input(ns!(cs, "in_private_key_1"), || Ok(self.in_private_keys[1]))?,
+            FpVar::new_witness(ns!(cs, "in_private_key_0"), || Ok(self.in_private_keys[0]))?,
+            FpVar::new_witness(ns!(cs, "in_private_key_1"), || Ok(self.in_private_keys[1]))?,
         ];
 
         let in_amounts = [
-            FpVar::new_input(ns!(cs, "in_amount_0"), || Ok(self.in_amounts[0]))?,
-            FpVar::new_input(ns!(cs, "in_amount_1"), || Ok(self.in_amounts[1]))?,
+            FpVar::new_witness(ns!(cs, "in_amount_0"), || Ok(self.in_amounts[0]))?,
+            FpVar::new_witness(ns!(cs, "in_amount_1"), || Ok(self.in_amounts[1]))?,
         ];
 
         let in_blindings = [
-            FpVar::new_input(ns!(cs, "in_blinding_0"), || Ok(self.in_blindings[0]))?,
-            FpVar::new_input(ns!(cs, "in_blinding_1"), || Ok(self.in_blindings[1]))?,
+            FpVar::new_witness(ns!(cs, "in_blinding_0"), || Ok(self.in_blindings[0]))?,
+            FpVar::new_witness(ns!(cs, "in_blinding_1"), || Ok(self.in_blindings[1]))?,
         ];
 
         let in_path_indices = [
-            FpVar::new_input(ns!(cs, "in_path_index_0"), || Ok(self.in_path_indices[0]))?,
-            FpVar::new_input(ns!(cs, "in_path_index_1"), || Ok(self.in_path_indices[1]))?,
+            FpVar::new_witness(ns!(cs, "in_path_index_0"), || Ok(self.in_path_indices[0]))?,
+            FpVar::new_witness(ns!(cs, "in_path_index_1"), || Ok(self.in_path_indices[1]))?,
         ];
 
         let merkle_paths = [
-            PathVar::new_input(ns!(cs, "merkle_path_0"), || Ok(self.merkle_paths[0]))?,
-            PathVar::new_input(ns!(cs, "merkle_path_1"), || Ok(self.merkle_paths[1]))?,
+            PathVar::new_witness(ns!(cs, "merkle_path_0"), || Ok(self.merkle_paths[0]))?,
+            PathVar::new_witness(ns!(cs, "merkle_path_1"), || Ok(self.merkle_paths[1]))?,
         ];
 
         let mut sum_ins = FpVar::<Fr>::zero();
@@ -157,18 +157,18 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         let mut sum_outs = FpVar::<Fr>::zero();
 
         let out_public_key = [
-            FpVar::new_input(ns!(cs, "out_public_key_0"), || Ok(self.out_public_keys[0]))?,
-            FpVar::new_input(ns!(cs, "out_public_key_1"), || Ok(self.out_public_keys[1]))?,
+            FpVar::new_witness(ns!(cs, "out_public_key_0"), || Ok(self.out_public_keys[0]))?,
+            FpVar::new_witness(ns!(cs, "out_public_key_1"), || Ok(self.out_public_keys[1]))?,
         ];
 
         let out_amounts = [
-            FpVar::new_input(ns!(cs, "out_amount_0"), || Ok(self.out_amounts[0]))?,
-            FpVar::new_input(ns!(cs, "out_amount_1"), || Ok(self.out_amounts[1]))?,
+            FpVar::new_witness(ns!(cs, "out_amount_0"), || Ok(self.out_amounts[0]))?,
+            FpVar::new_witness(ns!(cs, "out_amount_1"), || Ok(self.out_amounts[1]))?,
         ];
 
         let out_blindings = [
-            FpVar::new_input(ns!(cs, "out_blinding_0"), || Ok(self.out_blindings[0]))?,
-            FpVar::new_input(ns!(cs, "out_blinding_1"), || Ok(self.out_blindings[1]))?,
+            FpVar::new_witness(ns!(cs, "out_blinding_0"), || Ok(self.out_blindings[0]))?,
+            FpVar::new_witness(ns!(cs, "out_blinding_1"), || Ok(self.out_blindings[1]))?,
         ];
 
         for i in 0..N_OUTS {
