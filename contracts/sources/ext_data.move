@@ -44,12 +44,6 @@ public fun new(
     }
 }
 
-//! === TEST FUNCTIONS ===
-
-public fun assert_hash(self: ExtData, hash: vector<u8>) {
-    assert!(self.to_hash() == hash);
-}
-
 // === Package View Functions ===
 
 public(package) fun recipient(self: ExtData): address {
@@ -91,7 +85,7 @@ public(package) fun to_hash(self: ExtData): vector<u8> {
     data.append(self.encrypted_output1.to_bytes());
     data.append(self.encrypted_output2.to_bytes());
 
-    hash::blake2b256(&data)
+    hash::blake2b256(&data).to_bytes().skip(1)
 }
 
 public(package) fun public_value(ext_data: ExtData): u64 {
@@ -125,4 +119,4 @@ use fun vortex::vortex_utils::u64_to_bytes as u64.to_bytes;
 use fun vortex::vortex_utils::u256_to_bytes as u256.to_bytes;
 use fun vortex::vortex_utils::bool_to_bytes as bool.to_bytes;
 use fun vortex::vortex_utils::address_to_bytes as address.to_bytes;
-use fun vortex::vortex_utils::vector_u8_to_bytes as vector.to_bytes;
+use fun vortex::vortex_utils::vector_u8_to_bytes as vector.to_bytes; 

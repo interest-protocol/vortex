@@ -226,12 +226,23 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         output_commitment[1].to_string(),
     ];
 
+    // Serialize public inputs as field elements (not strings)
+    let public_inputs_field = vec![
+        root,
+        public_amount,
+        ext_data_hash,
+        input_nullifiers[0],
+        input_nullifiers[1],
+        output_commitment[0],
+        output_commitment[1],
+    ];
+
     let mut public_inputs_serialized = Vec::new();
-    public_inputs.iter().for_each(|input| {
+    for input in &public_inputs_field {
         input
             .serialize_compressed(&mut public_inputs_serialized)
-            .unwrap();
-    });
+            .map_err(|e| JsValue::from_str(&format!("Failed to serialize public input: {}", e)))?;
+    }
 
     let output = ProofOutput {
         proof_a: proof_a_bytes,

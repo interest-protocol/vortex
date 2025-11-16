@@ -10,26 +10,24 @@ public struct Proof has copy, drop, store {
     input_nullifiers: vector<u256>,
     output_commitments: vector<u256>,
     public_value: u64,
-    ext_data_hash: vector<u8>,
+    ext_data_hash: u256,
 }
 
 // === Public View Functions ===
 
 public fun new(
-    a: vector<u8>,
-    b: vector<u8>,
-    c: vector<u8>,
+    proof_points: vector<u8>,
     root: u256,
+    public_value: u64,
+    ext_data_hash: u256,
     input_nullifier1: u256,
     input_nullifier2: u256,
     output_commitment1: u256,
     output_commitment2: u256,
-    public_value: u64,
-    ext_data_hash: vector<u8>,
 ): Proof {
     Proof {
         root,
-        points: new_points(a, b, c),
+        points: groth16::proof_points_from_bytes(proof_points),
         input_nullifiers: vector[input_nullifier1, input_nullifier2],
         output_commitments: vector[output_commitment1, output_commitment2],
         public_value,
@@ -59,43 +57,24 @@ public(package) fun public_value(self: Proof): u64 {
     self.public_value
 }
 
-public(package) fun ext_data_hash(self: Proof): vector<u8> {
+public(package) fun ext_data_hash(self: Proof): u256 {
     self.ext_data_hash
 }
 
 public(package) fun public_inputs(self: Proof): PublicProofInputs {
     let mut bytes = vector[];
 
-    bytes.append(self.root.to_bytes());
-    bytes.append((self.public_value as u256).to_bytes());
-    bytes.append(self.ext_data_hash);
-    bytes.append(self.input_nullifiers[0].to_bytes());
-    bytes.append(self.input_nullifiers[1].to_bytes());
-    bytes.append(self.output_commitments[0].to_bytes());
-    bytes.append(self.output_commitments[1].to_bytes());
+    bytes.append(self.root.to_field());
+    bytes.append((self.public_value as u256).to_field());
+    bytes.append(self.ext_data_hash.to_field());
+    bytes.append(self.input_nullifiers[0].to_field());
+    bytes.append(self.input_nullifiers[1].to_field());
+    bytes.append(self.output_commitments[0].to_field());
+    bytes.append(self.output_commitments[1].to_field());
 
     groth16::public_proof_inputs_from_bytes(bytes)
 }
 
-// === Private Functions ===
-
-fun new_points(a: vector<u8>, b: vector<u8>, c: vector<u8>): ProofPoints {
-    // Handle both old format (single proof) and new format (A, B, C components)
-    let points = if (b.length() == 0 && c.length() == 0) {
-        // Old format: single proof string
-        a
-    } else {
-        // New format: concatenate A, B, C components
-        let mut bytes = vector[];
-        bytes.append(a);
-        bytes.append(b);
-        bytes.append(c);
-        bytes
-    };
-
-    groth16::proof_points_from_bytes(points)
-}
-
 // === Aliases ===
 
-use fun vortex::vortex_utils::u256_to_bytes as u256.to_bytes;
+use fun vortex::vortex_utils::u256_to_field as u256.to_field;

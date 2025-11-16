@@ -170,8 +170,8 @@ public fun encryption_key(registry: &Registry, address: address): Option<String>
 
 // === Private Functions ===
 
-fun assert_ext_data_hash(ext_data: ExtData, ext_data_hash: vector<u8>) {
-    assert!(ext_data.to_hash() == ext_data_hash, vortex::vortex_errors::invalid_ext_data_hash!());
+fun assert_ext_data_hash(ext_data: ExtData, ext_data_hash: u256) {
+    assert!(ext_data.to_hash() == ext_data_hash.to_bytes(), vortex::vortex_errors::invalid_ext_data_hash!());
 }
 
 fun assert_root_is_known(self: &Vortex, root: u256) {
@@ -210,3 +210,4 @@ fun merkle_tree_mut(self: &mut Vortex): &mut MerkleTree {
 use fun assert_ext_data_hash as ExtData.assert_hash;
 use fun assert_public_value as Proof.assert_public_value;
 use fun append_commitment as MerkleTree.append_commitment;
+use fun vortex::vortex_utils::u256_to_bytes as u256.to_bytes;
