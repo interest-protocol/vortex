@@ -32,6 +32,8 @@ pub struct ProofOutput {
     pub proof_c: Vec<u8>,
     /// All public inputs in order expected by Move contract
     pub public_inputs: Vec<String>,
+    pub proof_serialized_hex: String,
+    pub public_inputs_hex: String,
 }
 
 /// Input structure for proof generation
@@ -209,6 +211,10 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         .serialize_compressed(&mut proof_c_bytes)
         .map_err(|e| JsValue::from_str(&format!("Failed to serialize proof.c: {}", e)))?;
 
+    // Serialize proof
+    let mut proof_serialized = Vec::new();
+    proof.serialize_compressed(&mut proof_serialized).unwrap();
+
     // Public inputs in the order expected by Move contract
     let public_inputs = vec![
         root.to_string(),
@@ -220,11 +226,20 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         output_commitment[1].to_string(),
     ];
 
+    let mut public_inputs_serialized = Vec::new();
+    public_inputs.iter().for_each(|input| {
+        input
+            .serialize_compressed(&mut public_inputs_serialized)
+            .unwrap();
+    });
+
     let output = ProofOutput {
         proof_a: proof_a_bytes,
         proof_b: proof_b_bytes,
         proof_c: proof_c_bytes,
         public_inputs,
+        proof_serialized_hex: hex::encode(proof_serialized),
+        public_inputs_hex: hex::encode(public_inputs_serialized),
     };
 
     serde_json::to_string(&output)

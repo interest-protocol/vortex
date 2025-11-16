@@ -34,7 +34,7 @@ public struct Registry has key {
 public struct NewCommitment has copy, drop {
     index: u64,
     commitment: u256,
-    encrypted_output: u256,
+    encrypted_output: vector<u8>,
 }
 
 public struct NullifierSpent(u256) has copy, drop;
@@ -185,7 +185,7 @@ fun assert_public_value(proof: Proof, ext_data: ExtData) {
     );
 }
 
-fun append_commitment(tree: &mut MerkleTree, commitment: u256, encrypted_output: u256) {
+fun append_commitment(tree: &mut MerkleTree, commitment: u256, encrypted_output: vector<u8>) {
     let index = tree.next_index();
 
     tree.append(commitment);
