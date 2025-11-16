@@ -3,6 +3,8 @@ pub mod constants;
 pub mod merkle_tree;
 pub mod poseidon;
 pub mod utils;
+
+#[cfg(target_arch = "wasm32")]
 pub mod wasm;
 
 pub const ZERO_VALUE: &str =
