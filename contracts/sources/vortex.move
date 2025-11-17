@@ -113,14 +113,13 @@ public fun transact(
     );
 
     let ext_value = ext_data.value();
-    let relayer_fee = ext_data.relayer_fee();
     let ext_value_is_non_zero = ext_value > 0;
 
     if (ext_data.value_sign() && ext_value_is_non_zero) {
         assert!(deposit.value() == ext_value, vortex::vortex_errors::invalid_deposit_value!());
     } else if (!ext_data.value_sign() && ext_value_is_non_zero) {
         transfer::public_transfer(
-            self.balance.split(ext_value - relayer_fee).into_coin(ctx),
+            self.balance.split(ext_value - ext_data.relayer_fee()).into_coin(ctx),
             ext_data.recipient(),
         );
     };
@@ -135,13 +134,13 @@ public fun transact(
     let merkle_tree_mut = self.merkle_tree_mut();
     let commitments = proof.output_commitments();
 
-    merkle_tree_mut.append_commitment(commitments[0], ext_data.encrypted_output1());
+    merkle_tree_mut.append_commitment(commitments[0], ext_data.encrypted_output0());
 
-    merkle_tree_mut.append_commitment(commitments[1], ext_data.encrypted_output2());
+    merkle_tree_mut.append_commitment(commitments[1], ext_data.encrypted_output1());
 
-    if (relayer_fee > 0 && ext_value_is_non_zero)
+    if (ext_data.relayer_fee() > 0 && ext_value_is_non_zero)
         transfer::public_transfer(
-            self.balance.split(relayer_fee).into_coin(ctx),
+            self.balance.split(ext_data.relayer_fee()).into_coin(ctx),
             ext_data.relayer(),
         );
 }
