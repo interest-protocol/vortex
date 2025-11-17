@@ -13,6 +13,7 @@ use ark_relations::{
     ns,
     r1cs::{self, ConstraintSynthesizer, ConstraintSystemRef},
 };
+use ark_serialize::CanonicalSerialize;
 use std::ops::Not;
 
 /// Transaction circuit for privacy-preserving value transfers on Sui.
@@ -49,11 +50,14 @@ pub struct TransactionCircuit {
     pub hasher: PoseidonHash,
 
     // Public inputs (must match order expected by Move contract verification)
+    // Individual fields to match how they're allocated in generate_constraints()
     pub root: Fr,
     pub public_amount: Fr,
     pub ext_data_hash: Fr,
-    pub input_nullifiers: [Fr; N_INS],
-    pub output_commitment: [Fr; N_OUTS],
+    pub input_nullifier_0: Fr,
+    pub input_nullifier_1: Fr,
+    pub output_commitment_0: Fr,
+    pub output_commitment_1: Fr,
 
     // Private inputs - Input UTXOs
     pub in_private_keys: [Fr; N_INS],
@@ -78,8 +82,10 @@ impl TransactionCircuit {
             root: Fr::ZERO,
             public_amount: Fr::ZERO,
             ext_data_hash: Fr::ZERO,
-            input_nullifiers: [Fr::ZERO; N_INS],
-            output_commitment: [Fr::ZERO; N_OUTS],
+            input_nullifier_0: Fr::ZERO,
+            input_nullifier_1: Fr::ZERO,
+            output_commitment_0: Fr::ZERO,
+            output_commitment_1: Fr::ZERO,
 
             in_private_keys: [Fr::ZERO; N_INS],
             in_amounts: [Fr::ZERO; N_INS],
@@ -104,8 +110,10 @@ impl TransactionCircuit {
         root: Fr,
         public_amount: Fr,
         ext_data_hash: Fr,
-        input_nullifiers: [Fr; N_INS],
-        output_commitment: [Fr; N_OUTS],
+        input_nullifier_0: Fr,
+        input_nullifier_1: Fr,
+        output_commitment_0: Fr,
+        output_commitment_1: Fr,
         in_private_keys: [Fr; N_INS],
         in_amounts: [Fr; N_INS],
         in_blindings: [Fr; N_INS],
@@ -132,8 +140,10 @@ impl TransactionCircuit {
             root,
             public_amount,
             ext_data_hash,
-            input_nullifiers,
-            output_commitment,
+            input_nullifier_0,
+            input_nullifier_1,
+            output_commitment_0,
+            output_commitment_1,
             in_private_keys,
             in_amounts,
             in_blindings,
@@ -144,15 +154,53 @@ impl TransactionCircuit {
             out_blindings,
         })
     }
+
+    /// Returns public inputs in the order they are allocated in `generate_constraints()`.
+    ///
+    /// This order MUST match the order in which `FpVar::new_input()` is called in
+    /// `generate_constraints()` (lines 156-179) to ensure correct proof generation and verification.
+    ///
+    /// # Order
+    /// 1. root
+    /// 2. public_amount
+    /// 3. ext_data_hash
+    /// 4. input_nullifier_0
+    /// 5. input_nullifier_1
+    /// 6. output_commitment_0
+    /// 7. output_commitment_1
+    pub fn get_public_inputs(&self) -> Vec<Fr> {
+        vec![
+            self.root,
+            self.public_amount,
+            self.ext_data_hash,
+            self.input_nullifier_0,
+            self.input_nullifier_1,
+            self.output_commitment_0,
+            self.output_commitment_1,
+        ]
+    }
+
+    /// Returns serialized public inputs in compressed format.
+    ///
+    /// This serializes each public input field element using `serialize_compressed()` and
+    /// concatenates them into a single byte vector. The order matches `get_public_inputs()`.
+    ///
+    /// # Returns
+    /// A `Vec<u8>` containing the serialized public inputs, or an error if serialization fails.
+    pub fn get_public_inputs_serialized(&self) -> anyhow::Result<Vec<u8>> {
+        let public_inputs = self.get_public_inputs();
+        let mut serialized = Vec::new();
+        for input in &public_inputs {
+            input
+                .serialize_compressed(&mut serialized)
+                .map_err(|e| anyhow::anyhow!("Failed to serialize public input: {}", e))?;
+        }
+        Ok(serialized)
+    }
 }
 
 impl ConstraintSynthesizer<Fr> for TransactionCircuit {
     fn generate_constraints(self, cs: ConstraintSystemRef<Fr>) -> r1cs::Result<()> {
-        // ============================================
-        // ALLOCATE CONSTANTS
-        // ============================================
-        let hasher = PoseidonHashVar::new_constant(ns!(cs, "hasher"), self.hasher)?;
-
         // ============================================
         // ALLOCATE PUBLIC INPUTS
         // Order must match Move contract's verification expectations
@@ -166,21 +214,15 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
 
         // Individual public inputs (not arrays) to match Move contract serialization
         let input_nullifier_0 =
-            FpVar::new_input(
-                ns!(cs, "input_nullifier_0"),
-                || Ok(self.input_nullifiers[0]),
-            )?;
+            FpVar::new_input(ns!(cs, "input_nullifier_0"), || Ok(self.input_nullifier_0))?;
         let input_nullifier_1 =
-            FpVar::new_input(
-                ns!(cs, "input_nullifier_1"),
-                || Ok(self.input_nullifiers[1]),
-            )?;
+            FpVar::new_input(ns!(cs, "input_nullifier_1"), || Ok(self.input_nullifier_1))?;
 
         let output_commitment_0 = FpVar::new_input(ns!(cs, "output_commitment_0"), || {
-            Ok(self.output_commitment[0])
+            Ok(self.output_commitment_0)
         })?;
         let output_commitment_1 = FpVar::new_input(ns!(cs, "output_commitment_1"), || {
-            Ok(self.output_commitment[1])
+            Ok(self.output_commitment_1)
         })?;
 
         // Create arrays from individual variables for use in loops
@@ -231,6 +273,11 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
             FpVar::new_witness(ns!(cs, "out_blinding_0"), || Ok(self.out_blindings[0]))?,
             FpVar::new_witness(ns!(cs, "out_blinding_1"), || Ok(self.out_blindings[1]))?,
         ];
+
+        // ============================================
+        // ALLOCATE CONSTANTS
+        // ============================================
+        let hasher = PoseidonHashVar::new_constant(ns!(cs, "hasher"), self.hasher)?;
 
         // ============================================
         // VERIFY INPUT UTXOs

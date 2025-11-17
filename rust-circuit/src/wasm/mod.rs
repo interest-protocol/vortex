@@ -7,9 +7,9 @@ use crate::{
 use ark_bn254::{Bn254, Fr};
 use ark_crypto_primitives::snark::SNARK;
 use ark_groth16::Groth16;
+use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use num_bigint::BigUint;
-use num_traits::Num;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use wasm_bindgen::prelude::*;
@@ -109,15 +109,11 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     let public_amount = parse_field_element(&input.public_amount)?;
     let ext_data_hash = parse_field_element(&input.ext_data_hash)?;
 
-    let input_nullifiers = [
-        parse_field_element(&input.input_nullifier_1)?,
-        parse_field_element(&input.input_nullifier_2)?,
-    ];
+    let input_nullifier_0 = parse_field_element(&input.input_nullifier_1)?;
+    let input_nullifier_1 = parse_field_element(&input.input_nullifier_2)?;
 
-    let output_commitment = [
-        parse_field_element(&input.output_commitment_1)?,
-        parse_field_element(&input.output_commitment_2)?,
-    ];
+    let output_commitment_0 = parse_field_element(&input.output_commitment_1)?;
+    let output_commitment_1 = parse_field_element(&input.output_commitment_2)?;
 
     let in_private_keys = [
         parse_field_element(&input.in_private_key_1)?,
@@ -169,8 +165,10 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         root,
         public_amount,
         ext_data_hash,
-        input_nullifiers,
-        output_commitment,
+        input_nullifier_0,
+        input_nullifier_1,
+        output_commitment_0,
+        output_commitment_1,
         in_private_keys,
         in_amounts,
         in_blindings,
@@ -188,6 +186,22 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     use rand_core::SeedableRng;
 
     let mut rng = ChaCha20Rng::from_entropy();
+
+    let cs = ConstraintSystem::<Fr>::new_ref();
+    circuit
+        .clone()
+        .generate_constraints(cs.clone())
+        .expect("Failed to generate constraints");
+    if !cs.is_satisfied().expect("Failed to check constraints") {
+        panic!("Constraints are not satisfied");
+    }
+
+    // Extract public inputs from the circuit using the builder pattern method
+    // This ensures the order matches generate_constraints() automatically
+    let public_inputs_field = circuit.get_public_inputs();
+    let public_inputs_serialized = circuit
+        .get_public_inputs_serialized()
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize public inputs: {}", e)))?;
 
     let proof = Groth16::<Bn254>::prove(&pk, circuit, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("Failed to generate proof: {}", e)))?;
@@ -215,34 +229,11 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     let mut proof_serialized = Vec::new();
     proof.serialize_compressed(&mut proof_serialized).unwrap();
 
-    // Public inputs in the order expected by Move contract
-    let public_inputs = vec![
-        root.to_string(),
-        public_amount.to_string(),
-        ext_data_hash.to_string(),
-        input_nullifiers[0].to_string(),
-        input_nullifiers[1].to_string(),
-        output_commitment[0].to_string(),
-        output_commitment[1].to_string(),
-    ];
-
-    // Serialize public inputs as field elements (not strings)
-    let public_inputs_field = vec![
-        root,
-        public_amount,
-        ext_data_hash,
-        input_nullifiers[0],
-        input_nullifiers[1],
-        output_commitment[0],
-        output_commitment[1],
-    ];
-
-    let mut public_inputs_serialized = Vec::new();
-    for input in &public_inputs_field {
-        input
-            .serialize_compressed(&mut public_inputs_serialized)
-            .map_err(|e| JsValue::from_str(&format!("Failed to serialize public input: {}", e)))?;
-    }
+    // Convert public inputs to strings for JSON output
+    let public_inputs: Vec<String> = public_inputs_field
+        .iter()
+        .map(|input| input.to_string())
+        .collect();
 
     let output = ProofOutput {
         proof_a: proof_a_bytes,
@@ -315,17 +306,9 @@ fn parse_field_element(s: &str) -> Result<Fr, JsValue> {
     // Handle both decimal and hex strings
     let s = s.trim();
 
-    if s.starts_with("0x") || s.starts_with("0X") {
-        // Hex format
-        let big_uint = BigUint::from_str_radix(&s[2..], 16)
-            .map_err(|e| JsValue::from_str(&format!("Failed to parse hex '{}': {}", s, e)))?;
-        Ok(Fr::from(big_uint))
-    } else {
-        // Decimal format
-        let big_uint = BigUint::from_str(s)
-            .map_err(|e| JsValue::from_str(&format!("Failed to parse decimal '{}': {}", s, e)))?;
-        Ok(Fr::from(big_uint))
-    }
+    let big_uint = BigUint::from_str(s)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse decimal '{}': {}", s, e)))?;
+    Ok(Fr::from(big_uint))
 }
 
 fn parse_merkle_path(path_data: &[[String; 2]]) -> Result<Path<LEVEL>, JsValue> {
