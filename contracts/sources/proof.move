@@ -20,16 +20,16 @@ public fun new(
     root: u256,
     public_value: u64,
     ext_data_hash: u256,
+    input_nullifier0: u256,
     input_nullifier1: u256,
-    input_nullifier2: u256,
+    output_commitment0: u256,
     output_commitment1: u256,
-    output_commitment2: u256,
 ): Proof {
     Proof {
         root,
         points: groth16::proof_points_from_bytes(proof_points),
-        input_nullifiers: vector[input_nullifier1, input_nullifier2],
-        output_commitments: vector[output_commitment1, output_commitment2],
+        input_nullifiers: vector[input_nullifier0, input_nullifier1],
+        output_commitments: vector[output_commitment0, output_commitment1],
         public_value,
         ext_data_hash,
     }
@@ -62,19 +62,21 @@ public(package) fun ext_data_hash(self: Proof): u256 {
 }
 
 public(package) fun public_inputs(self: Proof): PublicProofInputs {
-    let mut bytes = vector[];
+    let bytes = vector[
+        self.root.to_field(),
+        // u64 is smaller than the field modulus of bn254, so we can use to_bytes directly
+        self.public_value.to_bytes(),
+        self.ext_data_hash.to_field(),
+        self.input_nullifiers[0].to_field(),
+        self.input_nullifiers[1].to_field(),
+        self.output_commitments[0].to_field(),
+        self.output_commitments[1].to_field(),
+    ];
 
-    bytes.append(self.root.to_field());
-    bytes.append((self.public_value as u256).to_field());
-    bytes.append(self.ext_data_hash.to_field());
-    bytes.append(self.input_nullifiers[0].to_field());
-    bytes.append(self.input_nullifiers[1].to_field());
-    bytes.append(self.output_commitments[0].to_field());
-    bytes.append(self.output_commitments[1].to_field());
-
-    groth16::public_proof_inputs_from_bytes(bytes)
+    groth16::public_proof_inputs_from_bytes(bytes.flatten())
 }
 
 // === Aliases ===
 
+use fun vortex::vortex_utils::u64_to_bytes as u64.to_bytes;
 use fun vortex::vortex_utils::u256_to_field as u256.to_field;

@@ -10,8 +10,8 @@ public struct ExtData has copy, drop, store {
     value_sign: bool,
     relayer: address,
     relayer_fee: u64,
+    encrypted_output0: vector<u8>,
     encrypted_output1: vector<u8>,
-    encrypted_output2: vector<u8>,
 }
 
 // === Public Mutative Functions ===
@@ -22,8 +22,8 @@ public fun new(
     value_sign: bool,
     relayer: address,
     relayer_fee: u64,
+    encrypted_output0: vector<u8>,
     encrypted_output1: vector<u8>,
-    encrypted_output2: vector<u8>,
 ): ExtData {
     recipient.validate!();
     value.validate!();
@@ -39,8 +39,8 @@ public fun new(
         value,
         relayer,
         relayer_fee,
+        encrypted_output0,
         encrypted_output1,
-        encrypted_output2,
     }
 }
 
@@ -66,26 +66,26 @@ public(package) fun relayer_fee(self: ExtData): u64 {
     self.relayer_fee
 }
 
+public(package) fun encrypted_output0(self: ExtData): vector<u8> {
+    self.encrypted_output0
+}
+
 public(package) fun encrypted_output1(self: ExtData): vector<u8> {
     self.encrypted_output1
 }
 
-public(package) fun encrypted_output2(self: ExtData): vector<u8> {
-    self.encrypted_output2
-}
-
 public(package) fun to_hash(self: ExtData): vector<u8> {
-    let mut data = vector[];
+    let data = vector[
+        self.recipient.to_bytes(),
+        self.value.to_bytes(),
+        self.value_sign.to_bytes(),
+        self.relayer.to_bytes(),
+        self.relayer_fee.to_bytes(),
+        self.encrypted_output0.to_bytes(),
+        self.encrypted_output1.to_bytes(),
+    ];
 
-    data.append(self.recipient.to_bytes());
-    data.append(self.value.to_bytes());
-    data.append(self.value_sign.to_bytes());
-    data.append(self.relayer.to_bytes());
-    data.append(self.relayer_fee.to_bytes());
-    data.append(self.encrypted_output1.to_bytes());
-    data.append(self.encrypted_output2.to_bytes());
-
-    hash::blake2b256(&data).to_bytes().skip(1)
+    hash::blake2b256(&data.flatten()).to_bytes().skip(1)
 }
 
 public(package) fun public_value(ext_data: ExtData): u64 {
