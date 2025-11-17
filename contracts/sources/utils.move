@@ -29,6 +29,6 @@ public(package) fun address_to_field(address: address): vector<u8> {
 }
 
 public(package) fun u256_to_field(value: u256): vector<u8> {
-    bcs::to_bytes(&(value % vortex::vortex_constants::bn254_field_modulus!()))
+    u256_to_bytes(value % vortex::vortex_constants::bn254_field_modulus!())
 }
 
