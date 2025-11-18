@@ -1,6 +1,6 @@
 use crate::{
     circuit::TransactionCircuit,
-    constants::LEVEL,
+    constants::MERKLE_TREE_LEVEL,
     merkle_tree::Path,
     poseidon::{poseidon_bn254, PoseidonHash},
 };
@@ -131,8 +131,8 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     ];
 
     let in_path_indices = [
+        parse_field_element(&input.in_path_index_0)?,
         parse_field_element(&input.in_path_index_1)?,
-        parse_field_element(&input.in_path_index_2)?,
     ];
 
     // Parse Merkle paths
@@ -311,16 +311,16 @@ fn parse_field_element(s: &str) -> Result<Fr, JsValue> {
     Ok(Fr::from(big_uint))
 }
 
-fn parse_merkle_path(path_data: &[[String; 2]]) -> Result<Path<LEVEL>, JsValue> {
-    if path_data.len() != LEVEL {
+fn parse_merkle_path(path_data: &[[String; 2]]) -> Result<Path<MERKLE_TREE_LEVEL>, JsValue> {
+    if path_data.len() != MERKLE_TREE_LEVEL {
         return Err(JsValue::from_str(&format!(
             "Invalid Merkle path length: expected {}, got {}",
-            LEVEL,
+            MERKLE_TREE_LEVEL,
             path_data.len()
         )));
     }
 
-    let mut path = [(Fr::from(0u64), Fr::from(0u64)); LEVEL];
+    let mut path = [(Fr::from(0u64), Fr::from(0u64)); MERKLE_TREE_LEVEL];
 
     for (i, pair) in path_data.iter().enumerate() {
         let left = parse_field_element(&pair[0])?;
