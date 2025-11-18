@@ -29,6 +29,3 @@ pub const N_OUTS: usize = 2;
 /// The circuit enforces that all input and output amounts fit within
 /// this range to prevent arithmetic overflow during sum(inputs) + public_amount.
 pub const MAX_AMOUNT_BITS: usize = 248;
-
-/// Alias for compatibility with existing code
-pub const LEVEL: usize = MERKLE_TREE_LEVEL;

@@ -33,7 +33,7 @@ pub struct ProofOutput {
     /// All public inputs in order expected by Move contract
     pub public_inputs: Vec<String>,
     pub proof_serialized_hex: String,
-    pub public_inputs_hex: String,
+    pub public_inputs_serialized_hex: String,
 }
 
 /// Input structure for proof generation
@@ -44,32 +44,32 @@ pub struct ProofInput {
     pub root: String,
     pub public_amount: String,
     pub ext_data_hash: String,
+    pub input_nullifier_0: String,
     pub input_nullifier_1: String,
-    pub input_nullifier_2: String,
+    pub output_commitment_0: String,
     pub output_commitment_1: String,
-    pub output_commitment_2: String,
 
     // Private inputs - Input UTXOs
+    pub in_private_key_0: String,
     pub in_private_key_1: String,
-    pub in_private_key_2: String,
+    pub in_amount_0: String,
     pub in_amount_1: String,
-    pub in_amount_2: String,
+    pub in_blinding_0: String,
     pub in_blinding_1: String,
-    pub in_blinding_2: String,
+    pub in_path_index_0: String,
     pub in_path_index_1: String,
-    pub in_path_index_2: String,
 
     // Merkle paths (array of [left, right] pairs for each level)
+    pub merkle_path_0: Vec<[String; 2]>,
     pub merkle_path_1: Vec<[String; 2]>,
-    pub merkle_path_2: Vec<[String; 2]>,
 
     // Private inputs - Output UTXOs
+    pub out_public_key_0: String,
     pub out_public_key_1: String,
-    pub out_public_key_2: String,
+    pub out_amount_0: String,
     pub out_amount_1: String,
-    pub out_amount_2: String,
+    pub out_blinding_0: String,
     pub out_blinding_1: String,
-    pub out_blinding_2: String,
 }
 
 /// Generates a zero-knowledge proof for a privacy-preserving transaction
@@ -109,25 +109,25 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     let public_amount = parse_field_element(&input.public_amount)?;
     let ext_data_hash = parse_field_element(&input.ext_data_hash)?;
 
-    let input_nullifier_0 = parse_field_element(&input.input_nullifier_1)?;
-    let input_nullifier_1 = parse_field_element(&input.input_nullifier_2)?;
+    let input_nullifier_0 = parse_field_element(&input.input_nullifier_0)?;
+    let input_nullifier_1 = parse_field_element(&input.input_nullifier_1)?;
 
-    let output_commitment_0 = parse_field_element(&input.output_commitment_1)?;
-    let output_commitment_1 = parse_field_element(&input.output_commitment_2)?;
+    let output_commitment_0 = parse_field_element(&input.output_commitment_0)?;
+    let output_commitment_1 = parse_field_element(&input.output_commitment_1)?;
 
     let in_private_keys = [
+        parse_field_element(&input.in_private_key_0)?,
         parse_field_element(&input.in_private_key_1)?,
-        parse_field_element(&input.in_private_key_2)?,
     ];
 
     let in_amounts = [
+        parse_field_element(&input.in_amount_0)?,
         parse_field_element(&input.in_amount_1)?,
-        parse_field_element(&input.in_amount_2)?,
     ];
 
     let in_blindings = [
+        parse_field_element(&input.in_blinding_0)?,
         parse_field_element(&input.in_blinding_1)?,
-        parse_field_element(&input.in_blinding_2)?,
     ];
 
     let in_path_indices = [
@@ -137,23 +137,23 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
 
     // Parse Merkle paths
     let merkle_paths = [
+        parse_merkle_path(&input.merkle_path_0)?,
         parse_merkle_path(&input.merkle_path_1)?,
-        parse_merkle_path(&input.merkle_path_2)?,
     ];
 
     let out_public_keys = [
+        parse_field_element(&input.out_public_key_0)?,
         parse_field_element(&input.out_public_key_1)?,
-        parse_field_element(&input.out_public_key_2)?,
     ];
 
     let out_amounts = [
+        parse_field_element(&input.out_amount_0)?,
         parse_field_element(&input.out_amount_1)?,
-        parse_field_element(&input.out_amount_2)?,
     ];
 
     let out_blindings = [
+        parse_field_element(&input.out_blinding_0)?,
         parse_field_element(&input.out_blinding_1)?,
-        parse_field_element(&input.out_blinding_2)?,
     ];
 
     // Create circuit
@@ -241,7 +241,7 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         proof_c: proof_c_bytes,
         public_inputs,
         proof_serialized_hex: hex::encode(proof_serialized),
-        public_inputs_hex: hex::encode(public_inputs_serialized),
+        public_inputs_serialized_hex: hex::encode(public_inputs_serialized),
     };
 
     serde_json::to_string(&output)

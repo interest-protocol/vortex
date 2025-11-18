@@ -1,5 +1,5 @@
 use crate::{
-    constants::{LEVEL, MAX_AMOUNT_BITS, N_INS, N_OUTS},
+    constants::{MAX_AMOUNT_BITS, MERKLE_TREE_LEVEL, N_INS, N_OUTS},
     merkle_tree::{Path, PathVar},
     poseidon::{PoseidonHash, PoseidonHashVar},
 };
@@ -64,7 +64,7 @@ pub struct TransactionCircuit {
     pub in_amounts: [Fr; N_INS],
     pub in_blindings: [Fr; N_INS],
     pub in_path_indices: [Fr; N_INS],
-    pub merkle_paths: [Path<LEVEL>; N_INS],
+    pub merkle_paths: [Path<MERKLE_TREE_LEVEL>; N_INS],
 
     // Private inputs - Output UTXOs
     pub out_public_keys: [Fr; N_OUTS],
@@ -118,19 +118,19 @@ impl TransactionCircuit {
         in_amounts: [Fr; N_INS],
         in_blindings: [Fr; N_INS],
         in_path_indices: [Fr; N_INS],
-        merkle_paths: [Path<LEVEL>; N_INS],
+        merkle_paths: [Path<MERKLE_TREE_LEVEL>; N_INS],
         out_public_keys: [Fr; N_OUTS],
         out_amounts: [Fr; N_OUTS],
         out_blindings: [Fr; N_OUTS],
     ) -> anyhow::Result<Self> {
         // Validate path indices fit in tree
-        let max_index = Fr::from(1u128 << LEVEL);
+        let max_index = Fr::from(1u128 << MERKLE_TREE_LEVEL);
         for (i, idx) in in_path_indices.iter().enumerate() {
             if *idx >= max_index {
                 return Err(anyhow::anyhow!(
                     "Input {} path index exceeds tree capacity (>= 2^{})",
                     i,
-                    LEVEL
+                    MERKLE_TREE_LEVEL
                 ));
             }
         }
@@ -313,10 +313,7 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
             let merkle_path_membership =
                 merkle_paths[i].check_membership(&root, &commitment, &hasher)?;
 
-            // Only enforce Merkle membership when amount is non-zero
-            let amount_is_non_zero = amount_is_zero.not();
-            merkle_path_membership
-                .conditional_enforce_equal(&Boolean::constant(true), &amount_is_non_zero)?;
+            merkle_path_membership.enforce_equal(&Boolean::constant(true))?;
 
             sum_ins += &in_amounts[i];
         }
