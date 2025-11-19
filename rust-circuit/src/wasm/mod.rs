@@ -95,44 +95,56 @@ pub struct ProofInput {
 pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue> {
     // Parse input
     let input: ProofInput = serde_json::from_str(input_json)
-        .map_err(|e| JsValue::from_str(&format!("Failed to parse input JSON: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to parse input JSON: {}", e)))?;
 
     // Parse proving key
     let pk_bytes = hex::decode(proving_key_hex)
-        .map_err(|e| JsValue::from_str(&format!("Failed to decode proving key hex: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to decode proving key hex: {}", e)))?;
 
     let pk = ark_groth16::ProvingKey::<Bn254>::deserialize_compressed(&pk_bytes[..])
-        .map_err(|e| JsValue::from_str(&format!("Failed to deserialize proving key: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to deserialize proving key: {}", e)))?;
 
     // Convert input strings to field elements
-    let root = parse_field_element(&input.root)?;
-    let public_amount = parse_field_element(&input.public_amount)?;
-    let ext_data_hash = parse_field_element(&input.ext_data_hash)?;
-
-    let input_nullifier_0 = parse_field_element(&input.input_nullifier_0)?;
-    let input_nullifier_1 = parse_field_element(&input.input_nullifier_1)?;
-
-    let output_commitment_0 = parse_field_element(&input.output_commitment_0)?;
-    let output_commitment_1 = parse_field_element(&input.output_commitment_1)?;
+    let root = parse_field_element(&input.root).map_err(|e| format_field_parse_error("root", e))?;
+    let public_amount = parse_field_element(&input.public_amount)
+        .map_err(|e| format_field_parse_error("public amount", e))?;
+    let ext_data_hash = parse_field_element(&input.ext_data_hash)
+        .map_err(|e| format_field_parse_error("ext data hash", e))?;
+    let input_nullifier_0 = parse_field_element(&input.input_nullifier_0)
+        .map_err(|e| format_field_parse_error("input nullifier 0", e))?;
+    let input_nullifier_1 = parse_field_element(&input.input_nullifier_1)
+        .map_err(|e| format_field_parse_error("input nullifier 1", e))?;
+    let output_commitment_0 = parse_field_element(&input.output_commitment_0)
+        .map_err(|e| format_field_parse_error("output commitment 0", e))?;
+    let output_commitment_1 = parse_field_element(&input.output_commitment_1)
+        .map_err(|e| format_field_parse_error("output commitment 1", e))?;
 
     let in_private_keys = [
-        parse_field_element(&input.in_private_key_0)?,
-        parse_field_element(&input.in_private_key_1)?,
+        parse_field_element(&input.in_private_key_0)
+            .map_err(|e| format_field_parse_error("in private key 0", e))?,
+        parse_field_element(&input.in_private_key_1)
+            .map_err(|e| format_field_parse_error("in private key 1", e))?,
     ];
 
     let in_amounts = [
-        parse_field_element(&input.in_amount_0)?,
-        parse_field_element(&input.in_amount_1)?,
+        parse_field_element(&input.in_amount_0)
+            .map_err(|e| format_field_parse_error("in amount 0", e))?,
+        parse_field_element(&input.in_amount_1)
+            .map_err(|e| format_field_parse_error("in amount 1", e))?,
     ];
 
     let in_blindings = [
-        parse_field_element(&input.in_blinding_0)?,
-        parse_field_element(&input.in_blinding_1)?,
+        parse_field_element(&input.in_blinding_0)
+            .map_err(|e| format_field_parse_error("in blinding 0", e))?,
+        parse_field_element(&input.in_blinding_1)
+            .map_err(|e| format_field_parse_error("in blinding 1", e))?,
     ];
 
     let in_path_indices = [
-        parse_field_element(&input.in_path_index_0)?,
-        parse_field_element(&input.in_path_index_1)?,
+        parse_field_element(&input.in_path_index_0)
+            .map_err(|e| format_field_parse_error("in path index 0", e))?,
+        parse_field_element(&input.in_path_index_1)
+            .map_err(|e| format_field_parse_error("in path index 1", e))?,
     ];
 
     // Parse Merkle paths
@@ -142,18 +154,24 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     ];
 
     let out_public_keys = [
-        parse_field_element(&input.out_public_key_0)?,
-        parse_field_element(&input.out_public_key_1)?,
+        parse_field_element(&input.out_public_key_0)
+            .map_err(|e| format_field_parse_error("out public key 0", e))?,
+        parse_field_element(&input.out_public_key_1)
+            .map_err(|e| format_field_parse_error("out public key 1", e))?,
     ];
 
     let out_amounts = [
-        parse_field_element(&input.out_amount_0)?,
-        parse_field_element(&input.out_amount_1)?,
+        parse_field_element(&input.out_amount_0)
+            .map_err(|e| format_field_parse_error("out amount 0", e))?,
+        parse_field_element(&input.out_amount_1)
+            .map_err(|e| format_field_parse_error("out amount 1", e))?,
     ];
 
     let out_blindings = [
-        parse_field_element(&input.out_blinding_0)?,
-        parse_field_element(&input.out_blinding_1)?,
+        parse_field_element(&input.out_blinding_0)
+            .map_err(|e| format_field_parse_error("out blinding 0", e))?,
+        parse_field_element(&input.out_blinding_1)
+            .map_err(|e| format_field_parse_error("out blinding 1", e))?,
     ];
 
     // Create circuit
@@ -178,7 +196,7 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         out_amounts,
         out_blindings,
     )
-    .map_err(|e| JsValue::from_str(&format!("Failed to create circuit: {}", e)))?;
+    .map_err(|e| JsValue::from(&format!("Failed to create circuit: {}", e)))?;
 
     // Generate proof using deterministic RNG for testing
     // In production, you should use a secure RNG
@@ -201,29 +219,29 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     let public_inputs_field = circuit.get_public_inputs();
     let public_inputs_serialized = circuit
         .get_public_inputs_serialized()
-        .map_err(|e| JsValue::from_str(&format!("Failed to serialize public inputs: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to serialize public inputs: {}", e)))?;
 
     let proof = Groth16::<Bn254>::prove(&pk, circuit, &mut rng)
-        .map_err(|e| JsValue::from_str(&format!("Failed to generate proof: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to generate proof: {}", e)))?;
 
     // Serialize proof components (compressed format)
     let mut proof_a_bytes = Vec::new();
     proof
         .a
         .serialize_compressed(&mut proof_a_bytes)
-        .map_err(|e| JsValue::from_str(&format!("Failed to serialize proof.a: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to serialize proof.a: {}", e)))?;
 
     let mut proof_b_bytes = Vec::new();
     proof
         .b
         .serialize_compressed(&mut proof_b_bytes)
-        .map_err(|e| JsValue::from_str(&format!("Failed to serialize proof.b: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to serialize proof.b: {}", e)))?;
 
     let mut proof_c_bytes = Vec::new();
     proof
         .c
         .serialize_compressed(&mut proof_c_bytes)
-        .map_err(|e| JsValue::from_str(&format!("Failed to serialize proof.c: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to serialize proof.c: {}", e)))?;
 
     // Serialize proof
     let mut proof_serialized = Vec::new();
@@ -245,7 +263,7 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     };
 
     serde_json::to_string(&output)
-        .map_err(|e| JsValue::from_str(&format!("Failed to serialize output: {}", e)))
+        .map_err(|e| JsValue::from(&format!("Failed to serialize output: {}", e)))
 }
 
 /// Verifies a proof (useful for testing before submitting to chain)
@@ -260,24 +278,24 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
 pub fn verify(proof_json: &str, verifying_key_hex: &str) -> Result<String, JsValue> {
     // Parse proof output
     let proof_output: ProofOutput = serde_json::from_str(proof_json)
-        .map_err(|e| JsValue::from_str(&format!("Failed to parse proof JSON: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to parse proof JSON: {}", e)))?;
 
     // Parse verifying key
     let vk_bytes = hex::decode(verifying_key_hex)
-        .map_err(|e| JsValue::from_str(&format!("Failed to decode verifying key hex: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to decode verifying key hex: {}", e)))?;
 
     let vk = ark_groth16::VerifyingKey::<Bn254>::deserialize_compressed(&vk_bytes[..])
-        .map_err(|e| JsValue::from_str(&format!("Failed to deserialize verifying key: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to deserialize verifying key: {}", e)))?;
 
     // Deserialize proof components
     let proof_a = ark_bn254::G1Affine::deserialize_compressed(&proof_output.proof_a[..])
-        .map_err(|e| JsValue::from_str(&format!("Failed to deserialize proof.a: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to deserialize proof.a: {}", e)))?;
 
     let proof_b = ark_bn254::G2Affine::deserialize_compressed(&proof_output.proof_b[..])
-        .map_err(|e| JsValue::from_str(&format!("Failed to deserialize proof.b: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to deserialize proof.b: {}", e)))?;
 
     let proof_c = ark_bn254::G1Affine::deserialize_compressed(&proof_output.proof_c[..])
-        .map_err(|e| JsValue::from_str(&format!("Failed to deserialize proof.c: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to deserialize proof.c: {}", e)))?;
 
     let proof = ark_groth16::Proof {
         a: proof_a,
@@ -296,24 +314,31 @@ pub fn verify(proof_json: &str, verifying_key_hex: &str) -> Result<String, JsVal
     // Verify proof
     let pvk = ark_groth16::prepare_verifying_key(&vk);
     let is_valid = Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs)
-        .map_err(|e| JsValue::from_str(&format!("Verification failed: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Verification failed: {}", e)))?;
 
     Ok(is_valid.to_string())
 }
 
 // Helper functions
+fn format_field_parse_error(field_name: &str, error: JsValue) -> JsValue {
+    let err_msg = error
+        .as_string()
+        .unwrap_or_else(|| format!("parse {} error", field_name));
+    JsValue::from(&format!("Failed to parse {}: {}", field_name, err_msg))
+}
+
 fn parse_field_element(s: &str) -> Result<Fr, JsValue> {
     // Handle both decimal and hex strings
     let s = s.trim();
 
     let big_uint = BigUint::from_str(s)
-        .map_err(|e| JsValue::from_str(&format!("Failed to parse decimal '{}': {}", s, e)))?;
+        .map_err(|e| JsValue::from(&format!("Failed to parse decimal '{}': {}", s, e)))?;
     Ok(Fr::from(big_uint))
 }
 
 fn parse_merkle_path(path_data: &[[String; 2]]) -> Result<Path<MERKLE_TREE_LEVEL>, JsValue> {
     if path_data.len() != MERKLE_TREE_LEVEL {
-        return Err(JsValue::from_str(&format!(
+        return Err(JsValue::from(&format!(
             "Invalid Merkle path length: expected {}, got {}",
             MERKLE_TREE_LEVEL,
             path_data.len()
@@ -323,8 +348,14 @@ fn parse_merkle_path(path_data: &[[String; 2]]) -> Result<Path<MERKLE_TREE_LEVEL
     let mut path = [(Fr::from(0u64), Fr::from(0u64)); MERKLE_TREE_LEVEL];
 
     for (i, pair) in path_data.iter().enumerate() {
-        let left = parse_field_element(&pair[0])?;
-        let right = parse_field_element(&pair[1])?;
+        let left = parse_field_element(&pair[0]).map_err(|e| {
+            let field_name = format!("left at path level {}", i);
+            format_field_parse_error(&field_name, e)
+        })?;
+        let right = parse_field_element(&pair[1]).map_err(|e| {
+            let field_name = format!("right at path level {}", i);
+            format_field_parse_error(&field_name, e)
+        })?;
         path[i] = (left, right);
     }
 

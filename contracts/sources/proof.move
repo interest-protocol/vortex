@@ -64,8 +64,8 @@ public(package) fun ext_data_hash(self: Proof): u256 {
 public(package) fun public_inputs(self: Proof): PublicProofInputs {
     let bytes = vector[
         self.root.to_field(),
-        // u64 is smaller than the field modulus of bn254, so we can use to_bytes directly
-        self.public_value.to_bytes(),
+        // u64 is smaller than the field modulus of bn254, so we can use it directly
+        (self.public_value as u256),
         self.ext_data_hash.to_field(),
         self.input_nullifiers[0].to_field(),
         self.input_nullifiers[1].to_field(),
@@ -73,10 +73,12 @@ public(package) fun public_inputs(self: Proof): PublicProofInputs {
         self.output_commitments[1].to_field(),
     ];
 
-    groth16::public_proof_inputs_from_bytes(bytes.flatten())
+   
+
+    groth16::public_proof_inputs_from_bytes(bytes.to_bytes())
 }
 
 // === Aliases ===
 
-use fun vortex::vortex_utils::u64_to_bytes as u64.to_bytes;
 use fun vortex::vortex_utils::u256_to_field as u256.to_field;
+use fun vortex::vortex_utils::vector_u256_to_bytes as vector.to_bytes;
