@@ -105,46 +105,32 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         .map_err(|e| JsValue::from(&format!("Failed to deserialize proving key: {}", e)))?;
 
     // Convert input strings to field elements
-    let root = parse_field_element(&input.root).map_err(|e| format_field_parse_error("root", e))?;
-    let public_amount = parse_field_element(&input.public_amount)
-        .map_err(|e| format_field_parse_error("public amount", e))?;
-    let ext_data_hash = parse_field_element(&input.ext_data_hash)
-        .map_err(|e| format_field_parse_error("ext data hash", e))?;
-    let input_nullifier_0 = parse_field_element(&input.input_nullifier_0)
-        .map_err(|e| format_field_parse_error("input nullifier 0", e))?;
-    let input_nullifier_1 = parse_field_element(&input.input_nullifier_1)
-        .map_err(|e| format_field_parse_error("input nullifier 1", e))?;
-    let output_commitment_0 = parse_field_element(&input.output_commitment_0)
-        .map_err(|e| format_field_parse_error("output commitment 0", e))?;
-    let output_commitment_1 = parse_field_element(&input.output_commitment_1)
-        .map_err(|e| format_field_parse_error("output commitment 1", e))?;
+    let root = parse_field_element(&input.root)?;
+    let public_amount = parse_field_element(&input.public_amount)?;
+    let ext_data_hash = parse_field_element(&input.ext_data_hash)?;
+    let input_nullifier_0 = parse_field_element(&input.input_nullifier_0)?;
+    let input_nullifier_1 = parse_field_element(&input.input_nullifier_1)?;
+    let output_commitment_0 = parse_field_element(&input.output_commitment_0)?;
+    let output_commitment_1 = parse_field_element(&input.output_commitment_1)?;
 
     let in_private_keys = [
-        parse_field_element(&input.in_private_key_0)
-            .map_err(|e| format_field_parse_error("in private key 0", e))?,
-        parse_field_element(&input.in_private_key_1)
-            .map_err(|e| format_field_parse_error("in private key 1", e))?,
+        parse_field_element(&input.in_private_key_0)?,
+        parse_field_element(&input.in_private_key_1)?,
     ];
 
     let in_amounts = [
-        parse_field_element(&input.in_amount_0)
-            .map_err(|e| format_field_parse_error("in amount 0", e))?,
-        parse_field_element(&input.in_amount_1)
-            .map_err(|e| format_field_parse_error("in amount 1", e))?,
+        parse_field_element(&input.in_amount_0)?,
+        parse_field_element(&input.in_amount_1)?,
     ];
 
     let in_blindings = [
-        parse_field_element(&input.in_blinding_0)
-            .map_err(|e| format_field_parse_error("in blinding 0", e))?,
-        parse_field_element(&input.in_blinding_1)
-            .map_err(|e| format_field_parse_error("in blinding 1", e))?,
+        parse_field_element(&input.in_blinding_0)?,
+        parse_field_element(&input.in_blinding_1)?,
     ];
 
     let in_path_indices = [
-        parse_field_element(&input.in_path_index_0)
-            .map_err(|e| format_field_parse_error("in path index 0", e))?,
-        parse_field_element(&input.in_path_index_1)
-            .map_err(|e| format_field_parse_error("in path index 1", e))?,
+        parse_field_element(&input.in_path_index_0)?,
+        parse_field_element(&input.in_path_index_1)?,
     ];
 
     // Parse Merkle paths
@@ -154,24 +140,18 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     ];
 
     let out_public_keys = [
-        parse_field_element(&input.out_public_key_0)
-            .map_err(|e| format_field_parse_error("out public key 0", e))?,
-        parse_field_element(&input.out_public_key_1)
-            .map_err(|e| format_field_parse_error("out public key 1", e))?,
+        parse_field_element(&input.out_public_key_0)?,
+        parse_field_element(&input.out_public_key_1)?,
     ];
 
     let out_amounts = [
-        parse_field_element(&input.out_amount_0)
-            .map_err(|e| format_field_parse_error("out amount 0", e))?,
-        parse_field_element(&input.out_amount_1)
-            .map_err(|e| format_field_parse_error("out amount 1", e))?,
+        parse_field_element(&input.out_amount_0)?,
+        parse_field_element(&input.out_amount_1)?,
     ];
 
     let out_blindings = [
-        parse_field_element(&input.out_blinding_0)
-            .map_err(|e| format_field_parse_error("out blinding 0", e))?,
-        parse_field_element(&input.out_blinding_1)
-            .map_err(|e| format_field_parse_error("out blinding 1", e))?,
+        parse_field_element(&input.out_blinding_0)?,
+        parse_field_element(&input.out_blinding_1)?,
     ];
 
     // Create circuit
@@ -320,13 +300,6 @@ pub fn verify(proof_json: &str, verifying_key_hex: &str) -> Result<String, JsVal
 }
 
 // Helper functions
-fn format_field_parse_error(field_name: &str, error: JsValue) -> JsValue {
-    let err_msg = error
-        .as_string()
-        .unwrap_or_else(|| format!("parse {} error", field_name));
-    JsValue::from(&format!("Failed to parse {}: {}", field_name, err_msg))
-}
-
 fn parse_field_element(s: &str) -> Result<Fr, JsValue> {
     // Handle both decimal and hex strings
     let s = s.trim();
@@ -348,14 +321,8 @@ fn parse_merkle_path(path_data: &[[String; 2]]) -> Result<Path<MERKLE_TREE_LEVEL
     let mut path = [(Fr::from(0u64), Fr::from(0u64)); MERKLE_TREE_LEVEL];
 
     for (i, pair) in path_data.iter().enumerate() {
-        let left = parse_field_element(&pair[0]).map_err(|e| {
-            let field_name = format!("left at path level {}", i);
-            format_field_parse_error(&field_name, e)
-        })?;
-        let right = parse_field_element(&pair[1]).map_err(|e| {
-            let field_name = format!("right at path level {}", i);
-            format_field_parse_error(&field_name, e)
-        })?;
+        let left = parse_field_element(&pair[0])?;
+        let right = parse_field_element(&pair[1])?;
         path[i] = (left, right);
     }
 

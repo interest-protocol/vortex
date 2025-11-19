@@ -313,7 +313,10 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
             let merkle_path_membership =
                 merkle_paths[i].check_membership(&root, &commitment, &hasher)?;
 
-            merkle_path_membership.enforce_equal(&Boolean::constant(true))?;
+            // Only enforce Merkle membership when amount is non-zero
+            let amount_is_non_zero = amount_is_zero.not();
+            merkle_path_membership
+                .conditional_enforce_equal(&Boolean::constant(true), &amount_is_non_zero)?;
 
             sum_ins += &in_amounts[i];
         }
