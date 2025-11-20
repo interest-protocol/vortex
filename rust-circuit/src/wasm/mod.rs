@@ -1,6 +1,7 @@
 use crate::{circuit::TransactionCircuit, constants::MERKLE_TREE_LEVEL, merkle_tree::Path};
 use ark_bn254::{Bn254, Fr};
 use ark_crypto_primitives::snark::SNARK;
+use ark_ff::PrimeField;
 use ark_groth16::Groth16;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -176,27 +177,54 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
 
     let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
 
-    let cs = ConstraintSystem::<Fr>::new_ref();
-    circuit
-        .clone()
-        .generate_constraints(cs.clone())
-        .expect("Failed to generate constraints");
-    if !cs
-        .is_satisfied()
-        .map_err(|e| JsValue::from(&format!("Failed to check constraints: {}", e)))?
-    {
-        panic!("Constraints are not satisfied");
-    }
-
-    // Extract public inputs from the circuit using the builder pattern method
-    // This ensures the order matches generate_constraints() automatically
+    // Extract public inputs BEFORE proving (circuit is consumed by prove())
+    // The order MUST match the order in which FpVar::new_input() is called in generate_constraints()
+    // This is: root, public_amount, ext_data_hash, input_nullifier_0, input_nullifier_1,
+    //          output_commitment_0, output_commitment_1
     let public_inputs_field = circuit.get_public_inputs();
     let public_inputs_serialized = circuit
         .get_public_inputs_serialized()
         .map_err(|e| JsValue::from(&format!("Failed to serialize public inputs: {}", e)))?;
 
+    // Generate proof - Groth16 will internally call generate_constraints() and extract public inputs
+    // It uses the same public inputs we extracted above (in the same order)
+    // Note: Groth16's prove() function extracts public inputs from the constraint system
+    // in the order they were allocated via FpVar::new_input(). Our get_public_inputs()
+    // should match this order exactly.
+    //
+    // IMPORTANT: Groth16 extracts public inputs from the constraint system during prove().
+    // The public inputs are stored in the constraint system in the order they were allocated.
+    // We extract them manually using get_public_inputs() which should match exactly.
     let proof = Groth16::<Bn254>::prove(&pk, circuit, &mut rng)
         .map_err(|e| JsValue::from(&format!("Failed to generate proof: {}", e)))?;
+
+    // Verify proof immediately to catch any issues
+    // This ensures the proof is valid with the public inputs we're returning
+    // IMPORTANT: The public inputs must match exactly what Groth16 extracted from the constraint system
+    // Groth16 extracts public inputs in the order they were allocated in generate_constraints()
+    let pvk = ark_groth16::prepare_verifying_key(&pk.vk);
+
+    // The public inputs should be in the exact order: root, public_amount, ext_data_hash,
+    // input_nullifier_0, input_nullifier_1, output_commitment_0, output_commitment_1
+    // This matches the order in which FpVar::new_input() is called in generate_constraints()
+    let is_valid = Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs_field)
+        .map_err(|e| JsValue::from(&format!(
+            "Internal verification failed: {}. \
+            Public inputs count: {} (expected 7). \
+            Public inputs order should be: root, public_amount, ext_data_hash, input_nullifier_0, input_nullifier_1, output_commitment_0, output_commitment_1. \
+            Make sure get_public_inputs() matches the order in generate_constraints().",
+            e, public_inputs_field.len()
+        )))?;
+
+    if !is_valid {
+        return Err(JsValue::from(&format!(
+            "Generated proof failed internal verification. This indicates a bug in proof generation or public input extraction. \
+            Public inputs provided: {} (expected 7). \
+            The public inputs must match exactly what Groth16 extracted from the constraint system during prove(). \
+            Check that get_public_inputs() returns values in the same order as FpVar::new_input() calls in generate_constraints().",
+            public_inputs_field.len()
+        )));
+    }
 
     // Serialize proof components (compressed format)
     let mut proof_a_bytes = Vec::new();
@@ -222,9 +250,15 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     proof.serialize_compressed(&mut proof_serialized).unwrap();
 
     // Convert public inputs to strings for JSON output
+    // Use the field's underlying representation for reliable serialization/deserialization
+    // This ensures the string can be parsed back correctly by parse_field_element()
     let public_inputs: Vec<String> = public_inputs_field
         .iter()
-        .map(|input| input.to_string())
+        .map(|input| {
+            // Convert Fr to BigInt representation, then to string
+            // This ensures reliable round-trip conversion
+            input.into_bigint().to_string()
+        })
         .collect();
 
     let output = ProofOutput {

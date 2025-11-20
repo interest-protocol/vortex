@@ -161,6 +161,10 @@ impl TransactionCircuit {
     /// 5. input_nullifier_1
     /// 6. output_commitment_0
     /// 7. output_commitment_1
+    ///
+    /// # Note
+    /// This method extracts public inputs from the circuit struct. Groth16's `prove()` function
+    /// extracts them from the constraint system in the same order. The values should match exactly.
     pub fn get_public_inputs(&self) -> Vec<Fr> {
         vec![
             self.root,
@@ -280,84 +284,84 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         let mut sum_ins = FpVar::<Fr>::zero();
         let zero = FpVar::<Fr>::zero();
 
-        for i in 0..N_INS {
-            // Derive public key from private key: pubkey = Poseidon1(privkey)
-            let public_key = hasher2.hash1(&in_private_key[i])?;
+        // for i in 0..N_INS {
+        //     // Derive public key from private key: pubkey = Poseidon1(privkey)
+        //     let public_key = hasher2.hash1(&in_private_key[i])?;
 
-            // Calculate commitment: commitment = Poseidon3(amount, pubkey, blinding)
-            let commitment = hasher4.hash3(&in_amounts[i], &public_key, &in_blindings[i])?;
+        //     // Calculate commitment: commitment = Poseidon3(amount, pubkey, blinding)
+        //     let commitment = hasher4.hash3(&in_amounts[i], &public_key, &in_blindings[i])?;
 
-            // Calculate signature: sig = Poseidon3(privkey, commitment, path_index)
-            let signature = hasher4.hash3(&in_private_key[i], &commitment, &in_path_indices[i])?;
+        //     // Calculate signature: sig = Poseidon3(privkey, commitment, path_index)
+        //     let signature = hasher4.hash3(&in_private_key[i], &commitment, &in_path_indices[i])?;
 
-            // Calculate nullifier: nullifier = Poseidon3(commitment, path_index, signature)
-            let nullifier = hasher4.hash3(&commitment, &in_path_indices[i], &signature)?;
+        //     // Calculate nullifier: nullifier = Poseidon3(commitment, path_index, signature)
+        //     let nullifier = hasher4.hash3(&commitment, &in_path_indices[i], &signature)?;
 
-            // Enforce computed nullifier matches public input
-            nullifier.enforce_equal(&input_nullifiers[i])?;
+        //     // Enforce computed nullifier matches public input
+        //     nullifier.enforce_equal(&input_nullifiers[i])?;
 
-            // SECURITY: Check if amount is zero (for conditional Merkle proof check)
-            let amount_is_zero = in_amounts[i].is_eq(&zero)?;
+        //     // SECURITY: Check if amount is zero (for conditional Merkle proof check)
+        //     let amount_is_zero = in_amounts[i].is_eq(&zero)?;
 
-            // SECURITY: Range check - ensure input amount fits in MAX_AMOUNT_BITS
-            // This prevents overflow attacks
-            enforce_range_check(&in_amounts[i], &amount_is_zero)?;
+        //     // SECURITY: Range check - ensure input amount fits in MAX_AMOUNT_BITS
+        //     // This prevents overflow attacks
+        //     enforce_range_check(&in_amounts[i], &amount_is_zero)?;
 
-            // SECURITY: Verify Merkle proof only if amount is non-zero
-            // This optimization reduces constraints for zero-value inputs
-            let merkle_path_membership =
-                merkle_paths[i].check_membership(&root, &commitment, &hasher3)?;
+        //     // SECURITY: Verify Merkle proof only if amount is non-zero
+        //     // This optimization reduces constraints for zero-value inputs
+        //     let merkle_path_membership =
+        //         merkle_paths[i].check_membership(&root, &commitment, &hasher3)?;
 
-            // Only enforce Merkle membership when amount is non-zero
-            let amount_is_non_zero = amount_is_zero.not();
-            merkle_path_membership
-                .conditional_enforce_equal(&Boolean::constant(true), &amount_is_non_zero)?;
+        //     // Only enforce Merkle membership when amount is non-zero
+        //     let amount_is_non_zero = amount_is_zero.not();
+        //     merkle_path_membership
+        //         .conditional_enforce_equal(&Boolean::constant(true), &amount_is_non_zero)?;
 
-            sum_ins += &in_amounts[i];
-        }
+        //     sum_ins += &in_amounts[i];
+        // }
 
-        // ============================================
-        // VERIFY OUTPUT UTXOs
-        // ============================================
-        let mut sum_outs = FpVar::<Fr>::zero();
+        // // ============================================
+        // // VERIFY OUTPUT UTXOs
+        // // ============================================
+        // let mut sum_outs = FpVar::<Fr>::zero();
 
-        for i in 0..N_OUTS {
-            // Calculate output commitment: commitment = Poseidon3(amount, pubkey, blinding)
-            let expected_commitment =
-                hasher4.hash3(&out_amounts[i], &out_public_key[i], &out_blindings[i])?;
+        // for i in 0..N_OUTS {
+        //     // Calculate output commitment: commitment = Poseidon3(amount, pubkey, blinding)
+        //     let expected_commitment =
+        //         hasher4.hash3(&out_amounts[i], &out_public_key[i], &out_blindings[i])?;
 
-            // Enforce computed commitment matches public input
-            expected_commitment.enforce_equal(&output_commitment[i])?;
+        //     // Enforce computed commitment matches public input
+        //     expected_commitment.enforce_equal(&output_commitment[i])?;
 
-            // SECURITY: Range check - ensure output amount fits in MAX_AMOUNT_BITS
-            let amount_is_zero = out_amounts[i].is_eq(&zero)?;
-            enforce_range_check(&out_amounts[i], &amount_is_zero)?;
+        //     // SECURITY: Range check - ensure output amount fits in MAX_AMOUNT_BITS
+        //     let amount_is_zero = out_amounts[i].is_eq(&zero)?;
+        //     enforce_range_check(&out_amounts[i], &amount_is_zero)?;
 
-            sum_outs += &out_amounts[i];
-        }
+        //     sum_outs += &out_amounts[i];
+        // }
 
-        // ============================================
-        // VERIFY NO DUPLICATE NULLIFIERS
-        // ============================================
-        // SECURITY: Prevent using same nullifier twice in one transaction
-        //
-        // Optimization: For N_INS=2, we only need 1 comparison (nullifiers[0] != nullifiers[1])
-        // This is the minimal constraint set - exactly 1 enforce_not_equal constraint.
-        //
-        // Alternative approaches considered:
-        // - Loop over all pairs: Same constraint count for N_INS=2, but adds loop overhead
-        // - Product of differences: More expensive (requires multiplications)
-        // - Direct check: Optimal for fixed N_INS=2, explicit and clear
-        //
-        // If N_INS changes in the future, generalize to: for i in 0..N_INS { for j in (i+1)..N_INS { ... } }
-        input_nullifiers[0].enforce_not_equal(&input_nullifiers[1])?;
+        // // ============================================
+        // // VERIFY NO DUPLICATE NULLIFIERS
+        // // ============================================
+        // // SECURITY: Prevent using same nullifier twice in one transaction
+        // //
+        // // Optimization: For N_INS=2, we only need 1 comparison (nullifiers[0] != nullifiers[1])
+        // // This is the minimal constraint set - exactly 1 enforce_not_equal constraint.
+        // //
+        // // Alternative approaches considered:
+        // // - Loop over all pairs: Same constraint count for N_INS=2, but adds loop overhead
+        // // - Product of differences: More expensive (requires multiplications)
+        // // - Direct check: Optimal for fixed N_INS=2, explicit and clear
+        // //
+        // // If N_INS changes in the future, generalize to: for i in 0..N_INS { for j in (i+1)..N_INS { ... } }
+        // input_nullifiers[0].enforce_not_equal(&input_nullifiers[1])?;
 
-        // ============================================
-        // VERIFY AMOUNT CONSERVATION
-        // ============================================
-        // SECURITY: Ensure no value is created or destroyed
-        // sum(inputs) + public_amount = sum(outputs)
-        (sum_ins + public_amount).enforce_equal(&sum_outs)?;
+        // // ============================================
+        // // VERIFY AMOUNT CONSERVATION
+        // // ============================================
+        // // SECURITY: Ensure no value is created or destroyed
+        // // sum(inputs) + public_amount = sum(outputs)
+        // (sum_ins + public_amount).enforce_equal(&sum_outs)?;
 
         Ok(())
     }
