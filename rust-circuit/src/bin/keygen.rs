@@ -5,16 +5,14 @@ use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
 use std::fs;
 use std::path::Path;
-use vortex::{
-    circuit::TransactionCircuit,
-    poseidon::{poseidon_bn254, PoseidonHash},
-};
+use vortex::circuit::TransactionCircuit;
+use vortex::poseidon::{poseidon_bn254, PoseidonHash};
 
 pub fn main() -> anyhow::Result<()> {
     println!("Generating Groth16 proving and verifying keys...");
 
-    let poseidon_config = poseidon_bn254();
-    let hasher = PoseidonHash::new(poseidon_config);
+    let hasher = PoseidonHash::new(poseidon_bn254());
+
     let circuit = TransactionCircuit::empty(hasher);
 
     // Use deterministic RNG for reproducibility (test mode)

@@ -1,9 +1,4 @@
-use crate::{
-    circuit::TransactionCircuit,
-    constants::MERKLE_TREE_LEVEL,
-    merkle_tree::Path,
-    poseidon::{poseidon_bn254, PoseidonHash},
-};
+use crate::{circuit::TransactionCircuit, constants::MERKLE_TREE_LEVEL, merkle_tree::Path};
 use ark_bn254::{Bn254, Fr};
 use ark_crypto_primitives::snark::SNARK;
 use ark_groth16::Groth16;
@@ -155,11 +150,7 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     ];
 
     // Create circuit
-    let poseidon_config = poseidon_bn254();
-    let hasher = PoseidonHash::new(poseidon_config);
-
     let circuit = TransactionCircuit::new(
-        hasher,
         root,
         public_amount,
         ext_data_hash,
@@ -190,59 +181,62 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         .clone()
         .generate_constraints(cs.clone())
         .expect("Failed to generate constraints");
-    if !cs.is_satisfied().expect("Failed to check constraints") {
+    if !cs
+        .is_satisfied()
+        .map_err(|e| JsValue::from(&format!("Failed to check constraints: {}", e)))?
+    {
         panic!("Constraints are not satisfied");
     }
 
-    // Extract public inputs from the circuit using the builder pattern method
-    // This ensures the order matches generate_constraints() automatically
-    let public_inputs_field = circuit.get_public_inputs();
-    let public_inputs_serialized = circuit
-        .get_public_inputs_serialized()
-        .map_err(|e| JsValue::from(&format!("Failed to serialize public inputs: {}", e)))?;
+    // // Extract public inputs from the circuit using the builder pattern method
+    // // This ensures the order matches generate_constraints() automatically
+    // let public_inputs_field = circuit.get_public_inputs();
+    // let public_inputs_serialized = circuit
+    //     .get_public_inputs_serialized()
+    //     .map_err(|e| JsValue::from(&format!("Failed to serialize public inputs: {}", e)))?;
 
-    let proof = Groth16::<Bn254>::prove(&pk, circuit, &mut rng)
-        .map_err(|e| JsValue::from(&format!("Failed to generate proof: {}", e)))?;
+    // let proof = Groth16::<Bn254>::prove(&pk, circuit, &mut rng)
+    //     .map_err(|e| JsValue::from(&format!("Failed to generate proof: {}", e)))?;
 
-    // Serialize proof components (compressed format)
-    let mut proof_a_bytes = Vec::new();
-    proof
-        .a
-        .serialize_compressed(&mut proof_a_bytes)
-        .map_err(|e| JsValue::from(&format!("Failed to serialize proof.a: {}", e)))?;
+    // // Serialize proof components (compressed format)
+    // let mut proof_a_bytes = Vec::new();
+    // proof
+    //     .a
+    //     .serialize_compressed(&mut proof_a_bytes)
+    //     .map_err(|e| JsValue::from(&format!("Failed to serialize proof.a: {}", e)))?;
 
-    let mut proof_b_bytes = Vec::new();
-    proof
-        .b
-        .serialize_compressed(&mut proof_b_bytes)
-        .map_err(|e| JsValue::from(&format!("Failed to serialize proof.b: {}", e)))?;
+    // let mut proof_b_bytes = Vec::new();
+    // proof
+    //     .b
+    //     .serialize_compressed(&mut proof_b_bytes)
+    //     .map_err(|e| JsValue::from(&format!("Failed to serialize proof.b: {}", e)))?;
 
-    let mut proof_c_bytes = Vec::new();
-    proof
-        .c
-        .serialize_compressed(&mut proof_c_bytes)
-        .map_err(|e| JsValue::from(&format!("Failed to serialize proof.c: {}", e)))?;
+    // let mut proof_c_bytes = Vec::new();
+    // proof
+    //     .c
+    //     .serialize_compressed(&mut proof_c_bytes)
+    //     .map_err(|e| JsValue::from(&format!("Failed to serialize proof.c: {}", e)))?;
 
-    // Serialize proof
-    let mut proof_serialized = Vec::new();
-    proof.serialize_compressed(&mut proof_serialized).unwrap();
+    // // Serialize proof
+    // let mut proof_serialized = Vec::new();
+    // proof.serialize_compressed(&mut proof_serialized).unwrap();
 
-    // Convert public inputs to strings for JSON output
-    let public_inputs: Vec<String> = public_inputs_field
-        .iter()
-        .map(|input| input.to_string())
-        .collect();
+    // // Convert public inputs to strings for JSON output
+    // let public_inputs: Vec<String> = public_inputs_field
+    //     .iter()
+    //     .map(|input| input.to_string())
+    //     .collect();
 
-    let output = ProofOutput {
-        proof_a: proof_a_bytes,
-        proof_b: proof_b_bytes,
-        proof_c: proof_c_bytes,
-        public_inputs,
-        proof_serialized_hex: hex::encode(proof_serialized),
-        public_inputs_serialized_hex: hex::encode(public_inputs_serialized),
-    };
+    // let output = ProofOutput {
+    //     proof_a: proof_a_bytes,
+    //     proof_b: proof_b_bytes,
+    //     proof_c: proof_c_bytes,
+    //     public_inputs,
+    //     proof_serialized_hex: hex::encode(proof_serialized),
+    //     public_inputs_serialized_hex: hex::encode(public_inputs_serialized),
+    // };
 
-    serde_json::to_string(&output)
+    serde_json::to_string(&"true")
         .map_err(|e| JsValue::from(&format!("Failed to serialize output: {}", e)))
 }
 
@@ -255,7 +249,7 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
 /// # Returns
 /// "true" if proof is valid, "false" otherwise
 #[wasm_bindgen]
-pub fn verify(proof_json: &str, verifying_key_hex: &str) -> Result<String, JsValue> {
+pub fn verify(proof_json: &str, verifying_key_hex: &str) -> Result<bool, JsValue> {
     // Parse proof output
     let proof_output: ProofOutput = serde_json::from_str(proof_json)
         .map_err(|e| JsValue::from(&format!("Failed to parse proof JSON: {}", e)))?;
@@ -296,7 +290,7 @@ pub fn verify(proof_json: &str, verifying_key_hex: &str) -> Result<String, JsVal
     let is_valid = Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs)
         .map_err(|e| JsValue::from(&format!("Verification failed: {}", e)))?;
 
-    Ok(is_valid.to_string())
+    Ok(is_valid)
 }
 
 // Helper functions
