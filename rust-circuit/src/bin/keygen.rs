@@ -1,8 +1,10 @@
 use ark_bn254::Bn254;
 use ark_groth16::Groth16;
+
 use ark_serialize::CanonicalSerialize;
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
+
 use std::fs;
 use std::path::Path;
 use vortex::circuit::TransactionCircuit;
@@ -12,11 +14,11 @@ pub fn main() -> anyhow::Result<()> {
 
     let circuit = TransactionCircuit::empty();
 
-    // Use deterministic RNG for reproducibility (test mode)
     let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
 
     println!("Running setup (this may take several minutes)...");
     let pk = Groth16::<Bn254>::generate_random_parameters_with_reduction(circuit, &mut rng)?;
+
     let vk = pk.vk.clone();
 
     // Prepare keys directory

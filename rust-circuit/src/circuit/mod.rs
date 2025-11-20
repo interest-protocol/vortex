@@ -9,6 +9,7 @@ use ark_r1cs_std::{
     fields::fp::FpVar,
     prelude::{AllocVar, Boolean, EqGadget, FieldVar},
 };
+
 use ark_relations::{
     ns,
     r1cs::{self, ConstraintSynthesizer, ConstraintSystemRef},
@@ -203,24 +204,22 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         // Order must match Move contract's verification expectations
         // Note: In Move, these are serialized as individual elements, not vectors
         // ============================================
+
         let root = FpVar::new_input(ns!(cs, "root"), || Ok(self.root))?;
         let public_amount = FpVar::new_input(ns!(cs, "public_amount"), || Ok(self.public_amount))?;
-        // ext_data_hash is a public input that must be included in the proof
-        // It's allocated here to ensure it's in the public input vector
         let _ext_data_hash = FpVar::new_input(ns!(cs, "ext_data_hash"), || Ok(self.ext_data_hash))?;
-
-        // Individual public inputs (not arrays) to match Move contract serialization
         let input_nullifier_0 =
             FpVar::new_input(ns!(cs, "input_nullifier_0"), || Ok(self.input_nullifier_0))?;
         let input_nullifier_1 =
             FpVar::new_input(ns!(cs, "input_nullifier_1"), || Ok(self.input_nullifier_1))?;
-
         let output_commitment_0 = FpVar::new_input(ns!(cs, "output_commitment_0"), || {
             Ok(self.output_commitment_0)
         })?;
         let output_commitment_1 = FpVar::new_input(ns!(cs, "output_commitment_1"), || {
             Ok(self.output_commitment_1)
         })?;
+
+        root.enforce_equal(&root)?;
 
         // Create arrays from individual variables for use in loops
         let input_nullifiers = [input_nullifier_0, input_nullifier_1];
@@ -284,41 +283,41 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         let mut sum_ins = FpVar::<Fr>::zero();
         let zero = FpVar::<Fr>::zero();
 
-        // for i in 0..N_INS {
-        //     // Derive public key from private key: pubkey = Poseidon1(privkey)
-        //     let public_key = hasher2.hash1(&in_private_key[i])?;
+        for i in 0..N_INS {
+            // Derive public key from private key: pubkey = Poseidon1(privkey)
+            let public_key = hasher2.hash1(&in_private_key[i])?;
 
-        //     // Calculate commitment: commitment = Poseidon3(amount, pubkey, blinding)
-        //     let commitment = hasher4.hash3(&in_amounts[i], &public_key, &in_blindings[i])?;
+            // Calculate commitment: commitment = Poseidon3(amount, pubkey, blinding)
+            let commitment = hasher4.hash3(&in_amounts[i], &public_key, &in_blindings[i])?;
 
-        //     // Calculate signature: sig = Poseidon3(privkey, commitment, path_index)
-        //     let signature = hasher4.hash3(&in_private_key[i], &commitment, &in_path_indices[i])?;
+            // Calculate signature: sig = Poseidon3(privkey, commitment, path_index)
+            let signature = hasher4.hash3(&in_private_key[i], &commitment, &in_path_indices[i])?;
 
-        //     // Calculate nullifier: nullifier = Poseidon3(commitment, path_index, signature)
-        //     let nullifier = hasher4.hash3(&commitment, &in_path_indices[i], &signature)?;
+            // Calculate nullifier: nullifier = Poseidon3(commitment, path_index, signature)
+            let nullifier = hasher4.hash3(&commitment, &in_path_indices[i], &signature)?;
 
-        //     // Enforce computed nullifier matches public input
-        //     nullifier.enforce_equal(&input_nullifiers[i])?;
+            // Enforce computed nullifier matches public input
+            nullifier.enforce_equal(&input_nullifiers[i])?;
 
-        //     // SECURITY: Check if amount is zero (for conditional Merkle proof check)
-        //     let amount_is_zero = in_amounts[i].is_eq(&zero)?;
+            // SECURITY: Check if amount is zero (for conditional Merkle proof check)
+            let amount_is_zero = in_amounts[i].is_eq(&zero)?;
 
-        //     // SECURITY: Range check - ensure input amount fits in MAX_AMOUNT_BITS
-        //     // This prevents overflow attacks
-        //     enforce_range_check(&in_amounts[i], &amount_is_zero)?;
+            // SECURITY: Range check - ensure input amount fits in MAX_AMOUNT_BITS
+            // This prevents overflow attacks
+            enforce_range_check(&in_amounts[i], &amount_is_zero)?;
 
-        //     // SECURITY: Verify Merkle proof only if amount is non-zero
-        //     // This optimization reduces constraints for zero-value inputs
-        //     let merkle_path_membership =
-        //         merkle_paths[i].check_membership(&root, &commitment, &hasher3)?;
+            // SECURITY: Verify Merkle proof only if amount is non-zero
+            // This optimization reduces constraints for zero-value inputs
+            let merkle_path_membership =
+                merkle_paths[i].check_membership(&root, &commitment, &hasher3)?;
 
-        //     // Only enforce Merkle membership when amount is non-zero
-        //     let amount_is_non_zero = amount_is_zero.not();
-        //     merkle_path_membership
-        //         .conditional_enforce_equal(&Boolean::constant(true), &amount_is_non_zero)?;
+            // Only enforce Merkle membership when amount is non-zero
+            let amount_is_non_zero = amount_is_zero.not();
+            merkle_path_membership
+                .conditional_enforce_equal(&Boolean::constant(true), &amount_is_non_zero)?;
 
-        //     sum_ins += &in_amounts[i];
-        // }
+            sum_ins += &in_amounts[i];
+        }
 
         // // ============================================
         // // VERIFY OUTPUT UTXOs
@@ -412,4 +411,80 @@ fn enforce_range_check(value: &FpVar<Fr>, value_is_zero: &Boolean<Fr>) -> r1cs::
     }
 
     Ok(())
+}
+
+#[test]
+fn test_circuit_with_valid_inputs() {
+    use crate::poseidon_opt::{hash1, hash3};
+    use ark_relations::r1cs::ConstraintSystem;
+
+    let cs = ConstraintSystem::<Fr>::new_ref();
+
+    // Input 0: zero amount (Merkle check skipped)
+    let private_key_0 = Fr::from(12345u64);
+    let public_key_0 = hash1(&private_key_0);
+    let amount_0 = Fr::from(0u64);
+    let blinding_0 = Fr::from(999u64);
+    let path_index_0 = Fr::from(0u64);
+
+    let commitment_0 = hash3(&amount_0, &public_key_0, &blinding_0);
+    let signature_0 = hash3(&private_key_0, &commitment_0, &path_index_0);
+    let nullifier_0 = hash3(&commitment_0, &path_index_0, &signature_0);
+
+    // Input 1: zero amount (Merkle check skipped)
+    let private_key_1 = Fr::from(67890u64);
+    let public_key_1 = hash1(&private_key_1);
+    let amount_1 = Fr::from(0u64);
+    let blinding_1 = Fr::from(888u64);
+    let path_index_1 = Fr::from(1u64);
+
+    let commitment_1 = hash3(&amount_1, &public_key_1, &blinding_1);
+    let signature_1 = hash3(&private_key_1, &commitment_1, &path_index_1);
+    let nullifier_1 = hash3(&commitment_1, &path_index_1, &signature_1);
+
+    // Output 0: zero amount
+    let out_public_key_0 = public_key_0;
+    let out_amount_0 = Fr::from(0u64);
+    let out_blinding_0 = Fr::from(777u64);
+    let out_commitment_0 = hash3(&out_amount_0, &out_public_key_0, &out_blinding_0);
+
+    // Output 1: zero amount
+    let out_public_key_1 = public_key_1;
+    let out_amount_1 = Fr::from(0u64);
+    let out_blinding_1 = Fr::from(666u64);
+    let out_commitment_1 = hash3(&out_amount_1, &out_public_key_1, &out_blinding_1);
+
+    // Empty merkle paths
+    let merkle_paths = [Path::empty(), Path::empty()];
+
+    let circuit = TransactionCircuit::new(
+        Fr::from(0u64), // root
+        Fr::from(0u64), // public_amount
+        Fr::from(0u64), // ext_data_hash
+        nullifier_0,
+        nullifier_1,
+        out_commitment_0,
+        out_commitment_1,
+        [private_key_0, private_key_1],
+        [amount_0, amount_1],
+        [blinding_0, blinding_1],
+        [path_index_0, path_index_1],
+        merkle_paths,
+        [out_public_key_0, out_public_key_1],
+        [out_amount_0, out_amount_1],
+        [out_blinding_0, out_blinding_1],
+    )
+    .unwrap();
+
+    circuit.generate_constraints(cs.clone()).unwrap();
+
+    println!("Constraints: {}", cs.num_constraints());
+    let is_satisfied = cs.is_satisfied().unwrap();
+    println!("Satisfied: {}", is_satisfied);
+
+    if !is_satisfied {
+        println!("Which failed: {:?}", cs.which_is_unsatisfied());
+    }
+
+    assert!(is_satisfied);
 }

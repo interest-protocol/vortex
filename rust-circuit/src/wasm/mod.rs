@@ -186,6 +186,15 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         .get_public_inputs_serialized()
         .map_err(|e| JsValue::from(&format!("Failed to serialize public inputs: {}", e)))?;
 
+    let cs = ConstraintSystem::<Fr>::new_ref();
+    circuit
+        .clone()
+        .generate_constraints(cs.clone())
+        .expect("Failed to generate constraints");
+    if !cs.is_satisfied().expect("Failed to check constraints") {
+        panic!("Constraints are not satisfied");
+    }
+
     // Generate proof - Groth16 will internally call generate_constraints() and extract public inputs
     // It uses the same public inputs we extracted above (in the same order)
     // Note: Groth16's prove() function extracts public inputs from the constraint system
@@ -197,34 +206,6 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     // We extract them manually using get_public_inputs() which should match exactly.
     let proof = Groth16::<Bn254>::prove(&pk, circuit, &mut rng)
         .map_err(|e| JsValue::from(&format!("Failed to generate proof: {}", e)))?;
-
-    // Verify proof immediately to catch any issues
-    // This ensures the proof is valid with the public inputs we're returning
-    // IMPORTANT: The public inputs must match exactly what Groth16 extracted from the constraint system
-    // Groth16 extracts public inputs in the order they were allocated in generate_constraints()
-    let pvk = ark_groth16::prepare_verifying_key(&pk.vk);
-
-    // The public inputs should be in the exact order: root, public_amount, ext_data_hash,
-    // input_nullifier_0, input_nullifier_1, output_commitment_0, output_commitment_1
-    // This matches the order in which FpVar::new_input() is called in generate_constraints()
-    let is_valid = Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs_field)
-        .map_err(|e| JsValue::from(&format!(
-            "Internal verification failed: {}. \
-            Public inputs count: {} (expected 7). \
-            Public inputs order should be: root, public_amount, ext_data_hash, input_nullifier_0, input_nullifier_1, output_commitment_0, output_commitment_1. \
-            Make sure get_public_inputs() matches the order in generate_constraints().",
-            e, public_inputs_field.len()
-        )))?;
-
-    if !is_valid {
-        return Err(JsValue::from(&format!(
-            "Generated proof failed internal verification. This indicates a bug in proof generation or public input extraction. \
-            Public inputs provided: {} (expected 7). \
-            The public inputs must match exactly what Groth16 extracted from the constraint system during prove(). \
-            Check that get_public_inputs() returns values in the same order as FpVar::new_input() calls in generate_constraints().",
-            public_inputs_field.len()
-        )));
-    }
 
     // Serialize proof components (compressed format)
     let mut proof_a_bytes = Vec::new();
@@ -284,45 +265,45 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
 /// "true" if proof is valid, "false" otherwise
 #[wasm_bindgen]
 pub fn verify(proof_json: &str, verifying_key_hex: &str) -> Result<bool, JsValue> {
-    // Parse proof output
     let proof_output: ProofOutput = serde_json::from_str(proof_json)
-        .map_err(|e| JsValue::from(&format!("Failed to parse proof JSON: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Step 1 - Failed to parse proof JSON: {}", e)))?;
 
-    // Parse verifying key
     let vk_bytes = hex::decode(verifying_key_hex)
-        .map_err(|e| JsValue::from(&format!("Failed to decode verifying key hex: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Step 2 - Failed to decode VK hex: {}", e)))?;
 
     let vk = ark_groth16::VerifyingKey::<Bn254>::deserialize_compressed(&vk_bytes[..])
-        .map_err(|e| JsValue::from(&format!("Failed to deserialize verifying key: {}", e)))?;
+        .map_err(|e| JsValue::from(&format!("Step 3 - Failed to deserialize VK: {}", e)))?;
 
-    // Deserialize proof components
-    let proof_a = ark_bn254::G1Affine::deserialize_compressed(&proof_output.proof_a[..])
-        .map_err(|e| JsValue::from(&format!("Failed to deserialize proof.a: {}", e)))?;
+    let pvk = ark_groth16::prepare_verifying_key(&vk);
 
-    let proof_b = ark_bn254::G2Affine::deserialize_compressed(&proof_output.proof_b[..])
-        .map_err(|e| JsValue::from(&format!("Failed to deserialize proof.b: {}", e)))?;
+    let proof_bytes = hex::decode(&proof_output.proof_serialized_hex)
+        .map_err(|e| JsValue::from(&format!("Step 4 - Failed to decode proof hex: {}", e)))?;
 
-    let proof_c = ark_bn254::G1Affine::deserialize_compressed(&proof_output.proof_c[..])
-        .map_err(|e| JsValue::from(&format!("Failed to deserialize proof.c: {}", e)))?;
+    let proof = ark_groth16::Proof::<Bn254>::deserialize_compressed(&proof_bytes[..])
+        .map_err(|e| JsValue::from(&format!("Step 5 - Failed to deserialize proof: {}", e)))?;
 
-    let proof = ark_groth16::Proof {
-        a: proof_a,
-        b: proof_b,
-        c: proof_c,
-    };
-
-    // Parse public inputs
     let public_inputs: Result<Vec<Fr>, JsValue> = proof_output
         .public_inputs
         .iter()
-        .map(|s| parse_field_element(s))
+        .enumerate()
+        .map(|(i, s)| {
+            parse_field_element(s).map_err(|e| {
+                JsValue::from(&format!(
+                    "Step 6 - Failed to parse public input {}: {:?}",
+                    i, e
+                ))
+            })
+        })
         .collect();
     let public_inputs = public_inputs?;
 
-    // Verify proof
-    let pvk = ark_groth16::prepare_verifying_key(&vk);
-    let is_valid = Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs)
-        .map_err(|e| JsValue::from(&format!("Verification failed: {}", e)))?;
+    let is_valid = Groth16::<Bn254>::verify_proof(&pvk, &proof, &public_inputs).map_err(|e| {
+        JsValue::from(&format!(
+            "Step 7 - Verify failed (inputs={}): {}",
+            public_inputs.len(),
+            e
+        ))
+    })?;
 
     Ok(is_valid)
 }

@@ -88,16 +88,16 @@ public(package) fun to_hash(self: ExtData): vector<u8> {
     hash::blake2b256(&data.flatten()).to_bytes().skip(1)
 }
 
-public(package) fun public_value(ext_data: ExtData): u64 {
+public(package) fun public_value(ext_data: ExtData): u256 {
     let value = ext_data.value();
     let relayer_fee = ext_data.relayer_fee();
 
     if (ext_data.value_sign()) {
         // If it is a deposit, the pool should get value - fee.
-        value - relayer_fee
+        (value - relayer_fee) as u256
     } else {
         // If it is a withdrawal, the pool should get value + fee.
-        value + relayer_fee
+        vortex::vortex_constants::bn254_field_modulus!() - ((value + relayer_fee) as u256)
     }
 }
 
@@ -119,4 +119,4 @@ use fun vortex::vortex_utils::u64_to_bytes as u64.to_bytes;
 use fun vortex::vortex_utils::u256_to_bytes as u256.to_bytes;
 use fun vortex::vortex_utils::bool_to_bytes as bool.to_bytes;
 use fun vortex::vortex_utils::address_to_bytes as address.to_bytes;
-use fun vortex::vortex_utils::vector_u8_to_bytes as vector.to_bytes; 
+use fun vortex::vortex_utils::vector_u8_to_bytes as vector.to_bytes;

@@ -9,7 +9,7 @@ public struct Proof has copy, drop, store {
     points: ProofPoints,
     input_nullifiers: vector<u256>,
     output_commitments: vector<u256>,
-    public_value: u64,
+    public_value: u256,
     ext_data_hash: u256,
 }
 
@@ -18,7 +18,7 @@ public struct Proof has copy, drop, store {
 public fun new(
     proof_points: vector<u8>,
     root: u256,
-    public_value: u64,
+    public_value: u256,
     ext_data_hash: u256,
     input_nullifier0: u256,
     input_nullifier1: u256,
@@ -53,7 +53,7 @@ public(package) fun output_commitments(self: Proof): vector<u256> {
     self.output_commitments
 }
 
-public(package) fun public_value(self: Proof): u64 {
+public(package) fun public_value(self: Proof): u256 {
     self.public_value
 }
 
@@ -64,7 +64,7 @@ public(package) fun ext_data_hash(self: Proof): u256 {
 public(package) fun public_inputs(self: Proof): PublicProofInputs {
     let bytes = vector[
         self.root.to_field(),
-        (self.public_value as u256).to_field(),
+        self.public_value.to_field(),
         self.ext_data_hash.to_field(),
         self.input_nullifiers[0].to_field(),
         self.input_nullifiers[1].to_field(),

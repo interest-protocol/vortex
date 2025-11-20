@@ -51,7 +51,7 @@ public(package) fun append(self: &mut MerkleTree, leaf: u256) {
     let mut right: u256;
     let empty_subtree_hashes = vortex::vortex_constants::empty_subtree_hashes!();
 
-    u64::range_do_eq!(0, HEIGHT, |i| {
+    u64::range_do_eq!(1, HEIGHT, |i| {
         let subtree = &mut self.subtrees[i];
 
         if (current_index % 2 == 0) {

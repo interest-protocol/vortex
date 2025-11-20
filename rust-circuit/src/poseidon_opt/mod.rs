@@ -563,4 +563,30 @@ mod tests {
         // Should have constraints (exact number depends on implementation)
         assert!(cs.num_constraints() > 0);
     }
+
+    #[test]
+    fn test_print_values_for_typescript() {
+        use crate::poseidon_opt::{hash1, hash3};
+        use ark_ff::PrimeField;
+
+        // Input 0
+        let private_key_0 = Fr::from(12345u64);
+        let public_key_0 = hash1(&private_key_0);
+        let amount_0 = Fr::from(0u64);
+        let blinding_0 = Fr::from(999u64);
+        let path_index_0 = Fr::from(0u64);
+
+        let commitment_0 = hash3(&amount_0, &public_key_0, &blinding_0);
+        let signature_0 = hash3(&private_key_0, &commitment_0, &path_index_0);
+        let nullifier_0 = hash3(&commitment_0, &path_index_0, &signature_0);
+
+        println!("privateKey0: {}", private_key_0);
+        println!("publicKey0: {}", public_key_0.into_bigint());
+        println!("amount0: {}", amount_0);
+        println!("blinding0: {}", blinding_0);
+        println!("pathIndex0: {}", path_index_0);
+        println!("commitment0: {}", commitment_0.into_bigint());
+        println!("signature0: {}", signature_0.into_bigint());
+        println!("nullifier0: {}", nullifier_0.into_bigint());
+    }
 }
