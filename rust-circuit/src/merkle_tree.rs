@@ -13,7 +13,7 @@ use ark_r1cs_std::{
 };
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
-use crate::poseidon::{PoseidonHash, PoseidonHashVar};
+use crate::poseidon_opt::{PoseidonOptimized, PoseidonOptimizedVar};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Path<const N: usize> {
@@ -35,7 +35,7 @@ impl<const N: usize> Path<N> {
         &self,
         root_hash: &Fr,
         leaf: &Fr,
-        hasher: &PoseidonHash,
+        hasher: &PoseidonOptimized,
     ) -> anyhow::Result<bool> {
         let root = self
             .calculate_root(leaf, hasher)
@@ -43,7 +43,7 @@ impl<const N: usize> Path<N> {
         Ok(root == *root_hash)
     }
 
-    pub fn calculate_root(&self, leaf: &Fr, hasher: &PoseidonHash) -> anyhow::Result<Fr> {
+    pub fn calculate_root(&self, leaf: &Fr, hasher: &PoseidonOptimized) -> anyhow::Result<Fr> {
         // Validate leaf is in path[0]
         if *leaf != self.path[0].0 && *leaf != self.path[0].1 {
             return Err(anyhow!("Invalid leaf: not found in path[0] siblings"));
@@ -71,7 +71,7 @@ impl<const N: usize> Path<N> {
         &self,
         root_hash: &Fr,
         leaf: &Fr,
-        hasher: &PoseidonHash,
+        hasher: &PoseidonOptimized,
     ) -> anyhow::Result<Fr> {
         if !self.check_membership(root_hash, leaf, hasher)? {
             return Err(anyhow!(
@@ -113,7 +113,7 @@ impl<const N: usize> SparseMerkleTree<N> {
     pub fn insert_batch(
         &mut self,
         leaves: &BTreeMap<u32, Fr>,
-        hasher: &PoseidonHash,
+        hasher: &PoseidonOptimized,
     ) -> anyhow::Result<()> {
         let last_level_index: u64 = (1u64 << N) - 1;
 
@@ -152,7 +152,7 @@ impl<const N: usize> SparseMerkleTree<N> {
     /// elements.
     pub fn new(
         leaves: &BTreeMap<u32, Fr>,
-        hasher: &PoseidonHash,
+        hasher: &PoseidonOptimized,
         empty_leaf: &Fr,
     ) -> anyhow::Result<Self> {
         // Ensure the tree can hold this many leaves
@@ -194,7 +194,7 @@ impl<const N: usize> SparseMerkleTree<N> {
     /// Creates a new Sparse Merkle Tree from an array of field elements.
     pub fn new_sequential(
         leaves: &[Fr],
-        hasher: &PoseidonHash,
+        hasher: &PoseidonOptimized,
         empty_leaf: &Fr,
     ) -> anyhow::Result<Self> {
         let pairs: BTreeMap<u32, Fr> = leaves
@@ -265,7 +265,7 @@ impl<const N: usize> PathVar<N> {
         &self,
         root: &FpVar<Fr>,
         leaf: &FpVar<Fr>,
-        hasher: &PoseidonHashVar,
+        hasher: &PoseidonOptimizedVar,
     ) -> Result<Boolean<Fr>, SynthesisError> {
         let computed_root = self.root_hash(leaf, hasher)?;
 
@@ -276,7 +276,7 @@ impl<const N: usize> PathVar<N> {
     pub fn root_hash(
         &self,
         leaf: &FpVar<Fr>,
-        hasher: &PoseidonHashVar,
+        hasher: &PoseidonOptimizedVar,
     ) -> Result<FpVar<Fr>, SynthesisError> {
         assert_eq!(self.path.len(), N);
         let mut previous_hash = leaf.clone();
@@ -323,5 +323,77 @@ impl<const N: usize> AllocVar<Path<N>, Fr> for PathVar<N> {
                 },
             ),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ark_r1cs_std::R1CSVar;
+    use ark_relations::r1cs::ConstraintSystem;
+
+    #[test]
+    fn test_sparse_merkle_tree() {
+        let hasher = PoseidonOptimized::new_t3();
+        let empty_leaf = Fr::from(0u64);
+
+        let leaves: BTreeMap<u32, Fr> = vec![
+            (0, Fr::from(1u64)),
+            (1, Fr::from(2u64)),
+            (2, Fr::from(3u64)),
+        ]
+        .into_iter()
+        .collect();
+
+        let tree = SparseMerkleTree::<4>::new(&leaves, &hasher, &empty_leaf).unwrap();
+        let root = tree.root();
+
+        // Generate proof for leaf at index 1
+        let path = tree.generate_membership_proof(1);
+        let leaf = Fr::from(2u64);
+
+        // Verify membership
+        assert!(path.check_membership(&root, &leaf, &hasher).unwrap());
+    }
+
+    #[test]
+    fn test_path_var_constraint_generation() {
+        let cs = ConstraintSystem::<Fr>::new_ref();
+
+        let hasher = PoseidonOptimized::new_t3();
+        let empty_leaf = Fr::from(0u64);
+
+        let leaves: BTreeMap<u32, Fr> = vec![(0, Fr::from(1u64)), (1, Fr::from(2u64))]
+            .into_iter()
+            .collect();
+
+        let tree = SparseMerkleTree::<4>::new(&leaves, &hasher, &empty_leaf).unwrap();
+        let root = tree.root();
+        let path = tree.generate_membership_proof(0);
+        let leaf = Fr::from(1u64);
+
+        // Allocate variables
+        let root_var = FpVar::new_input(cs.clone(), || Ok(root)).unwrap();
+        let leaf_var = FpVar::new_witness(cs.clone(), || Ok(leaf)).unwrap();
+        let path_var = PathVar::new_witness(cs.clone(), || Ok(path)).unwrap();
+
+        // Create hasher for constraints
+        let hasher_var = PoseidonOptimizedVar::new_t3();
+
+        // Check membership in circuit
+        let is_member = path_var
+            .check_membership(&root_var, &leaf_var, &hasher_var)
+            .unwrap();
+
+        // Should be true
+        assert!(is_member.value().unwrap());
+
+        // Constraints should be satisfied
+        assert!(cs.is_satisfied().unwrap());
+
+        println!(
+            "Merkle path verification constraints: {}",
+            cs.num_constraints()
+        );
     }
 }

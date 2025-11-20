@@ -1,7 +1,7 @@
 use crate::{
     constants::{MAX_AMOUNT_BITS, MERKLE_TREE_LEVEL, N_INS, N_OUTS},
     merkle_tree::{Path, PathVar},
-    poseidon::{PoseidonHash, PoseidonHashVar},
+    poseidon_opt::PoseidonOptimizedVar,
 };
 use ark_bn254::Fr;
 use ark_ff::AdditiveGroup;
@@ -46,11 +46,6 @@ use std::ops::Not;
 /// - Public key: `Poseidon1(privkey)`
 #[derive(Debug, Clone)]
 pub struct TransactionCircuit {
-    // Constants
-    pub hasher2: PoseidonHash,
-    pub hasher3: PoseidonHash,
-    pub hasher4: PoseidonHash,
-
     // Public inputs (must match order expected by Move contract verification)
     // Individual fields to match how they're allocated in generate_constraints()
     pub root: Fr,
@@ -77,12 +72,8 @@ pub struct TransactionCircuit {
 impl TransactionCircuit {
     /// Creates an empty circuit with all values set to zero.
     /// Used for setup phase and testing.
-    pub fn empty(hasher2: PoseidonHash, hasher3: PoseidonHash, hasher4: PoseidonHash) -> Self {
+    pub fn empty() -> Self {
         Self {
-            hasher2,
-            hasher3,
-            hasher4,
-
             root: Fr::ZERO,
             public_amount: Fr::ZERO,
             ext_data_hash: Fr::ZERO,
@@ -110,9 +101,6 @@ impl TransactionCircuit {
     /// - Path indices exceed tree capacity (>= 2^LEVEL)
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        hasher2: PoseidonHash,
-        hasher3: PoseidonHash,
-        hasher4: PoseidonHash,
         root: Fr,
         public_amount: Fr,
         ext_data_hash: Fr,
@@ -142,9 +130,6 @@ impl TransactionCircuit {
         }
 
         Ok(Self {
-            hasher2,
-            hasher3,
-            hasher4,
             root,
             public_amount,
             ext_data_hash,
@@ -166,7 +151,7 @@ impl TransactionCircuit {
     /// Returns public inputs in the order they are allocated in `generate_constraints()`.
     ///
     /// This order MUST match the order in which `FpVar::new_input()` is called in
-    /// `generate_constraints()` (lines 156-179) to ensure correct proof generation and verification.
+    /// `generate_constraints()` to ensure correct proof generation and verification.
     ///
     /// # Order
     /// 1. root
@@ -283,11 +268,11 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         ];
 
         // ============================================
-        // ALLOCATE CONSTANTS
+        // CREATE HASHERS (constants, no allocation needed)
         // ============================================
-        let hasher2 = PoseidonHashVar::new_constant(ns!(cs, "hasher2"), self.hasher2)?;
-        let hasher3 = PoseidonHashVar::new_constant(ns!(cs, "hasher3"), self.hasher3)?;
-        let hasher4 = PoseidonHashVar::new_constant(ns!(cs, "hasher4"), self.hasher4)?;
+        let hasher2 = PoseidonOptimizedVar::new_t2();
+        let hasher3 = PoseidonOptimizedVar::new_t3();
+        let hasher4 = PoseidonOptimizedVar::new_t4();
 
         // ============================================
         // VERIFY INPUT UTXOs

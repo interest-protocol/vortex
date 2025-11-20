@@ -34,14 +34,6 @@ num-traits = "0.2"
 name = "keygen"
 path = "src/bin/keygen.rs"
 
-[[bin]]
-name = "poseidon"
-path = "src/bin/poseidon.rs"
-
-[[bin]]
-name = "poseidon_opt"
-path = "src/bin/poseidon_opt.rs"
-
 [profile.release]
 opt-level = 3
 lto = true
