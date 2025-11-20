@@ -47,7 +47,9 @@ use std::ops::Not;
 #[derive(Debug, Clone)]
 pub struct TransactionCircuit {
     // Constants
-    pub hasher: PoseidonHash,
+    pub hasher2: PoseidonHash,
+    pub hasher3: PoseidonHash,
+    pub hasher4: PoseidonHash,
 
     // Public inputs (must match order expected by Move contract verification)
     // Individual fields to match how they're allocated in generate_constraints()
@@ -75,9 +77,11 @@ pub struct TransactionCircuit {
 impl TransactionCircuit {
     /// Creates an empty circuit with all values set to zero.
     /// Used for setup phase and testing.
-    pub fn empty(hash: PoseidonHash) -> Self {
+    pub fn empty(hasher2: PoseidonHash, hasher3: PoseidonHash, hasher4: PoseidonHash) -> Self {
         Self {
-            hasher: hash,
+            hasher2,
+            hasher3,
+            hasher4,
 
             root: Fr::ZERO,
             public_amount: Fr::ZERO,
@@ -106,7 +110,9 @@ impl TransactionCircuit {
     /// - Path indices exceed tree capacity (>= 2^LEVEL)
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        hasher: PoseidonHash,
+        hasher2: PoseidonHash,
+        hasher3: PoseidonHash,
+        hasher4: PoseidonHash,
         root: Fr,
         public_amount: Fr,
         ext_data_hash: Fr,
@@ -136,7 +142,9 @@ impl TransactionCircuit {
         }
 
         Ok(Self {
-            hasher,
+            hasher2,
+            hasher3,
+            hasher4,
             root,
             public_amount,
             ext_data_hash,
@@ -277,7 +285,9 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         // ============================================
         // ALLOCATE CONSTANTS
         // ============================================
-        let hasher = PoseidonHashVar::new_constant(ns!(cs, "hasher"), self.hasher)?;
+        let hasher2 = PoseidonHashVar::new_constant(ns!(cs, "hasher2"), self.hasher2)?;
+        let hasher3 = PoseidonHashVar::new_constant(ns!(cs, "hasher3"), self.hasher3)?;
+        let hasher4 = PoseidonHashVar::new_constant(ns!(cs, "hasher4"), self.hasher4)?;
 
         // ============================================
         // VERIFY INPUT UTXOs
@@ -287,16 +297,16 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
 
         for i in 0..N_INS {
             // Derive public key from private key: pubkey = Poseidon1(privkey)
-            let public_key = hasher.hash1(&in_private_key[i])?;
+            let public_key = hasher2.hash1(&in_private_key[i])?;
 
             // Calculate commitment: commitment = Poseidon3(amount, pubkey, blinding)
-            let commitment = hasher.hash3(&in_amounts[i], &public_key, &in_blindings[i])?;
+            let commitment = hasher4.hash3(&in_amounts[i], &public_key, &in_blindings[i])?;
 
             // Calculate signature: sig = Poseidon3(privkey, commitment, path_index)
-            let signature = hasher.hash3(&in_private_key[i], &commitment, &in_path_indices[i])?;
+            let signature = hasher4.hash3(&in_private_key[i], &commitment, &in_path_indices[i])?;
 
             // Calculate nullifier: nullifier = Poseidon3(commitment, path_index, signature)
-            let nullifier = hasher.hash3(&commitment, &in_path_indices[i], &signature)?;
+            let nullifier = hasher4.hash3(&commitment, &in_path_indices[i], &signature)?;
 
             // Enforce computed nullifier matches public input
             nullifier.enforce_equal(&input_nullifiers[i])?;
@@ -311,7 +321,7 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
             // SECURITY: Verify Merkle proof only if amount is non-zero
             // This optimization reduces constraints for zero-value inputs
             let merkle_path_membership =
-                merkle_paths[i].check_membership(&root, &commitment, &hasher)?;
+                merkle_paths[i].check_membership(&root, &commitment, &hasher3)?;
 
             // Only enforce Merkle membership when amount is non-zero
             let amount_is_non_zero = amount_is_zero.not();
@@ -329,7 +339,7 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         for i in 0..N_OUTS {
             // Calculate output commitment: commitment = Poseidon3(amount, pubkey, blinding)
             let expected_commitment =
-                hasher.hash3(&out_amounts[i], &out_public_key[i], &out_blindings[i])?;
+                hasher4.hash3(&out_amounts[i], &out_public_key[i], &out_blindings[i])?;
 
             // Enforce computed commitment matches public input
             expected_commitment.enforce_equal(&output_commitment[i])?;

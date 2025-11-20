@@ -1,89 +1,37 @@
-// Copyright (c) 2022, Mysten Labs, Inc.
-// SPDX-License-Identifier: Apache-2.0
+// src/poseidon/poseidon_constants.rs
+//
+// Poseidon constants for BN254 (circomlib compatible).
+// These constants must match those used in your Circom circuits and TypeScript SDK.
+//
+// Source: https://github.com/iden3/circomlibjs
+//
+// Structure:
+// - c_str[i] contains round constants for width t=i+2 (i.e., i+1 inputs)
+// - m_str[i] contains MDS matrix for width t=i+2
 
-use ff::PrimeField;
-use neptune::hash_type::HashType;
-use neptune::poseidon::PoseidonConstants;
-use neptune::Strength;
-use once_cell::sync::Lazy;
-use typenum::Unsigned;
-use typenum::{U1, U2, U3};
+/// Number of full rounds (split: half at start, half at end)
+pub const FULL_ROUNDS: usize = 8;
 
-// Use blstrs::Scalar for BN254 (same field as ark_bn254::Fr but implements ff::PrimeField)
-type Fr = blstrs::Scalar;
+/// Number of partial rounds for each width [t=2, t=3, t=4]
+pub const PARTIAL_ROUNDS: [usize; 3] = [56, 57, 56];
 
-#[derive(Debug)]
-pub(crate) struct Constants {
-    pub(crate) constants: Vec<Vec<Fr>>,
-    pub(crate) matrices: Vec<Vec<Vec<Fr>>>,
-    pub(crate) full_rounds: usize,
-    pub(crate) partial_rounds: Vec<usize>,
-}
+/// Poseidon S-box exponent
+pub const ALPHA: i64 = 5;
 
-/// Load constants for the poseidon hash function.
-pub(crate) fn load_constants() -> Constants {
-    let (constants_strings, matrices_strings) = constants();
-
-    let constants = constants_strings
-        .iter()
-        .map(|c| {
-            c.iter()
-                .map(|ci| Fr::from_str_vartime(ci).unwrap())
-                .collect()
-        })
-        .collect();
-
-    let matrices = matrices_strings
-        .iter()
-        .map(|m| {
-            m.iter()
-                .map(|mi| {
-                    mi.iter()
-                        .map(|mij| Fr::from_str_vartime(mij).unwrap())
-                        .collect()
-                })
-                .collect()
-        })
-        .collect();
-
-    Constants {
-        constants,
-        matrices,
-        full_rounds: 8,
-        partial_rounds: vec![56, 57, 56], // Only for widths 1, 2, 3
-    }
-}
-
-macro_rules! define_poseidon_constants {
-    ($constants:expr, $ui:ty) => {{
-        let n = <$ui>::to_usize();
-        let i = n - 1;
-        let m = &$constants.matrices[i];
-        let c = &$constants.constants[i];
-        PoseidonConstants::new_from_parameters(
-            n + 1,
-            m.clone(),
-            c.clone(),
-            $constants.full_rounds,
-            $constants.partial_rounds[i],
-            HashType::<Fr, $ui>::Sponge,
-            Strength::Standard,
-        )
-    }};
-}
-
-static CONSTANTS: Lazy<Constants> = Lazy::new(load_constants);
-pub(crate) static POSEIDON_CONSTANTS_U1: Lazy<PoseidonConstants<Fr, U1>> =
-    Lazy::new(|| define_poseidon_constants!(CONSTANTS, U1));
-pub(crate) static POSEIDON_CONSTANTS_U2: Lazy<PoseidonConstants<Fr, U2>> =
-    Lazy::new(|| define_poseidon_constants!(CONSTANTS, U2));
-pub(crate) static POSEIDON_CONSTANTS_U3: Lazy<PoseidonConstants<Fr, U3>> =
-    Lazy::new(|| define_poseidon_constants!(CONSTANTS, U3));
-
-/// Constants taken from poseidon-ark.
-/// Only includes constants for widths 1, 2, 3 (indices 0, 1, 2)
-pub(crate) fn constants() -> (Vec<Vec<&'static str>>, Vec<Vec<Vec<&'static str>>>) {
+/// Returns Poseidon constants for widths t=2, t=3, and t=4.
+///
+/// # Returns
+/// A tuple of (round_constants, mds_matrices) where:
+/// - round_constants[i] contains the flat round constants for width t=i+2
+/// - mds_matrices[i] contains the MDS matrix for width t=i+2
+pub fn constants() -> (Vec<Vec<&'static str>>, Vec<Vec<Vec<&'static str>>>) {
+    // Round constants for each width
+    // Format: flat array of constants, t values per round
+    // Total constants = (FULL_ROUNDS + PARTIAL_ROUNDS[i]) * t
     let c_str: Vec<Vec<&str>> = vec![
+        // ============================================
+        // Width t=2 (1 input): (8 + 56) * 2 = 128 constants
+        // ============================================
         vec![
             "4417881134626180770308697923359573201005643519861877412381846989312604493735",
             "5433650512959517612316327474713065966758808864213826738576266661723522780033",
@@ -214,6 +162,9 @@ pub(crate) fn constants() -> (Vec<Vec<&'static str>>, Vec<Vec<Vec<&'static str>>
             "9704903972004596791086522314847373103670545861209569267884026709445485704400",
             "17467570179597572575614276429760169990940929887711661192333523245667228809456",
         ],
+        // ============================================
+        // Width t=3 (2 inputs): (8 + 57) * 3 = 195 constants
+        // ============================================
         vec![
             "6745197990210204598374042828761989596302876299545964402857411729872131034734",
             "426281677759936592021316809065178817848084678679510574715894138690250139748",
@@ -411,6 +362,9 @@ pub(crate) fn constants() -> (Vec<Vec<&'static str>>, Vec<Vec<Vec<&'static str>>
             "15123155547166304758320442783720138372005699143801247333941013553002921430306",
             "13409242754315411433193860530743374419854094495153957441316635981078068351329",
         ],
+        // ============================================
+        // Width t=4 (3 inputs): (8 + 56) * 4 = 256 constants
+        // ============================================
         vec![
             "11633431549750490989983886834189948010834808234699737327785600195936805266405",
             "17353750182810071758476407404624088842693631054828301270920107619055744005334",
@@ -671,7 +625,11 @@ pub(crate) fn constants() -> (Vec<Vec<&'static str>>, Vec<Vec<Vec<&'static str>>
         ],
     ];
 
+    // MDS matrices for each width
     let m_str: Vec<Vec<Vec<&str>>> = vec![
+        // ============================================
+        // MDS matrix for t=2 (2x2)
+        // ============================================
         vec![
             vec![
                 "2910766817845651019878574839501801340070030115151021261302834310722729507541",
@@ -682,6 +640,9 @@ pub(crate) fn constants() -> (Vec<Vec<&'static str>>, Vec<Vec<Vec<&'static str>>
                 "8348174920934122550483593999453880006756108121341067172388445916328941978568",
             ],
         ],
+        // ============================================
+        // MDS matrix for t=3 (3x3)
+        // ============================================
         vec![
             vec![
                 "7511745149465107256748700652201246547602992235352608707588321460060273774987",
@@ -699,6 +660,9 @@ pub(crate) fn constants() -> (Vec<Vec<&'static str>>, Vec<Vec<Vec<&'static str>>
                 "11597556804922396090267472882856054602429588299176362916247939723151043581408",
             ],
         ],
+        // ============================================
+        // MDS matrix for t=4 (4x4)
+        // ============================================
         vec![
             vec![
                 "16023668707004248971294664614290028914393192768609916554276071736843535714477",
