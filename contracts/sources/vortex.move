@@ -134,9 +134,21 @@ public fun transact(
     let merkle_tree_mut = self.merkle_tree_mut();
     let commitments = proof.output_commitments();
 
-    merkle_tree_mut.append_commitment(commitments[0], ext_data.encrypted_output0());
+    let next_index = merkle_tree_mut.next_index();
 
-    merkle_tree_mut.append_commitment(commitments[1], ext_data.encrypted_output1());
+    merkle_tree_mut.append_pair(commitments[0], commitments[1]);
+
+    emit(NewCommitment {
+        index: next_index,
+        commitment: commitments[0],
+        encrypted_output: ext_data.encrypted_output0(),
+    });
+
+    emit(NewCommitment {
+        index: next_index + 1,
+        commitment: commitments[1],
+        encrypted_output: ext_data.encrypted_output1(),
+    });
 
     if (ext_data.relayer_fee() > 0 && ext_value_is_non_zero)
         transfer::public_transfer(
@@ -187,18 +199,6 @@ fun assert_public_value(proof: Proof, ext_data: ExtData) {
     );
 }
 
-fun append_commitment(tree: &mut MerkleTree, commitment: u256, encrypted_output: vector<u8>) {
-    let index = tree.next_index();
-
-    tree.append(commitment);
-
-    emit(NewCommitment {
-        commitment,
-        index,
-        encrypted_output,
-    });
-}
-
 fun merkle_tree(self: &Vortex): &MerkleTree {
     dof::borrow(&self.id, MerkleTreeKey())
 }
@@ -211,5 +211,4 @@ fun merkle_tree_mut(self: &mut Vortex): &mut MerkleTree {
 
 use fun assert_ext_data_hash as ExtData.assert_hash;
 use fun assert_public_value as Proof.assert_public_value;
-use fun append_commitment as MerkleTree.append_commitment;
 use fun vortex::vortex_utils::u256_to_bytes as u256.to_bytes;

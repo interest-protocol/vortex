@@ -6,7 +6,6 @@ use sui::{poseidon, table::{Self, Table}};
 // === Constants ===
 
 const HEIGHT: u64 = 26;
-
 const ROOT_HISTORY_SIZE: u64 = 100;
 
 // === Structs ===
@@ -42,28 +41,31 @@ public(package) fun new(ctx: &mut TxContext): MerkleTree {
     }
 }
 
-public(package) fun append(self: &mut MerkleTree, leaf: u256) {
-    // Maximum capacity is 2^height leaves.
+// Append two commitments at once (matching Nova)
+public(package) fun append_pair(self: &mut MerkleTree, commitment0: u256, commitment1: u256) {
+    // Maximum capacity check
     assert!(
-        1u64 << (HEIGHT as u8) > self.next_index,
+        (1u64 << (HEIGHT as u8)) > self.next_index,
         vortex::vortex_errors::merkle_tree_overflow!(),
     );
 
-    leaf.is_valid_poseidon_input!();
+    commitment0.is_valid_poseidon_input!();
+    commitment1.is_valid_poseidon_input!();
 
-    let mut current_index = self.next_index;
-    let mut current_level_hash = leaf;
-    let mut left: u256;
-    let mut right: u256;
+    // Start by hashing the two leaves together
+    let mut current_index = self.next_index / 2;
+    let mut current_level_hash = poseidon2(commitment0, commitment1);
     let empty_subtree_hashes = vortex::vortex_constants::empty_subtree_hashes!();
 
-    u64::range_do_eq!(1, HEIGHT, |i| {
+    // Process levels 1 to HEIGHT-1 (matching Nova: for i = 1; i < levels)
+    u64::range_do_eq!(1, HEIGHT - 1, |i| {
         let subtree = &mut self.subtrees[i];
+        let mut left: u256;
+        let mut right: u256;
 
         if (current_index % 2 == 0) {
             left = current_level_hash;
             right = empty_subtree_hashes[i];
-
             *subtree = current_level_hash;
         } else {
             left = *subtree;
@@ -74,11 +76,11 @@ public(package) fun append(self: &mut MerkleTree, leaf: u256) {
         current_index = current_index / 2;
     });
 
+    // Update root history
     let new_root_index = (self.root_index + 1) % ROOT_HISTORY_SIZE;
-
     self.root_index = new_root_index;
     self.safe_history_add(new_root_index, current_level_hash);
-    self.next_index = self.next_index + 1;
+    self.next_index = self.next_index + 2;
 }
 
 // === Package View Functions ===
@@ -120,7 +122,6 @@ public(package) fun is_known_root(self: &MerkleTree, root: u256): bool {
 fun safe_history_add(self: &mut MerkleTree, index: u64, value: u256) {
     if (self.root_history.contains(index)) {
         let old_value = &mut self.root_history[index];
-
         *old_value = value;
     } else {
         self.root_history.add(index, value);
@@ -130,7 +131,6 @@ fun safe_history_add(self: &mut MerkleTree, index: u64, value: u256) {
 fun poseidon2(a: u256, b: u256): u256 {
     a.is_valid_poseidon_input!();
     b.is_valid_poseidon_input!();
-
     poseidon::poseidon_bn254(&vector[a, b])
 }
 
@@ -140,7 +140,5 @@ macro fun assert_poseidon_input($x: u256) {
         vortex::vortex_errors::invalid_poseidon_input!(),
     );
 }
-
-// === Aliases ===
 
 use fun assert_poseidon_input as u256.is_valid_poseidon_input;
