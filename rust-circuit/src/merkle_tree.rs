@@ -12,22 +12,22 @@ use ark_relations::r1cs::{Namespace, SynthesisError};
 
 use crate::poseidon_opt::{PoseidonOptimized, PoseidonOptimizedVar};
 
+/// Merkle tree path structure
+/// Each level contains (left_hash, right_hash) pair
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Path<const N: usize> {
     pub path: [(Fr, Fr); N],
 }
 
 impl<const N: usize> Path<N> {
-    /// Creates a new empty path.
+    /// Creates a new empty path
     pub fn empty() -> Self {
         Self {
             path: [(Fr::ZERO, Fr::ZERO); N],
         }
     }
 
-    /// Takes in an expected `root_hash` and leaf-level data (i.e. hashes of
-    /// secrets) for a leaf and checks that the leaf belongs to a tree having
-    /// the expected hash.
+    /// Check if leaf belongs to tree with given root
     pub fn check_membership(
         &self,
         root_hash: &Fr,
@@ -40,24 +40,17 @@ impl<const N: usize> Path<N> {
         Ok(root == *root_hash)
     }
 
-    /// Recompute the Merkle root from a leaf and a path.
+    /// Calculate Merkle root from leaf and path
     ///
-    /// This mirrors the Move `append_pair` logic and the circuit gadget `PathVar::root_hash`:
-    ///
-    /// - Level 0: path stores (leaf_left, leaf_right) - the pair of leaves
-    /// - Levels 1 to N-1: path stores (left_sibling, right_sibling) at each level
-    ///
-    /// We start from the leaf, verify it's in the pair, hash the pair, then walk up using siblings.
+    /// This matches PathVar::root_hash and Move's append_pair logic:
+    /// - Level 0: path stores (leaf_left, leaf_right)
+    /// - Levels 1 to N-1: path stores (left_sibling, right_sibling)
     pub fn calculate_root(&self, leaf: &Fr, hasher: &PoseidonOptimized) -> anyhow::Result<Fr> {
-        // This must match PathVar::root_hash exactly
-        // Start with the leaf and iterate through all path levels
         let mut previous_hash = *leaf;
 
         for (p_left_hash, p_right_hash) in self.path.iter() {
-            // Check if previous_hash matches the left hash
             let previous_is_left = previous_hash == *p_left_hash;
 
-            // Select left and right based on which side previous_hash is on
             let left_hash = if previous_is_left {
                 previous_hash
             } else {
@@ -75,9 +68,7 @@ impl<const N: usize> Path<N> {
         Ok(previous_hash)
     }
 
-    /// Given leaf data determine what the index of this leaf must be
-    /// in the Merkle tree it belongs to. Before doing so check that the leaf
-    /// does indeed belong to a tree with the given `root_hash`
+    /// Get the index of a leaf in the tree
     pub fn get_index(
         &self,
         root_hash: &Fr,
@@ -90,18 +81,13 @@ impl<const N: usize> Path<N> {
             ));
         }
 
-        // Determine if leaf is left (0) or right (1) in the pair
         let is_left = *leaf == self.path[0].0;
         let mut index = if is_left { Fr::ZERO } else { Fr::from(1u64) };
 
-        // Start from the pair hash (level 0 already processed)
         let mut prev = hasher.hash2(&self.path[0].0, &self.path[0].1);
 
-        // Check levels 1 to N-1
         for (level, (left_hash, right_hash)) in self.path.iter().enumerate().skip(1) {
-            // Check if the previous hash is for a left node or right node
             if &prev != left_hash {
-                // Current is right child - set bit at position 'level'
                 let bit_value = Fr::from(1u64 << level);
                 index += bit_value;
             }
@@ -112,35 +98,27 @@ impl<const N: usize> Path<N> {
     }
 }
 
-/// Sparse Merkle tree using Tornado Cash Nova's paired insertion strategy.
-/// Inserts two leaves at once for better efficiency and privacy.
+/// Sparse Merkle Tree using Nova's paired insertion strategy
 #[derive(Debug, Clone, PartialEq)]
 pub struct SparseMerkleTree<const N: usize> {
     /// Stored leaves (in insertion order)
     pub leaves: Vec<Fr>,
-    /// Cached left subtrees at each level (indices 0 to N-1)
-    /// Matches Nova's filledSubtrees array
-    /// Note: subtrees[0] is initialized but never used (Nova quirk)
+    /// Cached left subtrees at each level
     subtrees: Vec<Fr>,
-    /// An array of default hashes for each level
+    /// Default empty hashes for each level
     empty_hashes: [Fr; N],
     /// Current root
     root: Fr,
 }
 
 impl<const N: usize> SparseMerkleTree<N> {
-    /// Creates a new Sparse Merkle Tree using Nova's paired insertion strategy
-    ///
-    /// # Arguments
-    /// * `leaf_pairs` - Pairs of leaves to insert
-    /// * `hasher` - Poseidon hasher instance
-    /// * `empty_leaf` - Zero value for empty leaves
+    /// Create new tree with initial leaf pairs
     pub fn new(
         leaf_pairs: &[(Fr, Fr)],
         hasher: &PoseidonOptimized,
         empty_leaf: &Fr,
     ) -> anyhow::Result<Self> {
-        // Build empty hashes array (levels 0 to N-1)
+        // Build empty hashes array
         let empty_hashes = {
             let mut empty_hashes = [Fr::ZERO; N];
             empty_hashes[0] = *empty_leaf;
@@ -154,11 +132,10 @@ impl<const N: usize> SparseMerkleTree<N> {
             empty_hashes
         };
 
-        // Initialize subtrees[0..N-1] (matching Nova's filledSubtrees)
-        // Simply clone the empty_hashes array
+        // Initialize subtrees
         let subtrees = empty_hashes.to_vec();
 
-        // Root of empty tree is empty_hashes[N-1]
+        // Empty tree root
         let root = empty_hashes[N - 1];
 
         let mut smt = SparseMerkleTree {
@@ -176,17 +153,12 @@ impl<const N: usize> SparseMerkleTree<N> {
         Ok(smt)
     }
 
-    /// Creates a new empty Sparse Merkle Tree
+    /// Create new empty tree
     pub fn new_empty(hasher: &PoseidonOptimized, empty_leaf: &Fr) -> Self {
         Self::new(&[], hasher, empty_leaf).expect("Failed to create empty tree")
     }
 
-    /// Insert a pair of leaves (Nova style)
-    ///
-    /// # Arguments
-    /// * `leaf1` - First leaf to insert
-    /// * `leaf2` - Second leaf to insert
-    /// * `hasher` - Poseidon hasher instance
+    /// Insert a pair of leaves (Nova/Move style)
     pub fn insert_pair(
         &mut self,
         leaf1: Fr,
@@ -195,21 +167,18 @@ impl<const N: usize> SparseMerkleTree<N> {
     ) -> anyhow::Result<()> {
         let max_leaves = 1usize << N;
         if self.leaves.len() + 2 > max_leaves {
-            return Err(anyhow!(
-                "Merkle tree is full. No more leaves can be added (capacity: {})",
-                max_leaves
-            ));
+            return Err(anyhow!("Merkle tree is full (capacity: {})", max_leaves));
         }
 
         // Store both leaves
         self.leaves.push(leaf1);
         self.leaves.push(leaf2);
 
-        // Start by hashing the leaf pair (level 0)
+        // Level 0: Hash the leaf pair
         let mut current_index = (self.leaves.len() - 2) / 2;
         let mut current_level_hash = hasher.hash2(&leaf1, &leaf2);
 
-        // Process levels 1 to N-1 (matching Nova: for i = 1; i < levels)
+        // Levels 1 to N-1 (matching Move: for i in 1..HEIGHT)
         for i in 1..N {
             let left: Fr;
             let right: Fr;
@@ -233,8 +202,7 @@ impl<const N: usize> SparseMerkleTree<N> {
         Ok(())
     }
 
-    /// Insert a single leaf (for backward compatibility)
-    /// Pairs it with a zero leaf
+    /// Insert single leaf (pairs with zero)
     pub fn insert(&mut self, leaf: Fr, hasher: &PoseidonOptimized) -> anyhow::Result<()> {
         self.insert_pair(leaf, self.empty_hashes[0], hasher)
     }
@@ -251,7 +219,7 @@ impl<const N: usize> SparseMerkleTree<N> {
         Ok(())
     }
 
-    /// Insert batch of leaves (must be even number)
+    /// Bulk insert (must be even number of leaves)
     pub fn bulk_insert(&mut self, leaves: &[Fr], hasher: &PoseidonOptimized) -> anyhow::Result<()> {
         if leaves.len() % 2 != 0 {
             return Err(anyhow!("Must insert even number of leaves (pairs)"));
@@ -264,7 +232,7 @@ impl<const N: usize> SparseMerkleTree<N> {
         Ok(())
     }
 
-    /// Returns the Merkle tree root.
+    /// Returns the Merkle tree root
     pub fn root(&self) -> Fr {
         self.root
     }
@@ -289,18 +257,18 @@ impl<const N: usize> SparseMerkleTree<N> {
         &self.leaves
     }
 
-    /// Generate membership proof for a leaf at given index
+    /// Generate membership proof for leaf at given index
     ///
-    /// # Arguments
-    /// * `index` - Index of the leaf (0-based)
-    ///
-    /// # Returns
-    /// A Path containing siblings at each level:
-    /// - Level 0: (sibling_leaf, empty_hash) or (empty_hash, sibling_leaf) depending on position
+    /// Returns a Path containing siblings at each level:
+    /// - Level 0: (left_leaf, right_leaf) - the pair
     /// - Levels 1 to N-1: (left_sibling, right_sibling) at each level
     pub fn generate_membership_proof(&self, index: usize) -> anyhow::Result<Path<N>> {
         if index >= self.leaves.len() {
-            return Err(anyhow!("Index out of bounds"));
+            return Err(anyhow!(
+                "Index {} out of bounds (tree has {} leaves)",
+                index,
+                self.leaves.len()
+            ));
         }
 
         let mut path = [(Fr::ZERO, Fr::ZERO); N];
@@ -315,17 +283,18 @@ impl<const N: usize> SparseMerkleTree<N> {
             self.empty_hashes[0]
         };
 
-        // Store the pair at level 0
         path[0] = (leaf_left, leaf_right);
 
-        // Compute pair hash (this is what gets inserted at level 1)
+        // Compute pair hash
         let mut current_hash = hasher.hash2(&leaf_left, &leaf_right);
         let mut current_index = pair_index;
 
-        // Levels 1 to N-1: Store siblings at each level
-        // Simulate Move append_pair for all pairs to rebuild tree state
+        // Rebuild tree state by simulating all insertions up to this point
+        // This matches the Move append_pair logic exactly
         let num_pairs = self.leaves.len().div_ceil(2);
         let mut pair_hashes = Vec::with_capacity(num_pairs);
+
+        // Compute all pair hashes
         for p in 0..num_pairs {
             let left = self.leaves[p * 2];
             let right = if p * 2 + 1 < self.leaves.len() {
@@ -336,70 +305,72 @@ impl<const N: usize> SparseMerkleTree<N> {
             pair_hashes.push(hasher.hash2(&left, &right));
         }
 
-        // Rebuild tree state by simulating Move insertion sequentially
-        // This matches the exact Move append_pair logic
-        let mut sim_subtrees = self.empty_hashes.to_vec();
-        let mut level_hashes: Vec<Vec<Fr>> = Vec::new();
+        // Rebuild tree state by simulating all insertions
+        // We need to track the hash at each position at each level BEFORE combining with siblings
+        // This allows us to extract the correct sibling for the path
+        let mut level_child_hashes: Vec<Vec<Fr>> = Vec::new();
 
-        // For each level 1 to N-1, build the tree by inserting pairs in order
         for level in 1..N {
-            // Reset subtrees for this level's computation
+            // Initialize subtrees for this level (matching Move's subtrees array)
             let mut level_subtrees = self.empty_hashes.to_vec();
-            let mut level_data = Vec::new();
+            // Track child hashes (before combining with siblings) at each position
+            let mut child_hashes: Vec<Fr> = Vec::new();
 
-            // Insert each pair sequentially (matching Move's append_pair)
-            for pair_idx in 0..num_pairs {
+            // Simulate inserting each pair sequentially (matching insert_pair logic)
+            for (pair_idx, &pair_hash) in pair_hashes.iter().enumerate() {
                 let mut pos = pair_idx;
-                let mut hash = pair_hashes[pair_idx];
+                let mut hash = pair_hash;
 
-                // Walk up levels 1 to this level
-                for l in 1..=level {
+                // Walk up from level 1 to current level
+                for (empty_hash, subtree) in self.empty_hashes[1..level]
+                    .iter()
+                    .zip(level_subtrees[1..level].iter_mut())
+                {
                     let is_left = pos % 2 == 0;
-                    let sibling = if is_left {
-                        self.empty_hashes[l]
-                    } else {
-                        level_subtrees[l]
-                    };
+                    let left: Fr;
+                    let right: Fr;
 
-                    hash = hasher.hash2(
-                        if is_left { &hash } else { &sibling },
-                        if is_left { &sibling } else { &hash },
-                    );
-
-                    // Update subtrees if we're a left child (matching Move logic)
                     if is_left {
-                        level_subtrees[l] = hash;
+                        left = hash;
+                        right = *empty_hash;
+                        *subtree = hash; // Cache left subtree
+                    } else {
+                        left = *subtree; // Get cached left subtree
+                        right = hash;
                     }
 
+                    hash = hasher.hash2(&left, &right);
                     pos /= 2;
                 }
 
-                // Store the hash at the final position for this level
-                let final_pos = pair_idx >> level; // pair_idx / (2^level)
-                if level_data.len() <= final_pos {
-                    level_data.resize(final_pos + 1, self.empty_hashes[level]);
+                // At the current level, store the child hash (before combining with sibling)
+                let level_pos = pair_idx >> (level - 1);
+                if child_hashes.len() <= level_pos {
+                    child_hashes.resize(level_pos + 1, self.empty_hashes[level]);
                 }
-                level_data[final_pos] = hash;
+                child_hashes[level_pos] = hash;
             }
 
-            level_hashes.push(level_data);
+            level_child_hashes.push(child_hashes);
         }
 
         // Extract siblings from rebuilt tree
         for (level, path_elem) in path.iter_mut().enumerate().skip(1) {
             let is_left = current_index % 2 == 0;
-            let level_idx = level - 1; // level_hashes is indexed from 0 for level 1
-            let level_data = &level_hashes[level_idx];
+            let level_idx = level - 1;
+            let child_hashes = &level_child_hashes[level_idx];
 
             let sibling = if is_left {
+                // We're on the left, sibling is on the right
                 let sibling_pos = current_index + 1;
-                level_data
+                child_hashes
                     .get(sibling_pos)
                     .copied()
                     .unwrap_or(self.empty_hashes[level])
             } else {
+                // We're on the right, sibling is on the left
                 if current_index > 0 {
-                    level_data
+                    child_hashes
                         .get(current_index - 1)
                         .copied()
                         .unwrap_or(self.subtrees[level])
@@ -437,15 +408,14 @@ impl<const N: usize> SparseMerkleTree<N> {
     }
 }
 
-/// Gadgets for one Merkle tree path
+/// Circuit variable for Merkle path
 #[derive(Debug, Clone)]
 pub struct PathVar<const N: usize> {
     path: [(FpVar<Fr>, FpVar<Fr>); N],
 }
 
 impl<const N: usize> PathVar<N> {
-    /// check whether path belongs to merkle path (does not check if indexes
-    /// match)
+    /// Check membership in circuit
     pub fn check_membership(
         &self,
         root: &FpVar<Fr>,
@@ -453,11 +423,10 @@ impl<const N: usize> PathVar<N> {
         hasher: &PoseidonOptimizedVar,
     ) -> Result<Boolean<Fr>, SynthesisError> {
         let computed_root = self.root_hash(leaf, hasher)?;
-
         root.is_eq(&computed_root)
     }
 
-    /// Creates circuit to calculate merkle root and deny any invalid paths
+    /// Calculate root hash in circuit
     pub fn root_hash(
         &self,
         leaf: &FpVar<Fr>,
@@ -504,7 +473,7 @@ impl<const N: usize> AllocVar<Path<N>, Fr> for PathVar<N> {
             path: path.try_into().unwrap_or_else(
                 #[allow(clippy::type_complexity)]
                 |v: Vec<(FpVar<Fr>, FpVar<Fr>)>| {
-                    panic!("Expected a Vec of length {} but it was {}", N, v.len())
+                    panic!("Expected path of length {}, got {}", N, v.len())
                 },
             ),
         })
@@ -514,35 +483,38 @@ impl<const N: usize> AllocVar<Path<N>, Fr> for PathVar<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::ZERO_VALUE;
+
+    /// Convert ZERO_VALUE string constant to Fr field element
+    fn zero_value() -> Fr {
+        use num_bigint::BigUint;
+        use std::str::FromStr;
+
+        Fr::from(BigUint::from_str(ZERO_VALUE).expect("Failed to parse ZERO_VALUE"))
+    }
     use ark_r1cs_std::R1CSVar;
     use ark_relations::r1cs::ConstraintSystem;
 
     #[test]
     fn test_path_verification_matches_circuit() {
         let hasher = PoseidonOptimized::new_t3();
-        let empty_leaf = Fr::from(0u64);
+        let empty_leaf = zero_value();
 
-        // Test that Path::calculate_root matches PathVar::root_hash
-        // This is the critical requirement for production
         let leaf = Fr::from(100u64);
         let sibling_leaf = Fr::from(200u64);
 
-        // Create a simple path: level 0 has the pair, level 1+ have siblings
         let pair_hash = hasher.hash2(&leaf, &sibling_leaf);
         let empty_hash_1 = hasher.hash2(&empty_leaf, &empty_leaf);
         let level1_hash = hasher.hash2(&pair_hash, &empty_hash_1);
 
-        // Path structure: (leaf_left, leaf_right) at level 0, then siblings
         let mut path = Path::<4>::empty();
-        path.path[0] = (leaf, sibling_leaf); // Level 0: the pair
-        path.path[1] = (pair_hash, empty_hash_1); // Level 1: (our hash, sibling)
-        path.path[2] = (level1_hash, empty_hash_1); // Level 2: continue up
-        path.path[3] = (hasher.hash2(&level1_hash, &empty_hash_1), empty_hash_1); // Level 3
+        path.path[0] = (leaf, sibling_leaf);
+        path.path[1] = (pair_hash, empty_hash_1);
+        path.path[2] = (level1_hash, empty_hash_1);
+        path.path[3] = (hasher.hash2(&level1_hash, &empty_hash_1), empty_hash_1);
 
-        // Calculate root from path
         let computed_root = path.calculate_root(&leaf, &hasher).unwrap();
 
-        // Verify in circuit
         let cs = ConstraintSystem::<Fr>::new_ref();
         let root_var = FpVar::new_input(cs.clone(), || Ok(computed_root)).unwrap();
         let leaf_var = FpVar::new_witness(cs.clone(), || Ok(leaf)).unwrap();
@@ -559,7 +531,7 @@ mod tests {
     #[test]
     fn test_sparse_merkle_tree_nova_style() {
         let hasher = PoseidonOptimized::new_t3();
-        let empty_leaf = Fr::from(0u64);
+        let empty_leaf = zero_value();
 
         let leaf_pairs = vec![
             (Fr::from(1u64), Fr::from(2u64)),
@@ -572,11 +544,9 @@ mod tests {
         println!("Tree root: {}", root);
         println!("Tree has {} leaves", tree.len());
 
-        // Generate proof for first leaf
         let path = tree.generate_membership_proof(0).unwrap();
         let leaf = Fr::from(1u64);
 
-        // Verify membership (native)
         assert!(path.check_membership(&root, &leaf, &hasher).unwrap());
         println!("✓ Path verification successful");
     }
@@ -584,7 +554,7 @@ mod tests {
     #[test]
     fn test_bulk_insert() {
         let hasher = PoseidonOptimized::new_t3();
-        let empty_leaf = Fr::from(0u64);
+        let empty_leaf = zero_value();
 
         let mut tree = SparseMerkleTree::<4>::new_empty(&hasher, &empty_leaf);
 
@@ -604,34 +574,25 @@ mod tests {
     #[test]
     fn test_path_var_constraint_generation() {
         let cs = ConstraintSystem::<Fr>::new_ref();
-
         let hasher = PoseidonOptimized::new_t3();
-        let empty_leaf = Fr::from(0u64);
+        let empty_leaf = zero_value();
 
         let leaf_pairs = vec![(Fr::from(1u64), Fr::from(2u64))];
-
         let tree = SparseMerkleTree::<4>::new(&leaf_pairs, &hasher, &empty_leaf).unwrap();
         let root = tree.root();
         let path = tree.generate_membership_proof(0).unwrap();
         let leaf = Fr::from(1u64);
 
-        // Allocate variables
         let root_var = FpVar::new_input(cs.clone(), || Ok(root)).unwrap();
         let leaf_var = FpVar::new_witness(cs.clone(), || Ok(leaf)).unwrap();
         let path_var = PathVar::new_witness(cs.clone(), || Ok(path)).unwrap();
-
-        // Create hasher for constraints
         let hasher_var = PoseidonOptimizedVar::new_t3();
 
-        // Check membership in circuit
         let is_member = path_var
             .check_membership(&root_var, &leaf_var, &hasher_var)
             .unwrap();
 
-        // Should be true
         assert!(is_member.value().unwrap());
-
-        // Constraints should be satisfied
         assert!(cs.is_satisfied().unwrap());
 
         println!(
@@ -643,22 +604,21 @@ mod tests {
     #[test]
     fn test_single_insert_backward_compat() {
         let hasher = PoseidonOptimized::new_t3();
-        let empty_leaf = Fr::from(0u64);
+        let empty_leaf = zero_value();
 
         let mut tree = SparseMerkleTree::<4>::new_empty(&hasher, &empty_leaf);
-
         tree.insert(Fr::from(100u64), &hasher).unwrap();
 
-        assert_eq!(tree.len(), 2); // Inserted as pair with zero
+        assert_eq!(tree.len(), 2);
         println!("✓ Single insert (backward compat) successful");
     }
 
     #[test]
     fn test_tree_full() {
         let hasher = PoseidonOptimized::new_t3();
-        let empty_leaf = Fr::from(0u64);
+        let empty_leaf = zero_value();
 
-        let mut tree = SparseMerkleTree::<2>::new_empty(&hasher, &empty_leaf); // Capacity = 4
+        let mut tree = SparseMerkleTree::<2>::new_empty(&hasher, &empty_leaf);
 
         tree.insert_pair(Fr::from(1u64), Fr::from(2u64), &hasher)
             .unwrap();
@@ -667,20 +627,16 @@ mod tests {
 
         assert!(tree.is_full());
 
-        // Should fail
         let result = tree.insert_pair(Fr::from(5u64), Fr::from(6u64), &hasher);
         assert!(result.is_err());
         println!("✓ Tree full check successful");
     }
 
-    /// Ensure that for every leaf, the generated path recomputes the root
-    /// correctly using the native `Path::calculate_root` and `check_membership`.
     #[test]
     fn test_path_roundtrip_all_leaves_native() {
         let hasher = PoseidonOptimized::new_t3();
-        let empty_leaf = Fr::from(0u64);
+        let empty_leaf = zero_value();
 
-        // Build a small tree with multiple pairs
         let leaf_pairs = vec![
             (Fr::from(1u64), Fr::from(2u64)),
             (Fr::from(3u64), Fr::from(4u64)),
@@ -691,10 +647,10 @@ mod tests {
         let tree = SparseMerkleTree::<4>::new(&leaf_pairs, &hasher, &empty_leaf).unwrap();
         let root = tree.root();
 
-        // For every actual leaf, generate a path and ensure it recomputes the root
         for (index, leaf) in tree.leaves().iter().enumerate() {
             let path = tree.generate_membership_proof(index).unwrap();
             let recomputed_root = path.calculate_root(leaf, &hasher).unwrap();
+
             assert_eq!(
                 root, recomputed_root,
                 "Recomputed root mismatch for leaf index {}",
@@ -704,47 +660,34 @@ mod tests {
         }
     }
 
-    /// Reference implementation of the Move `append_pair` logic,
-    /// adapted to a generic height N and using the same Poseidon hasher.
+    /// Reference Move-style implementation for testing
     fn move_style_root<const N: usize>(
         leaf_pairs: &[(Fr, Fr)],
         hasher: &PoseidonOptimized,
         empty_leaf: &Fr,
     ) -> Fr {
-        assert!(N >= 2, "Tree height must be at least 2");
+        assert!(N >= 2);
 
-        // Build empty_subtree_hashes[0..=N] like in Move constants:
-        // empty_subtree_hashes[0] = empty_leaf
-        // empty_subtree_hashes[i] = Poseidon(hash_{i-1}, hash_{i-1})
         let mut empty_subtree_hashes = vec![Fr::ZERO; N + 1];
         empty_subtree_hashes[0] = *empty_leaf;
         let mut h = *empty_leaf;
-        for i in 1..=N {
+        for hash in empty_subtree_hashes.iter_mut().skip(1).take(N) {
             h = hasher.hash2(&h, &h);
-            empty_subtree_hashes[i] = h;
+            *hash = h;
         }
 
-        // subtrees[i] initialized to empty_subtree_hashes[i], like Move::new
         let mut subtrees = vec![Fr::ZERO; N];
-        for i in 0..N {
-            subtrees[i] = empty_subtree_hashes[i];
-        }
+        subtrees.copy_from_slice(&empty_subtree_hashes[..N]);
 
         let mut next_index: u64 = 0;
-        let mut root = empty_subtree_hashes[N]; // empty root in Move
+        let mut root = empty_subtree_hashes[N];
 
         for (commitment0, commitment1) in leaf_pairs {
-            // Capacity check: (1u64 << HEIGHT) > next_index
-            assert!(
-                (1u64 << (N as u32)) > next_index,
-                "Merkle tree overflow in reference Move-style implementation"
-            );
+            assert!((1u64 << (N as u32)) > next_index);
 
             let mut current_index = next_index / 2;
             let mut current_level_hash = hasher.hash2(commitment0, commitment1);
 
-            // Move: for i in 1..HEIGHT  (macro range_do_eq!(1, HEIGHT - 1))
-            // Here we treat HEIGHT == N.
             for i in 1..N {
                 let subtree = &mut subtrees[i];
                 let (left, right) = if current_index % 2 == 0 {
@@ -765,12 +708,10 @@ mod tests {
         root
     }
 
-    /// Check that the Rust SparseMerkleTree root matches the Move-style
-    /// reference implementation for a given height.
     #[test]
     fn test_roots_match_move_style_reference_n4() {
         let hasher = PoseidonOptimized::new_t3();
-        let empty_leaf = Fr::from(0u64);
+        let empty_leaf = zero_value();
 
         let leaf_pairs = vec![
             (Fr::from(1u64), Fr::from(2u64)),
@@ -778,24 +719,20 @@ mod tests {
             (Fr::from(5u64), Fr::from(6u64)),
         ];
 
-        // Rust implementation
-        let tree = SparseMerkleTree::<4>::new(&leaf_pairs, &hasher, &empty_leaf).unwrap();
-        let rust_root = tree.root();
+        let rust_tree = SparseMerkleTree::<4>::new(&leaf_pairs, &hasher, &empty_leaf).unwrap();
+        let rust_root = rust_tree.root();
 
-        // Move-style reference
         let move_root = move_style_root::<4>(&leaf_pairs, &hasher, &empty_leaf);
 
         assert_eq!(rust_root, move_root, "Rust root != Move-style root");
+        println!("✓ Rust root matches Move root exactly");
     }
 
-    /// Explicitly check that the circuit gadget's computed root matches the
-    /// native `Path::calculate_root`, which in turn matches the tree root.
     #[test]
     fn test_native_and_gadget_root_match() {
         let cs = ConstraintSystem::<Fr>::new_ref();
-
         let hasher = PoseidonOptimized::new_t3();
-        let empty_leaf = Fr::from(0u64);
+        let empty_leaf = zero_value();
 
         let leaf_pairs = vec![
             (Fr::from(10u64), Fr::from(20u64)),
@@ -809,20 +746,18 @@ mod tests {
         let path = tree.generate_membership_proof(index).unwrap();
         let leaf = tree.leaves()[index];
 
-        // Native root via Path
         let native_root = path.calculate_root(&leaf, &hasher).unwrap();
         assert_eq!(native_root, root);
 
-        // Allocate variables in circuit
         let root_var = FpVar::new_input(cs.clone(), || Ok(root)).unwrap();
         let leaf_var = FpVar::new_witness(cs.clone(), || Ok(leaf)).unwrap();
         let path_var = PathVar::new_witness(cs.clone(), || Ok(path)).unwrap();
         let hasher_var = PoseidonOptimizedVar::new_t3();
 
-        // Compute root in-circuit and compare
         let computed_root_var = path_var.root_hash(&leaf_var, &hasher_var).unwrap();
         computed_root_var.enforce_equal(&root_var).unwrap();
 
         assert!(cs.is_satisfied().unwrap());
+        println!("✓ Native and circuit roots match");
     }
 }
