@@ -27,10 +27,16 @@ public(package) fun new(ctx: &mut TxContext): MerkleTree {
     let mut root_history = table::new(ctx);
     root_history.add(0, empty_subtree_hashes[HEIGHT]);
 
+    let mut subtrees = vector[];
+
+    u64::range_do!(0, HEIGHT, |i| {
+        subtrees.push_back(empty_subtree_hashes[i]);
+    });
+
     MerkleTree {
         id: object::new(ctx),
         next_index: 0,
-        subtrees: empty_subtree_hashes,
+        subtrees,
         root_history,
         root_index: 0,
     }

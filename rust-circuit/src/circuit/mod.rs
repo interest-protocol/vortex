@@ -319,48 +319,48 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
             sum_ins += &in_amounts[i];
         }
 
-        // // ============================================
-        // // VERIFY OUTPUT UTXOs
-        // // ============================================
-        // let mut sum_outs = FpVar::<Fr>::zero();
+        // ============================================
+        // VERIFY OUTPUT UTXOs
+        // ============================================
+        let mut sum_outs = FpVar::<Fr>::zero();
 
-        // for i in 0..N_OUTS {
-        //     // Calculate output commitment: commitment = Poseidon3(amount, pubkey, blinding)
-        //     let expected_commitment =
-        //         hasher4.hash3(&out_amounts[i], &out_public_key[i], &out_blindings[i])?;
+        for i in 0..N_OUTS {
+            // Calculate output commitment: commitment = Poseidon3(amount, pubkey, blinding)
+            let expected_commitment =
+                hasher4.hash3(&out_amounts[i], &out_public_key[i], &out_blindings[i])?;
 
-        //     // Enforce computed commitment matches public input
-        //     expected_commitment.enforce_equal(&output_commitment[i])?;
+            // Enforce computed commitment matches public input
+            expected_commitment.enforce_equal(&output_commitment[i])?;
 
-        //     // SECURITY: Range check - ensure output amount fits in MAX_AMOUNT_BITS
-        //     let amount_is_zero = out_amounts[i].is_eq(&zero)?;
-        //     enforce_range_check(&out_amounts[i], &amount_is_zero)?;
+            // SECURITY: Range check - ensure output amount fits in MAX_AMOUNT_BITS
+            let amount_is_zero = out_amounts[i].is_eq(&zero)?;
+            enforce_range_check(&out_amounts[i], &amount_is_zero)?;
 
-        //     sum_outs += &out_amounts[i];
-        // }
+            sum_outs += &out_amounts[i];
+        }
 
-        // // ============================================
-        // // VERIFY NO DUPLICATE NULLIFIERS
-        // // ============================================
-        // // SECURITY: Prevent using same nullifier twice in one transaction
-        // //
-        // // Optimization: For N_INS=2, we only need 1 comparison (nullifiers[0] != nullifiers[1])
-        // // This is the minimal constraint set - exactly 1 enforce_not_equal constraint.
-        // //
-        // // Alternative approaches considered:
-        // // - Loop over all pairs: Same constraint count for N_INS=2, but adds loop overhead
-        // // - Product of differences: More expensive (requires multiplications)
-        // // - Direct check: Optimal for fixed N_INS=2, explicit and clear
-        // //
-        // // If N_INS changes in the future, generalize to: for i in 0..N_INS { for j in (i+1)..N_INS { ... } }
-        // input_nullifiers[0].enforce_not_equal(&input_nullifiers[1])?;
+        // ============================================
+        // VERIFY NO DUPLICATE NULLIFIERS
+        // ============================================
+        // SECURITY: Prevent using same nullifier twice in one transaction
+        //
+        // Optimization: For N_INS=2, we only need 1 comparison (nullifiers[0] != nullifiers[1])
+        // This is the minimal constraint set - exactly 1 enforce_not_equal constraint.
+        //
+        // Alternative approaches considered:
+        // - Loop over all pairs: Same constraint count for N_INS=2, but adds loop overhead
+        // - Product of differences: More expensive (requires multiplications)
+        // - Direct check: Optimal for fixed N_INS=2, explicit and clear
+        //
+        // If N_INS changes in the future, generalize to: for i in 0..N_INS { for j in (i+1)..N_INS { ... } }
+        input_nullifiers[0].enforce_not_equal(&input_nullifiers[1])?;
 
-        // // ============================================
-        // // VERIFY AMOUNT CONSERVATION
-        // // ============================================
-        // // SECURITY: Ensure no value is created or destroyed
-        // // sum(inputs) + public_amount = sum(outputs)
-        // (sum_ins + public_amount).enforce_equal(&sum_outs)?;
+        // ============================================
+        // VERIFY AMOUNT CONSERVATION
+        // ============================================
+        // SECURITY: Ensure no value is created or destroyed
+        // sum(inputs) + public_amount = sum(outputs)
+        (sum_ins + public_amount).enforce_equal(&sum_outs)?;
 
         Ok(())
     }

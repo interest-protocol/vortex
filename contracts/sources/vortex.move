@@ -170,7 +170,10 @@ public fun encryption_key(registry: &Registry, address: address): Option<String>
 // === Private Functions ===
 
 fun assert_ext_data_hash(ext_data: ExtData, ext_data_hash: u256) {
-    assert!(ext_data.to_hash() == ext_data_hash.to_bytes(), vortex::vortex_errors::invalid_ext_data_hash!());
+    assert!(
+        ext_data.to_hash() == ext_data_hash.to_bytes(),
+        vortex::vortex_errors::invalid_ext_data_hash!(),
+    );
 }
 
 fun assert_root_is_known(self: &Vortex, root: u256) {

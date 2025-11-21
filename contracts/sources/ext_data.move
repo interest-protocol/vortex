@@ -29,7 +29,7 @@ public fun new(
     value.validate!();
 
     assert!(
-        vortex::vortex_constants::one_sui_in_mist!() >= value,
+        value >= vortex::vortex_constants::one_sui_in_mist!(),
         vortex::vortex_errors::invalid_ext_data_value!(),
     );
 
