@@ -548,10 +548,10 @@ cargo run --release --bin keygen -- \
 
 See the `scripts/vortex/transact/` directory for complete examples:
 
-- [`deposit.ts`](scripts/vortex/transact/deposit.ts) - Generate and verify deposit proof
-- [`deposit-tx.ts`](scripts/vortex/transact/deposit-tx.ts) - Submit deposit transaction
-- [`withdraw-tx.ts`](scripts/vortex/transact/withdraw-tx.ts) - Submit withdrawal transaction
-- [`fund.ts`](scripts/vortex/transact/fund.ts) - Fund test accounts
+- [`deposit.ts`](https://github.com/interest-protocol/sdk-monorepo/blob/main/scripts/vortex/transact/deposit.ts) - Generate and verify deposit proof
+- [`deposit-tx.ts`](https://github.com/interest-protocol/sdk-monorepo/blob/main/scripts/vortex/transact/deposit-tx.ts) - Submit deposit transaction
+- [`withdraw-tx.ts`](https://github.com/interest-protocol/sdk-monorepo/blob/main/scripts/vortex/transact/withdraw-tx.ts) - Submit withdrawal transaction
+- [`fund.ts`](https://github.com/interest-protocol/sdk-monorepo/blob/main/scripts/vortex/transact/fund.ts) - Fund test accounts
 
 ## Development
 
@@ -630,20 +630,17 @@ sui client publish --gas-budget 500000000
 
 ## Roadmap
 
-- [ ] Multi-asset support (beyond SUI)
-- [ ] Optimistic rollups for cheaper transactions
-- [ ] Mobile wallet integration
-- [ ] Decentralized relayer network
-- [ ] Shielded pools for specific assets
-- [ ] Compliance modules (optional disclosure)
+- [ ] Indexer
+- [ ] Frontend
+- [ ] Alpha Testnet release
 
 ## Resources
 
 - **Documentation**: [docs/](docs/)
 - **Smart Contracts**: [contracts/sources/](contracts/sources/)
-- **TypeScript SDK**: [packages/vortex/](packages/vortex/)
+- **TypeScript SDK**: [sdk-monorepo/packages/vortex/](https://github.com/interest-protocol/sdk-monorepo/tree/main/packages/vortex)
 - **Rust Circuit**: [rust-circuit/src/](rust-circuit/src/)
-- **Examples**: [scripts/vortex/transact/](scripts/vortex/transact/)
+- **Examples**: [sdk-monorepo/scripts/vortex/transact/](https://github.com/interest-protocol/sdk-monorepo/tree/main/scripts/vortex/transact)
 
 ## Contributing
 
