@@ -19,31 +19,31 @@ Vortex breaks the on-chain link between sender and recipient addresses through c
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Vortex Protocol Stack                    │
+│                     Vortex Protocol Stack                   │
 ├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  TypeScript SDK (@interest-protocol/vortex-sdk)              │
-│  ├─ VortexKeypair: Key generation & encryption               │
-│  ├─ Utxo: Commitment/nullifier computation                   │
-│  ├─ MerkleTree: Path generation & verification               │
-│  └─ Proof helpers: Circuit input preparation                 │
-│                                                               │
+│                                                             │
+│  TypeScript SDK (@interest-protocol/vortex-sdk)             │
+│  ├─ VortexKeypair: Key generation & encryption              │
+│  ├─ Utxo: Commitment/nullifier computation                  │
+│  ├─ MerkleTree: Path generation & verification              │
+│  └─ Proof helpers: Circuit input preparation                │
+│                                                             │
 ├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Rust Circuit (rust-circuit)                                 │
-│  ├─ Transaction2 Circuit: 2-in/2-out zkSNARK                 │
-│  ├─ Poseidon Hash: Optimized circomlib-compatible            │
-│  ├─ Merkle Proofs: 26-level tree verification                │
-│  └─ WASM Module: Browser-based proof generation              │
-│                                                               │
+│                                                             │
+│  Rust Circuit (rust-circuit)                                │
+│  ├─ Transaction2 Circuit: 2-in/2-out zkSNARK                │
+│  ├─ Poseidon Hash: Optimized circomlib-compatible           │
+│  ├─ Merkle Proofs: 26-level tree verification               │
+│  └─ WASM Module: Browser-based proof generation             │
+│                                                             │
 ├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Move Smart Contracts (contracts)                            │
-│  ├─ vortex.move: Main pool & proof verification              │
-│  ├─ vortex_merkle_tree.move: Commitment storage              │
-│  ├─ vortex_proof.move: Groth16 verification interface        │
-│  └─ vortex_ext_data.move: External data handling             │
-│                                                               │
+│                                                             │
+│  Move Smart Contracts (contracts)                           │
+│  ├─ vortex.move: Main pool & proof verification             │
+│  ├─ vortex_merkle_tree.move: Commitment storage             │
+│  ├─ vortex_proof.move: Groth16 verification interface       │
+│  └─ vortex_ext_data.move: External data handling            │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
