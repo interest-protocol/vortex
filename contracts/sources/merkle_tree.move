@@ -49,16 +49,13 @@ public(package) fun append_pair(self: &mut MerkleTree, commitment0: u256, commit
         vortex::vortex_errors::merkle_tree_overflow!(),
     );
 
-    commitment0.is_valid_poseidon_input!();
-    commitment1.is_valid_poseidon_input!();
-
     // Start by hashing the two leaves together
     let mut current_index = self.next_index / 2;
     let mut current_level_hash = poseidon2(commitment0, commitment1);
     let empty_subtree_hashes = vortex::vortex_constants::empty_subtree_hashes!();
 
-    // Process levels 1 to HEIGHT-1 (matching Nova: for i = 1; i < levels)
-    u64::range_do_eq!(1, HEIGHT - 1, |i| {
+    // Process levels 1 to HEIGHT (exclusive) (matching Nova: for i = 1; i < levels)
+    u64::range_do!(1, HEIGHT, |i| {
         let subtree = &mut self.subtrees[i];
         let mut left: u256;
         let mut right: u256;
@@ -129,16 +126,8 @@ fun safe_history_add(self: &mut MerkleTree, index: u64, value: u256) {
 }
 
 fun poseidon2(a: u256, b: u256): u256 {
-    a.is_valid_poseidon_input!();
-    b.is_valid_poseidon_input!();
-    poseidon::poseidon_bn254(&vector[a, b])
+    let modulus = vortex::vortex_constants::bn254_field_modulus!();
+    let a_reduced = a % modulus;
+    let b_reduced = b % modulus;
+    poseidon::poseidon_bn254(&vector[a_reduced, b_reduced])
 }
-
-macro fun assert_poseidon_input($x: u256) {
-    assert!(
-        $x < vortex::vortex_constants::bn254_field_modulus!(),
-        vortex::vortex_errors::invalid_poseidon_input!(),
-    );
-}
-
-use fun assert_poseidon_input as u256.is_valid_poseidon_input;
