@@ -126,8 +126,5 @@ fun safe_history_add(self: &mut MerkleTree, index: u64, value: u256) {
 }
 
 fun poseidon2(a: u256, b: u256): u256 {
-    let modulus = vortex::vortex_constants::bn254_field_modulus!();
-    let a_reduced = a % modulus;
-    let b_reduced = b % modulus;
-    poseidon::poseidon_bn254(&vector[a_reduced, b_reduced])
+    poseidon::poseidon_bn254(&vector[a, b])
 }
