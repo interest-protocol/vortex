@@ -113,16 +113,15 @@ public fun transact(
     );
 
     let ext_value = ext_data.value();
-    let ext_value_is_non_zero = ext_value > 0;
 
-    if (ext_data.value_sign() && ext_value_is_non_zero) {
+    if (ext_data.value_sign() && ext_value > 0)
         assert!(deposit.value() == ext_value, vortex::vortex_errors::invalid_deposit_value!());
-    } else if (!ext_data.value_sign() && ext_value_is_non_zero) {
+    
+    if (!ext_data.value_sign() && ext_value > 0) 
         transfer::public_transfer(
             self.balance.split(ext_value - ext_data.relayer_fee()).into_coin(ctx),
             ext_data.recipient(),
         );
-    };
 
     self.balance.join(deposit.into_balance());
 
@@ -150,7 +149,7 @@ public fun transact(
         encrypted_output: ext_data.encrypted_output1(),
     });
 
-    if (ext_data.relayer_fee() > 0 && ext_value_is_non_zero)
+    if (ext_data.relayer_fee() > 0)
         transfer::public_transfer(
             self.balance.split(ext_data.relayer_fee()).into_coin(ctx),
             ext_data.relayer(),

@@ -25,9 +25,6 @@ public fun new(
     encrypted_output0: vector<u8>,
     encrypted_output1: vector<u8>,
 ): ExtData {
-    recipient.validate!();
-    value.validate!();
-
     assert!(
         value >= vortex::vortex_constants::one_sui_in_mist!(),
         vortex::vortex_errors::invalid_ext_data_value!(),
@@ -101,22 +98,9 @@ public(package) fun public_value(ext_data: ExtData): u256 {
     }
 }
 
-// === Private Functions ===
-
-macro fun assert_no_zero_address($address: address) {
-    assert!($address != @0x0, vortex::vortex_errors::invalid_address!());
-}
-
-macro fun assert_no_zero_value($value: u64) {
-    assert!($value != 0, vortex::vortex_errors::invalid_zero_value!());
-}
-
 // === Aliases ===
 
-use fun assert_no_zero_value as u64.validate;
-use fun assert_no_zero_address as address.validate;
 use fun vortex::vortex_utils::u64_to_bytes as u64.to_bytes;
-use fun vortex::vortex_utils::u256_to_bytes as u256.to_bytes;
 use fun vortex::vortex_utils::bool_to_bytes as bool.to_bytes;
 use fun vortex::vortex_utils::address_to_bytes as address.to_bytes;
 use fun vortex::vortex_utils::vector_u8_to_bytes as vector.to_bytes;
