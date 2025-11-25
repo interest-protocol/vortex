@@ -93,7 +93,7 @@ public(package) fun public_value(ext_data: ExtData): u256 {
         // If it is a deposit, the pool should get value - fee.
         (value - relayer_fee) as u256
     } else {
-        // If it is a withdrawal, the pool should get value + fee.
+        // If it is a withdrawal, the pool should remove value + fee.
         vortex::vortex_constants::bn254_field_modulus!() - ((value + relayer_fee) as u256)
     }
 }

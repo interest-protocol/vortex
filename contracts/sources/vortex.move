@@ -115,11 +115,11 @@ public fun transact(
     let ext_value = ext_data.value();
 
     if (ext_data.value_sign() && ext_value > 0)
-        assert!(deposit.value() == ext_value, vortex::vortex_errors::invalid_deposit_value!());
+        assert!(deposit.value() == ext_value + ext_data.relayer_fee(), vortex::vortex_errors::invalid_deposit_value!());
     
     if (!ext_data.value_sign() && ext_value > 0) 
         transfer::public_transfer(
-            self.balance.split(ext_value - ext_data.relayer_fee()).into_coin(ctx),
+            self.balance.split(ext_value).into_coin(ctx),
             ext_data.recipient(),
         );
 
