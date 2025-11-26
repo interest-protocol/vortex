@@ -24,7 +24,7 @@ import {
   getUnspentUtxos,
 } from '@interest-protocol/vortex-sdk';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { SuiClient } from '@mysten/sui/client';
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 
 // Create a Vortex keypair from your Sui wallet
 const suiKeypair = Ed25519Keypair.generate();
@@ -34,7 +34,7 @@ const vortexKeypair = await VortexKeypair.fromSuiWallet(
 );
 
 // Use the pre-configured SDK instance
-const suiClient = new SuiClient({ url: 'https://fullnode.devnet.sui.io' });
+const suiClient = new SuiClient({ url: getFullnodeUrl('devnet') });
 
 // Fetch commitment events to build merkle tree
 const commitmentEvents = await suiClient.queryEvents({
@@ -260,7 +260,7 @@ const { tx } = vortex.transact({
 Deposit SUI into the privacy pool.
 
 ```typescript
-import { deposit, Action } from '@interest-protocol/vortex-sdk';
+import { deposit } from '@interest-protocol/vortex-sdk';
 
 const transaction = await deposit({
   tx: new Transaction(), // Optional
@@ -715,35 +715,26 @@ console.log(DEPOSIT_FEE_IN_BASIS_POINTS); // 50 (0.5%)
 console.log(BASIS_POINTS); // 10000
 ```
 
-## Error Handling
+## TypeScript Types
 
 ```typescript
-import { deposit } from '@interest-protocol/vortex-sdk';
-
-try {
-  const transaction = await deposit({
-    amount: 1_000_000_000n,
-    vortex: vortexSDK,
-    vortexKeypair,
-    merkleTree,
-    unspentUtxos,
-  });
-
-  // Execute transaction...
-} catch (error) {
-  if (error.message.includes('Proof verification failed')) {
-    console.error('Invalid proof generated');
-  } else if (error.message.includes('Merkle tree is full')) {
-    console.error('Privacy pool at capacity');
-  } else if (error.message.includes('insufficient balance')) {
-    console.error('Not enough funds in UTXOs');
-  } else {
-    console.error('Transaction failed:', error);
-  }
-}
+import type {
+  ConstructorArgs,
+  SharedObjectData,
+  RegisterArgs,
+  NewExtDataArgs,
+  NewProofArgs,
+  TransactArgs,
+  DepositArgs,
+  WithdrawArgs,
+  ExtDataHashArgs,
+  Proof,
+  Action,
+  ParsedCommitmentEvent,
+} from '@interest-protocol/vortex-sdk';
 ```
 
-## Common Error Codes
+## Error Codes
 
 | Code | Error                         | Description                  |
 | ---- | ----------------------------- | ---------------------------- |
@@ -799,11 +790,10 @@ const vortex = new Vortex({
 3. **Keep keypairs secure** - never expose private keys
 4. **Consolidate UTXOs** periodically for better performance
 5. **Monitor gas costs** - complex proofs require more gas
-6. **Test on devnet/testnet** before mainnet deployment
-7. **Handle errors gracefully** with proper user feedback
-8. **Cache merkle trees** to avoid rebuilding for each transaction
-9. **Validate amounts** are within field modulus bounds
-10. **Use relayers** for enhanced privacy (optional)
+6. **Handle errors gracefully** with proper user feedback
+7. **Cache merkle trees** to avoid rebuilding for each transaction
+8. **Validate amounts** are within field modulus bounds
+9. **Use relayers** for enhanced privacy (optional)
 
 ## Security Considerations
 
@@ -815,38 +805,9 @@ const vortex = new Vortex({
 - **Transaction privacy**: Deposits/withdrawals are unlinkable with proper usage
 - **Relayers**: Using relayers enhances privacy but requires trust
 
-## TypeScript Types
-
-```typescript
-import type {
-  ConstructorArgs,
-  SharedObjectData,
-  RegisterArgs,
-  NewExtDataArgs,
-  NewProofArgs,
-  TransactArgs,
-  DepositArgs,
-  WithdrawArgs,
-  ExtDataHashArgs,
-  Proof,
-  Action,
-  ParsedCommitmentEvent,
-} from '@interest-protocol/vortex-sdk';
-```
-
 ## License
 
 MIT
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
-
-## Support
-
-- Documentation: [https://docs.vortexfi.xyz](https://docs.vortexfi.xyz)
-- Discord: [https://discord.gg/vortex](https://discord.gg/vortex)
-- GitHub Issues: [https://github.com/interest-protocol/vortex-v2/issues](https://github.com/interest-protocol/vortex-v2/issues)
 
 ## Related Packages
 
