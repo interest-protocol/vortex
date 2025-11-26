@@ -219,8 +219,6 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
             Ok(self.output_commitment_1)
         })?;
 
-        root.enforce_equal(&root)?;
-
         // Create arrays from individual variables for use in loops
         let input_nullifiers = [input_nullifier_0, input_nullifier_1];
         let output_commitment = [output_commitment_0, output_commitment_1];
