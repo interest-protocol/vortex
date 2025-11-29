@@ -81,6 +81,20 @@ impl PoseidonOptimized {
         }
     }
 
+    /// Create hasher for t=5 (4 inputs)
+    pub fn new_t5() -> Self {
+        let (c, s, m, p) = poseidon_constants_opt::constants_t5();
+        Self {
+            t: 5,
+            n_rounds_f: 8,
+            n_rounds_p: 60,
+            c,
+            s,
+            m,
+            p,
+        }
+    }
+
     /// S-box: x^5
     #[inline]
     fn pow5(x: Fr) -> Fr {
@@ -203,6 +217,11 @@ impl PoseidonOptimized {
     pub fn hash3(&self, x: &Fr, y: &Fr, z: &Fr) -> Fr {
         self.hash(&[*x, *y, *z])
     }
+
+    /// Hash four field elements
+    pub fn hash4(&self, x: &Fr, y: &Fr, z: &Fr, w: &Fr) -> Fr {
+        self.hash(&[*x, *y, *z, *w])
+    }
 }
 
 // =============================================================================
@@ -260,6 +279,20 @@ impl PoseidonOptimizedVar {
             t: 4,
             n_rounds_f: 8,
             n_rounds_p: 56,
+            c,
+            s,
+            m,
+            p,
+        }
+    }
+
+    /// Create constraint gadget for t=5 (4 inputs)
+    pub fn new_t5() -> Self {
+        let (c, s, m, p) = poseidon_constants_opt::constants_t5();
+        Self {
+            t: 5,
+            n_rounds_f: 8,
+            n_rounds_p: 60,
             c,
             s,
             m,
@@ -405,6 +438,17 @@ impl PoseidonOptimizedVar {
     ) -> Result<FpVar<Fr>, SynthesisError> {
         self.hash(&[a.clone(), b.clone(), c.clone()])
     }
+
+    /// Hash four field elements
+    pub fn hash4(
+        &self,
+        a: &FpVar<Fr>,
+        b: &FpVar<Fr>,
+        c: &FpVar<Fr>,
+        d: &FpVar<Fr>,
+    ) -> Result<FpVar<Fr>, SynthesisError> {
+        self.hash(&[a.clone(), b.clone(), c.clone(), d.clone()])
+    }
 }
 
 /// Allow allocating PoseidonOptimizedVar as a constant in constraint systems
@@ -451,6 +495,11 @@ pub fn hash2(x: &Fr, y: &Fr) -> Fr {
 /// Hash three field elements (native)
 pub fn hash3(x: &Fr, y: &Fr, z: &Fr) -> Fr {
     PoseidonOptimized::new_t4().hash3(x, y, z)
+}
+
+/// Hash four field elements (native)
+pub fn hash4(x: &Fr, y: &Fr, z: &Fr, w: &Fr) -> Fr {
+    PoseidonOptimized::new_t5().hash4(x, y, z, w)
 }
 
 // =============================================================================
@@ -504,6 +553,23 @@ mod tests {
         // Expected from TypeScript circomlibjs
         let expected = fr_from_str(
             "6542985608222806190361240322586112750744169038454362455181422643027100751666",
+        );
+        assert_eq!(hash, expected);
+    }
+
+    #[test]
+    fn test_optimized_poseidon_t5() {
+        let hasher = PoseidonOptimized::new_t5();
+
+        let x = Fr::from(1u64);
+        let y = Fr::from(2u64);
+        let z = Fr::from(3u64);
+        let w = Fr::from(4u64);
+        let hash = hasher.hash(&[x, y, z, w]);
+
+        // Expected from TypeScript circomlibjs
+        let expected = fr_from_str(
+            "18821383157269793795438455681495246036402687001665670618754263018637548127333",
         );
         assert_eq!(hash, expected);
     }
