@@ -4,7 +4,7 @@ use crate::{
     poseidon_opt::PoseidonOptimizedVar,
 };
 use ark_bn254::Fr;
-use ark_ff::AdditiveGroup;
+use ark_ff::{AdditiveGroup, Field};
 use ark_r1cs_std::{
     fields::fp::FpVar,
     prelude::{AllocVar, Boolean, EqGadget, FieldVar},
@@ -49,6 +49,7 @@ use std::ops::Not;
 pub struct TransactionCircuit {
     // Public inputs (must match order expected by Move contract verification)
     // Individual fields to match how they're allocated in generate_constraints()
+    pub vortex: Fr,
     pub root: Fr,
     pub public_amount: Fr,
     pub ext_data_hash: Fr,
@@ -56,8 +57,11 @@ pub struct TransactionCircuit {
     pub input_nullifier_1: Fr,
     pub output_commitment_0: Fr,
     pub output_commitment_1: Fr,
+    pub check_account_secret: Fr,
+    pub hashed_account_secret: Fr,
 
     // Private inputs - Input UTXOs
+    pub account_secret: Fr,
     pub in_private_keys: [Fr; N_INS],
     pub in_amounts: [Fr; N_INS],
     pub in_blindings: [Fr; N_INS],
@@ -75,6 +79,7 @@ impl TransactionCircuit {
     /// Used for setup phase and testing.
     pub fn empty() -> Self {
         Self {
+            vortex: Fr::ZERO,
             root: Fr::ZERO,
             public_amount: Fr::ZERO,
             ext_data_hash: Fr::ZERO,
@@ -82,7 +87,10 @@ impl TransactionCircuit {
             input_nullifier_1: Fr::ZERO,
             output_commitment_0: Fr::ZERO,
             output_commitment_1: Fr::ZERO,
+            check_account_secret: Fr::ZERO,
+            hashed_account_secret: Fr::ZERO,
 
+            account_secret: Fr::ZERO,
             in_private_keys: [Fr::ZERO; N_INS],
             in_amounts: [Fr::ZERO; N_INS],
             in_blindings: [Fr::ZERO; N_INS],
@@ -102,6 +110,7 @@ impl TransactionCircuit {
     /// - Path indices exceed tree capacity (>= 2^LEVEL)
     #[allow(clippy::too_many_arguments)]
     pub fn new(
+        vortex: Fr,
         root: Fr,
         public_amount: Fr,
         ext_data_hash: Fr,
@@ -109,6 +118,9 @@ impl TransactionCircuit {
         input_nullifier_1: Fr,
         output_commitment_0: Fr,
         output_commitment_1: Fr,
+        check_account_secret: Fr,
+        hashed_account_secret: Fr,
+        account_secret: Fr,
         in_private_keys: [Fr; N_INS],
         in_amounts: [Fr; N_INS],
         in_blindings: [Fr; N_INS],
@@ -131,6 +143,7 @@ impl TransactionCircuit {
         }
 
         Ok(Self {
+            vortex,
             root,
             public_amount,
             ext_data_hash,
@@ -138,6 +151,9 @@ impl TransactionCircuit {
             input_nullifier_1,
             output_commitment_0,
             output_commitment_1,
+            check_account_secret,
+            hashed_account_secret,
+            account_secret,
             in_private_keys,
             in_amounts,
             in_blindings,
@@ -168,6 +184,7 @@ impl TransactionCircuit {
     /// extracts them from the constraint system in the same order. The values should match exactly.
     pub fn get_public_inputs(&self) -> Vec<Fr> {
         vec![
+            self.vortex,
             self.root,
             self.public_amount,
             self.ext_data_hash,
@@ -205,6 +222,7 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         // Note: In Move, these are serialized as individual elements, not vectors
         // ============================================
 
+        let vortex = FpVar::new_input(ns!(cs, "vortex"), || Ok(self.vortex))?;
         let root = FpVar::new_input(ns!(cs, "root"), || Ok(self.root))?;
         let public_amount = FpVar::new_input(ns!(cs, "public_amount"), || Ok(self.public_amount))?;
         let _ext_data_hash = FpVar::new_input(ns!(cs, "ext_data_hash"), || Ok(self.ext_data_hash))?;
@@ -218,6 +236,12 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         let output_commitment_1 = FpVar::new_input(ns!(cs, "output_commitment_1"), || {
             Ok(self.output_commitment_1)
         })?;
+        let check_account_secret = FpVar::new_input(ns!(cs, "check_account_secret"), || {
+            Ok(self.check_account_secret)
+        })?;
+        let hashed_account_secret = FpVar::new_input(ns!(cs, "hashed_account_secret"), || {
+            Ok(self.hashed_account_secret)
+        })?;
 
         // Create arrays from individual variables for use in loops
         let input_nullifiers = [input_nullifier_0, input_nullifier_1];
@@ -226,6 +250,9 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         // ============================================
         // ALLOCATE PRIVATE WITNESS INPUTS
         // ============================================
+        let account_secret =
+            FpVar::new_witness(ns!(cs, "account_secret"), || Ok(self.account_secret))?;
+
         let in_private_key = [
             FpVar::new_witness(ns!(cs, "in_private_key_0"), || Ok(self.in_private_keys[0]))?,
             FpVar::new_witness(ns!(cs, "in_private_key_1"), || Ok(self.in_private_keys[1]))?,
@@ -274,6 +301,16 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         let hasher2 = PoseidonOptimizedVar::new_t2();
         let hasher3 = PoseidonOptimizedVar::new_t3();
         let hasher4 = PoseidonOptimizedVar::new_t4();
+        let hasher5 = PoseidonOptimizedVar::new_t5();
+
+        // ============================================
+        // Verify account secret
+        // ============================================
+        let expected_hashed_account_secret = hasher2.hash1(&account_secret)?;
+        let one = FpVar::<Fr>::constant(Fr::ONE);
+        let check_account_secret_is_one = check_account_secret.is_eq(&one)?;
+        expected_hashed_account_secret
+            .conditional_enforce_equal(&hashed_account_secret, &check_account_secret_is_one)?;
 
         // ============================================
         // VERIFY INPUT UTXOs
@@ -286,7 +323,8 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
             let public_key = hasher2.hash1(&in_private_key[i])?;
 
             // Calculate commitment: commitment = Poseidon3(amount, pubkey, blinding)
-            let commitment = hasher4.hash3(&in_amounts[i], &public_key, &in_blindings[i])?;
+            let commitment =
+                hasher5.hash4(&in_amounts[i], &public_key, &in_blindings[i], &vortex)?;
 
             // Calculate signature: sig = Poseidon3(privkey, commitment, path_index)
             let signature = hasher4.hash3(&in_private_key[i], &commitment, &in_path_indices[i])?;
@@ -324,8 +362,12 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
 
         for i in 0..N_OUTS {
             // Calculate output commitment: commitment = Poseidon3(amount, pubkey, blinding)
-            let expected_commitment =
-                hasher4.hash3(&out_amounts[i], &out_public_key[i], &out_blindings[i])?;
+            let expected_commitment = hasher5.hash4(
+                &out_amounts[i],
+                &out_public_key[i],
+                &out_blindings[i],
+                &vortex,
+            )?;
 
             // Enforce computed commitment matches public input
             expected_commitment.enforce_equal(&output_commitment[i])?;
@@ -456,6 +498,7 @@ fn test_circuit_with_valid_inputs() {
     let merkle_paths = [Path::empty(), Path::empty()];
 
     let circuit = TransactionCircuit::new(
+        Fr::from(0u64), // vortex
         Fr::from(0u64), // root
         Fr::from(0u64), // public_amount
         Fr::from(0u64), // ext_data_hash
@@ -463,6 +506,9 @@ fn test_circuit_with_valid_inputs() {
         nullifier_1,
         out_commitment_0,
         out_commitment_1,
+        Fr::from(0u64), // check_account_secret
+        Fr::from(0u64), // account_secret
+        Fr::from(0u64), // account_secret
         [private_key_0, private_key_1],
         [amount_0, amount_1],
         [blinding_0, blinding_1],
