@@ -58,7 +58,7 @@ fun init(ctx: &mut TxContext) {
 // === Mutative Functions ===
 
 public fun new<CoinType>(registry: &mut Registry, ctx: &mut TxContext): Vortex<CoinType> {
-    let id = *type_name::with_defining_ids<CoinType>().as_string();
+    let id = type_name::with_defining_ids<CoinType>().into_string();
 
     assert!(!registry.pools.contains(id), vortex::vortex_errors::pool_already_exists!());
 
@@ -108,6 +108,8 @@ public fun transact<CoinType>(
     deposit: Coin<CoinType>,
     ctx: &mut TxContext,
 ) {
+    self.assert_address(proof.vortex());
+
     self.assert_root_is_known(proof.root());
 
     ext_data.assert_hash(proof.ext_data_hash());
@@ -202,7 +204,7 @@ public fun encryption_key(registry: &Registry, address: address): Option<String>
 }
 
 public fun vortex_address<CoinType>(registry: &Registry): Option<address> {
-    let id = *type_name::with_defining_ids<CoinType>().as_string();
+    let id = type_name::with_defining_ids<CoinType>().into_string();
 
     if (registry.pools.contains(id)) {
         option::some(registry.pools[id])
@@ -212,6 +214,10 @@ public fun vortex_address<CoinType>(registry: &Registry): Option<address> {
 }
 
 // === Private Functions ===
+
+fun assert_address<CoinType>(self: &Vortex<CoinType>, vortex: address) {
+    assert!(vortex == self.id.to_address(), vortex::vortex_errors::invalid_vortex!());
+}
 
 fun assert_ext_data_hash(ext_data: ExtData, ext_data_hash: u256) {
     assert!(

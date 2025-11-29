@@ -61,3 +61,7 @@ public(package) macro fun key_already_registered(): u64 {
 public(package) macro fun pool_already_exists(): u64 {
     14
 }
+
+public(package) macro fun invalid_vortex(): u64 {
+    15
+}

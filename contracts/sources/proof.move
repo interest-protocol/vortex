@@ -1,6 +1,5 @@
 module vortex::vortex_proof;
 
-use std::{ascii::String, type_name};
 use sui::groth16::{Self, PublicProofInputs, ProofPoints};
 
 // === Structs ===
@@ -12,12 +11,13 @@ public struct Proof<phantom CoinType> has copy, drop, store {
     output_commitments: vector<u256>,
     public_value: u256,
     ext_data_hash: u256,
-    coin_type: String,
+    vortex: address,
 }
 
 // === Public View Functions ===
 
 public fun new<CoinType>(
+    vortex: address,
     proof_points: vector<u8>,
     root: u256,
     public_value: u256,
@@ -34,7 +34,7 @@ public fun new<CoinType>(
         output_commitments: vector[output_commitment0, output_commitment1],
         public_value,
         ext_data_hash,
-        coin_type: *type_name::with_defining_ids<CoinType>().as_string(),
+        vortex,
     }
 }
 
@@ -64,8 +64,13 @@ public(package) fun ext_data_hash<CoinType>(self: Proof<CoinType>): u256 {
     self.ext_data_hash
 }
 
+public(package) fun vortex<CoinType>(self: Proof<CoinType>): address {
+    self.vortex
+}
+
 public(package) fun public_inputs<CoinType>(self: Proof<CoinType>): PublicProofInputs {
     let bytes = vector[
+        self.vortex.to_u256().to_field(),
         self.root.to_field(),
         self.public_value.to_field(),
         self.ext_data_hash.to_field(),
@@ -73,7 +78,6 @@ public(package) fun public_inputs<CoinType>(self: Proof<CoinType>): PublicProofI
         self.input_nullifiers[1].to_field(),
         self.output_commitments[0].to_field(),
         self.output_commitments[1].to_field(),
-        (*self.coin_type.as_bytes()).to_bytes(),
     ];
 
     groth16::public_proof_inputs_from_bytes(bytes.flatten())
@@ -82,4 +86,3 @@ public(package) fun public_inputs<CoinType>(self: Proof<CoinType>): PublicProofI
 // === Aliases ===
 
 use fun vortex::vortex_utils::u256_to_field as u256.to_field;
-use fun vortex::vortex_utils::vector_u8_to_bytes as vector.to_bytes;
