@@ -221,24 +221,32 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         // Order must match Move contract's verification expectations
         // Note: In Move, these are serialized as individual elements, not vectors
         // ============================================
-
         let vortex = FpVar::new_input(ns!(cs, "vortex"), || Ok(self.vortex))?;
+
         let root = FpVar::new_input(ns!(cs, "root"), || Ok(self.root))?;
+
         let public_amount = FpVar::new_input(ns!(cs, "public_amount"), || Ok(self.public_amount))?;
-        let _ext_data_hash = FpVar::new_input(ns!(cs, "ext_data_hash"), || Ok(self.ext_data_hash))?;
+
+        let ext_data_hash = FpVar::new_input(ns!(cs, "ext_data_hash"), || Ok(self.ext_data_hash))?;
+
         let input_nullifier_0 =
             FpVar::new_input(ns!(cs, "input_nullifier_0"), || Ok(self.input_nullifier_0))?;
+
         let input_nullifier_1 =
             FpVar::new_input(ns!(cs, "input_nullifier_1"), || Ok(self.input_nullifier_1))?;
+
         let output_commitment_0 = FpVar::new_input(ns!(cs, "output_commitment_0"), || {
             Ok(self.output_commitment_0)
         })?;
+
         let output_commitment_1 = FpVar::new_input(ns!(cs, "output_commitment_1"), || {
             Ok(self.output_commitment_1)
         })?;
+
         let check_account_secret = FpVar::new_input(ns!(cs, "check_account_secret"), || {
             Ok(self.check_account_secret)
         })?;
+
         let hashed_account_secret = FpVar::new_input(ns!(cs, "hashed_account_secret"), || {
             Ok(self.hashed_account_secret)
         })?;
@@ -401,6 +409,13 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         // SECURITY: Ensure no value is created or destroyed
         // sum(inputs) + public_amount = sum(outputs)
         (sum_ins + public_amount).enforce_equal(&sum_outs)?;
+
+        // Optional safety constraint to make sure ext_data_hash cannot be changed
+        // Compute ext_data_hash^2 as a constraint (similar to Circom: signal extDataSquare <== extDataHash * extDataHash)
+        let ext_data_square = ext_data_hash.square()?;
+        // Enforce the square equals the expected value from the circuit input
+        let expected_square = FpVar::constant(self.ext_data_hash * self.ext_data_hash);
+        ext_data_square.enforce_equal(&expected_square)?;
 
         Ok(())
     }
