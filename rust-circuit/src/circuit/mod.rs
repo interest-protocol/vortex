@@ -192,6 +192,8 @@ impl TransactionCircuit {
             self.input_nullifier_1,
             self.output_commitment_0,
             self.output_commitment_1,
+            self.check_account_secret,
+            self.hashed_account_secret,
         ]
     }
 
