@@ -6,7 +6,7 @@ use sui::{coin::{Self, Coin}, event::emit, transfer::Receiving};
 
 public struct VortexAccount has key, store {
     id: UID,
-    secret_hash: u256,
+    hashed_secret: u256,
 }
 
 // === Events ===
@@ -15,13 +15,13 @@ public struct NewAccount(address, u256) has copy, drop;
 
 // === Public Mutative Functions ===
 
-public fun new(secret_hash: u256, ctx: &mut TxContext): VortexAccount {
+public fun new(hashed_secret: u256, ctx: &mut TxContext): VortexAccount {
     let account = VortexAccount {
         id: object::new(ctx),
-        secret_hash,
+        hashed_secret,
     };
 
-    emit(NewAccount(account.id.to_address(), secret_hash));
+    emit(NewAccount(account.id.to_address(), hashed_secret));
 
     account
 }
@@ -36,8 +36,8 @@ public fun merge_coins<CoinType>(
 
 // === Package Functions ===
 
-public(package) fun secret_hash(account: &VortexAccount): u256 {
-    account.secret_hash
+public(package) fun hashed_secret(account: &VortexAccount): u256 {
+    account.hashed_secret
 }
 
 public(package) fun receive<CoinType>(

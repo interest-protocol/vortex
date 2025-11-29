@@ -87,7 +87,7 @@ public(package) fun public_inputs<CoinType>(self: Proof<CoinType>): PublicProofI
 
 public(package) fun tto_public_inputs<CoinType>(
     self: Proof<CoinType>,
-    secret_hash: u256,
+    hashed_secret: u256,
 ): PublicProofInputs {
     let bytes = vector[
         self.vortex.to_u256().to_field(),
@@ -99,7 +99,7 @@ public(package) fun tto_public_inputs<CoinType>(
         self.output_commitments[0].to_field(),
         self.output_commitments[1].to_field(),
         bcs::to_bytes(&1u256),
-        secret_hash.to_field(),
+        hashed_secret.to_field(),
     ];
 
     groth16::public_proof_inputs_from_bytes(bytes.flatten())

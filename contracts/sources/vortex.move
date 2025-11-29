@@ -129,7 +129,7 @@ public fun transact_with_account<CoinType>(
 
     self.process_transaction(
         deposit,
-        proof.tto_public_inputs(account.secret_hash()),
+        proof.tto_public_inputs(account.hashed_secret()),
         proof,
         ext_data,
         ctx,
