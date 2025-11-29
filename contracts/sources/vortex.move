@@ -6,10 +6,16 @@ use sui::{
     coin::Coin,
     dynamic_object_field as dof,
     event::emit,
-    groth16::{Self, Curve, PreparedVerifyingKey},
-    table::{Self, Table}
+    groth16::{Self, Curve, PreparedVerifyingKey, PublicProofInputs},
+    table::{Self, Table},
+    transfer::Receiving
 };
-use vortex::{vortex_ext_data::ExtData, vortex_merkle_tree::{Self, MerkleTree}, vortex_proof::Proof};
+use vortex::{
+    vortex_account::VortexAccount,
+    vortex_ext_data::ExtData,
+    vortex_merkle_tree::{Self, MerkleTree},
+    vortex_proof::Proof
+};
 
 // === Structs ===
 
@@ -103,82 +109,31 @@ public fun register(registry: &mut Registry, encryption_key: String, ctx: &mut T
 
 public fun transact<CoinType>(
     self: &mut Vortex<CoinType>,
+    deposit: Coin<CoinType>,
     proof: Proof<CoinType>,
     ext_data: ExtData,
-    deposit: Coin<CoinType>,
     ctx: &mut TxContext,
 ) {
-    self.assert_address(proof.vortex());
+    self.process_transaction(deposit, proof.public_inputs(), proof, ext_data, ctx);
+}
 
-    self.assert_root_is_known(proof.root());
+public fun transact_with_account<CoinType>(
+    self: &mut Vortex<CoinType>,
+    account: &mut VortexAccount,
+    coins: vector<Receiving<Coin<CoinType>>>,
+    proof: Proof<CoinType>,
+    ext_data: ExtData,
+    ctx: &mut TxContext,
+) {
+    let deposit = account.receive(coins, ctx);
 
-    ext_data.assert_hash(proof.ext_data_hash());
-
-    proof.assert_public_value(ext_data);
-
-    proof.input_nullifiers().do!(|nullifier| {
-        assert!(
-            !self.is_nullifier_spent(nullifier),
-            vortex::vortex_errors::nullifier_already_spent!(),
-        );
-    });
-
-    assert!(
-        self
-            .curve
-            .verify_groth16_proof(
-                &self.vk,
-                &proof.public_inputs(),
-                &proof.points(),
-            ),
-        vortex::vortex_errors::invalid_proof!(),
+    self.process_transaction(
+        deposit,
+        proof.tto_public_inputs(account.secret_hash()),
+        proof,
+        ext_data,
+        ctx,
     );
-
-    let ext_value = ext_data.value();
-
-    if (ext_data.value_sign() && ext_value > 0)
-        assert!(
-            deposit.value() == ext_value + ext_data.relayer_fee(),
-            vortex::vortex_errors::invalid_deposit_value!(),
-        );
-
-    if (!ext_data.value_sign() && ext_value > 0)
-        transfer::public_transfer(
-            self.balance.split(ext_value).into_coin(ctx),
-            ext_data.recipient(),
-        );
-
-    self.balance.join(deposit.into_balance());
-
-    proof.input_nullifiers().do!(|nullifier| {
-        self.nullifier_hashes.add(nullifier, true);
-        emit(NullifierSpent<CoinType>(nullifier));
-    });
-
-    let merkle_tree_mut = self.merkle_tree_mut();
-    let commitments = proof.output_commitments();
-
-    let next_index = merkle_tree_mut.next_index();
-
-    merkle_tree_mut.append_pair(commitments[0], commitments[1]);
-
-    emit(NewCommitment<CoinType> {
-        index: next_index,
-        commitment: commitments[0],
-        encrypted_output: ext_data.encrypted_output0(),
-    });
-
-    emit(NewCommitment<CoinType> {
-        index: next_index + 1,
-        commitment: commitments[1],
-        encrypted_output: ext_data.encrypted_output1(),
-    });
-
-    if (ext_data.relayer_fee() > 0)
-        transfer::public_transfer(
-            self.balance.split(ext_data.relayer_fee()).into_coin(ctx),
-            ext_data.relayer(),
-        );
 }
 
 // === Public Views ===
@@ -235,6 +190,87 @@ fun assert_public_value<CoinType>(proof: Proof<CoinType>, ext_data: ExtData) {
         proof.public_value() == ext_data.public_value(),
         vortex::vortex_errors::invalid_public_value!(),
     );
+}
+
+fun process_transaction<CoinType>(
+    self: &mut Vortex<CoinType>,
+    deposit: Coin<CoinType>,
+    public_inputs: PublicProofInputs,
+    proof: Proof<CoinType>,
+    ext_data: ExtData,
+    ctx: &mut TxContext,
+) {
+    self.assert_address(proof.vortex());
+
+    self.assert_root_is_known(proof.root());
+
+    ext_data.assert_hash(proof.ext_data_hash());
+
+    proof.assert_public_value(ext_data);
+
+    proof.input_nullifiers().do!(|nullifier| {
+        assert!(
+            !self.is_nullifier_spent(nullifier),
+            vortex::vortex_errors::nullifier_already_spent!(),
+        );
+    });
+
+    assert!(
+        self
+            .curve
+            .verify_groth16_proof(
+                &self.vk,
+                &public_inputs,
+                &proof.points(),
+            ),
+        vortex::vortex_errors::invalid_proof!(),
+    );
+
+    let ext_value = ext_data.value();
+
+    if (ext_data.value_sign() && ext_value > 0)
+        assert!(
+            deposit.value() == ext_value + ext_data.relayer_fee(),
+            vortex::vortex_errors::invalid_deposit_value!(),
+        );
+
+    if (!ext_data.value_sign() && ext_value > 0)
+        transfer::public_transfer(
+            self.balance.split(ext_value).into_coin(ctx),
+            ext_data.recipient(),
+        );
+
+    self.balance.join(deposit.into_balance());
+
+    proof.input_nullifiers().do!(|nullifier| {
+        self.nullifier_hashes.add(nullifier, true);
+        emit(NullifierSpent<CoinType>(nullifier));
+    });
+
+    let merkle_tree_mut = self.merkle_tree_mut();
+    let commitments = proof.output_commitments();
+
+    let next_index = merkle_tree_mut.next_index();
+
+    merkle_tree_mut.append_pair(commitments[0], commitments[1]);
+
+    emit(NewCommitment<CoinType> {
+        index: next_index,
+        commitment: commitments[0],
+        encrypted_output: ext_data.encrypted_output0(),
+    });
+
+    emit(NewCommitment<CoinType> {
+        index: next_index + 1,
+        commitment: commitments[1],
+        encrypted_output: ext_data.encrypted_output1(),
+    });
+
+    if (ext_data.relayer_fee() > 0)
+        transfer::public_transfer(
+            self.balance.split(ext_data.relayer_fee()).into_coin(ctx),
+            ext_data.relayer(),
+        );
 }
 
 fun merkle_tree<CoinType>(self: &Vortex<CoinType>): &MerkleTree {
