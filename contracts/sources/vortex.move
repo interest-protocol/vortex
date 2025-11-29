@@ -1,13 +1,12 @@
 module vortex::vortex;
 
-use std::string::String;
+use std::{ascii::String, type_name};
 use sui::{
     balance::{Self, Balance},
     coin::Coin,
     dynamic_object_field as dof,
     event::emit,
     groth16::{Self, Curve, PreparedVerifyingKey},
-    sui::SUI,
     table::{Self, Table}
 };
 use vortex::{vortex_ext_data::ExtData, vortex_merkle_tree::{Self, MerkleTree}, vortex_proof::Proof};
@@ -16,34 +15,53 @@ use vortex::{vortex_ext_data::ExtData, vortex_merkle_tree::{Self, MerkleTree}, v
 
 public struct MerkleTreeKey() has copy, drop, store;
 
-public struct Vortex has key {
+public struct Vortex<phantom CoinType> has key {
     id: UID,
     curve: Curve,
     vk: PreparedVerifyingKey,
-    balance: Balance<SUI>,
+    balance: Balance<CoinType>,
     nullifier_hashes: Table<u256, bool>,
 }
 
 public struct Registry has key {
     id: UID,
+    pools: Table<String, address>,
     encryption_keys: Table<address, String>,
 }
 
 // === Events ===
 
-public struct NewCommitment has copy, drop {
+public struct NewPool<phantom CoinType>(address) has copy, drop;
+
+public struct NewCommitment<phantom CoinType> has copy, drop {
     index: u64,
     commitment: u256,
     encrypted_output: vector<u8>,
 }
 
-public struct NullifierSpent(u256) has copy, drop;
+public struct NullifierSpent<phantom CoinType>(u256) has copy, drop;
 
 public struct NewEncryptionKey(address, String) has copy, drop;
 
 // === Initializer ===
 
 fun init(ctx: &mut TxContext) {
+    let registry = Registry {
+        id: object::new(ctx),
+        pools: table::new(ctx),
+        encryption_keys: table::new(ctx),
+    };
+
+    transfer::share_object(registry);
+}
+
+// === Mutative Functions ===
+
+public fun new<CoinType>(registry: &mut Registry, ctx: &mut TxContext): Vortex<CoinType> {
+    let id = *type_name::with_defining_ids<CoinType>().as_string();
+
+    assert!(!registry.pools.contains(id), vortex::vortex_errors::pool_already_exists!());
+
     let curve = groth16::bn254();
 
     let mut vortex = Vortex {
@@ -54,18 +72,20 @@ fun init(ctx: &mut TxContext) {
         nullifier_hashes: table::new(ctx),
     };
 
+    let vortex_address = vortex.id.to_address();
+
+    registry.pools.add(id, vortex_address);
+
     dof::add(&mut vortex.id, MerkleTreeKey(), vortex_merkle_tree::new(ctx));
 
-    let registry = Registry {
-        id: object::new(ctx),
-        encryption_keys: table::new(ctx),
-    };
+    emit(NewPool<CoinType>(vortex_address));
 
-    transfer::share_object(vortex);
-    transfer::share_object(registry);
+    vortex
 }
 
-// === Mutative Functions ===
+public fun share<CoinType>(vortex: Vortex<CoinType>) {
+    transfer::share_object(vortex);
+}
 
 public fun register(registry: &mut Registry, encryption_key: String, ctx: &mut TxContext) {
     let sender = ctx.sender();
@@ -81,11 +101,11 @@ public fun register(registry: &mut Registry, encryption_key: String, ctx: &mut T
     emit(NewEncryptionKey(sender, encryption_key));
 }
 
-public fun transact(
-    self: &mut Vortex,
-    proof: Proof,
+public fun transact<CoinType>(
+    self: &mut Vortex<CoinType>,
+    proof: Proof<CoinType>,
     ext_data: ExtData,
-    deposit: Coin<SUI>,
+    deposit: Coin<CoinType>,
     ctx: &mut TxContext,
 ) {
     self.assert_root_is_known(proof.root());
@@ -115,9 +135,12 @@ public fun transact(
     let ext_value = ext_data.value();
 
     if (ext_data.value_sign() && ext_value > 0)
-        assert!(deposit.value() == ext_value + ext_data.relayer_fee(), vortex::vortex_errors::invalid_deposit_value!());
-    
-    if (!ext_data.value_sign() && ext_value > 0) 
+        assert!(
+            deposit.value() == ext_value + ext_data.relayer_fee(),
+            vortex::vortex_errors::invalid_deposit_value!(),
+        );
+
+    if (!ext_data.value_sign() && ext_value > 0)
         transfer::public_transfer(
             self.balance.split(ext_value).into_coin(ctx),
             ext_data.recipient(),
@@ -127,7 +150,7 @@ public fun transact(
 
     proof.input_nullifiers().do!(|nullifier| {
         self.nullifier_hashes.add(nullifier, true);
-        emit(NullifierSpent(nullifier));
+        emit(NullifierSpent<CoinType>(nullifier));
     });
 
     let merkle_tree_mut = self.merkle_tree_mut();
@@ -137,13 +160,13 @@ public fun transact(
 
     merkle_tree_mut.append_pair(commitments[0], commitments[1]);
 
-    emit(NewCommitment {
+    emit(NewCommitment<CoinType> {
         index: next_index,
         commitment: commitments[0],
         encrypted_output: ext_data.encrypted_output0(),
     });
 
-    emit(NewCommitment {
+    emit(NewCommitment<CoinType> {
         index: next_index + 1,
         commitment: commitments[1],
         encrypted_output: ext_data.encrypted_output1(),
@@ -158,21 +181,31 @@ public fun transact(
 
 // === Public Views ===
 
-public fun root(self: &Vortex): u256 {
+public fun root<CoinType>(self: &Vortex<CoinType>): u256 {
     self.merkle_tree().root()
 }
 
-public fun is_nullifier_spent(self: &Vortex, nullifier: u256): bool {
+public fun is_nullifier_spent<CoinType>(self: &Vortex<CoinType>, nullifier: u256): bool {
     self.nullifier_hashes.contains(nullifier)
 }
 
-public fun next_index(self: &Vortex): u64 {
+public fun next_index<CoinType>(self: &Vortex<CoinType>): u64 {
     self.merkle_tree().next_index()
 }
 
 public fun encryption_key(registry: &Registry, address: address): Option<String> {
     if (registry.encryption_keys.contains(address)) {
         option::some(registry.encryption_keys[address])
+    } else {
+        option::none()
+    }
+}
+
+public fun vortex_address<CoinType>(registry: &Registry): Option<address> {
+    let id = *type_name::with_defining_ids<CoinType>().as_string();
+
+    if (registry.pools.contains(id)) {
+        option::some(registry.pools[id])
     } else {
         option::none()
     }
@@ -187,22 +220,22 @@ fun assert_ext_data_hash(ext_data: ExtData, ext_data_hash: u256) {
     );
 }
 
-fun assert_root_is_known(self: &Vortex, root: u256) {
+fun assert_root_is_known<CoinType>(self: &Vortex<CoinType>, root: u256) {
     assert!(self.merkle_tree().is_known_root(root), vortex::vortex_errors::proof_root_not_known!());
 }
 
-fun assert_public_value(proof: Proof, ext_data: ExtData) {
+fun assert_public_value<CoinType>(proof: Proof<CoinType>, ext_data: ExtData) {
     assert!(
         proof.public_value() == ext_data.public_value(),
         vortex::vortex_errors::invalid_public_value!(),
     );
 }
 
-fun merkle_tree(self: &Vortex): &MerkleTree {
+fun merkle_tree<CoinType>(self: &Vortex<CoinType>): &MerkleTree {
     dof::borrow(&self.id, MerkleTreeKey())
 }
 
-fun merkle_tree_mut(self: &mut Vortex): &mut MerkleTree {
+fun merkle_tree_mut<CoinType>(self: &mut Vortex<CoinType>): &mut MerkleTree {
     dof::borrow_mut(&mut self.id, MerkleTreeKey())
 }
 

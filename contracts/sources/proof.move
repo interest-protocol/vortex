@@ -1,21 +1,23 @@
 module vortex::vortex_proof;
 
+use std::{ascii::String, type_name};
 use sui::groth16::{Self, PublicProofInputs, ProofPoints};
 
 // === Structs ===
 
-public struct Proof has copy, drop, store {
+public struct Proof<phantom CoinType> has copy, drop, store {
     root: u256,
     points: ProofPoints,
     input_nullifiers: vector<u256>,
     output_commitments: vector<u256>,
     public_value: u256,
     ext_data_hash: u256,
+    coin_type: String,
 }
 
 // === Public View Functions ===
 
-public fun new(
+public fun new<CoinType>(
     proof_points: vector<u8>,
     root: u256,
     public_value: u256,
@@ -24,7 +26,7 @@ public fun new(
     input_nullifier1: u256,
     output_commitment0: u256,
     output_commitment1: u256,
-): Proof {
+): Proof<CoinType> {
     Proof {
         root,
         points: groth16::proof_points_from_bytes(proof_points),
@@ -32,36 +34,37 @@ public fun new(
         output_commitments: vector[output_commitment0, output_commitment1],
         public_value,
         ext_data_hash,
+        coin_type: *type_name::with_defining_ids<CoinType>().as_string(),
     }
 }
 
 // === Package View Functions ===
 
-public(package) fun root(self: Proof): u256 {
+public(package) fun root<CoinType>(self: Proof<CoinType>): u256 {
     self.root
 }
 
-public(package) fun points(self: Proof): ProofPoints {
+public(package) fun points<CoinType>(self: Proof<CoinType>): ProofPoints {
     self.points
 }
 
-public(package) fun input_nullifiers(self: Proof): vector<u256> {
+public(package) fun input_nullifiers<CoinType>(self: Proof<CoinType>): vector<u256> {
     self.input_nullifiers
 }
 
-public(package) fun output_commitments(self: Proof): vector<u256> {
+public(package) fun output_commitments<CoinType>(self: Proof<CoinType>): vector<u256> {
     self.output_commitments
 }
 
-public(package) fun public_value(self: Proof): u256 {
+public(package) fun public_value<CoinType>(self: Proof<CoinType>): u256 {
     self.public_value
 }
 
-public(package) fun ext_data_hash(self: Proof): u256 {
+public(package) fun ext_data_hash<CoinType>(self: Proof<CoinType>): u256 {
     self.ext_data_hash
 }
 
-public(package) fun public_inputs(self: Proof): PublicProofInputs {
+public(package) fun public_inputs<CoinType>(self: Proof<CoinType>): PublicProofInputs {
     let bytes = vector[
         self.root.to_field(),
         self.public_value.to_field(),
@@ -70,6 +73,7 @@ public(package) fun public_inputs(self: Proof): PublicProofInputs {
         self.input_nullifiers[1].to_field(),
         self.output_commitments[0].to_field(),
         self.output_commitments[1].to_field(),
+        (*self.coin_type.as_bytes()).to_bytes(),
     ];
 
     groth16::public_proof_inputs_from_bytes(bytes.flatten())
@@ -78,3 +82,4 @@ public(package) fun public_inputs(self: Proof): PublicProofInputs {
 // === Aliases ===
 
 use fun vortex::vortex_utils::u256_to_field as u256.to_field;
+use fun vortex::vortex_utils::vector_u8_to_bytes as vector.to_bytes;

@@ -57,3 +57,7 @@ public(package) macro fun invalid_relayer(): u64 {
 public(package) macro fun key_already_registered(): u64 {
     13
 }
+
+public(package) macro fun pool_already_exists(): u64 {
+    14
+}
