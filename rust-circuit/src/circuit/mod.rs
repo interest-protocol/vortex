@@ -308,15 +308,15 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         // ============================================
         // CREATE HASHERS (constants, no allocation needed)
         // ============================================
-        let hasher2 = PoseidonOptimizedVar::new_t2();
-        let hasher3 = PoseidonOptimizedVar::new_t3();
-        let hasher4 = PoseidonOptimizedVar::new_t4();
-        let hasher5 = PoseidonOptimizedVar::new_t5();
+        let hasher_t2 = PoseidonOptimizedVar::new_t2();
+        let hasher_t3 = PoseidonOptimizedVar::new_t3();
+        let hasher_t4 = PoseidonOptimizedVar::new_t4();
+        let hasher_t5 = PoseidonOptimizedVar::new_t5();
 
         // ============================================
         // Verify account secret
         // ============================================
-        let expected_hashed_account_secret = hasher2.hash1(&account_secret)?;
+        let expected_hashed_account_secret = hasher_t2.hash1(&account_secret)?;
         let one = FpVar::<Fr>::constant(Fr::ONE);
         let check_account_secret_is_one = check_account_secret.is_eq(&one)?;
         expected_hashed_account_secret
@@ -330,17 +330,18 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
 
         for i in 0..N_INS {
             // Derive public key from private key: pubkey = Poseidon1(privkey)
-            let public_key = hasher2.hash1(&in_private_key[i])?;
+            let public_key = hasher_t2.hash1(&in_private_key[i])?;
 
             // Calculate commitment: commitment = Poseidon3(amount, pubkey, blinding)
             let commitment =
-                hasher5.hash4(&in_amounts[i], &public_key, &in_blindings[i], &vortex)?;
+                hasher_t5.hash4(&in_amounts[i], &public_key, &in_blindings[i], &vortex)?;
 
             // Calculate signature: sig = Poseidon3(privkey, commitment, path_index)
-            let signature = hasher4.hash3(&in_private_key[i], &commitment, &in_path_indices[i])?;
+            let signature =
+                hasher_t4.hash3(&in_private_key[i], &commitment, &in_path_indices[i])?;
 
             // Calculate nullifier: nullifier = Poseidon3(commitment, path_index, signature)
-            let nullifier = hasher4.hash3(&commitment, &in_path_indices[i], &signature)?;
+            let nullifier = hasher_t4.hash3(&commitment, &in_path_indices[i], &signature)?;
 
             // Enforce computed nullifier matches public input
             nullifier.enforce_equal(&input_nullifiers[i])?;
@@ -355,7 +356,7 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
             // SECURITY: Verify Merkle proof only if amount is non-zero
             // This optimization reduces constraints for zero-value inputs
             let merkle_path_membership =
-                merkle_paths[i].check_membership(&root, &commitment, &hasher3)?;
+                merkle_paths[i].check_membership(&root, &commitment, &hasher_t3)?;
 
             // Only enforce Merkle membership when amount is non-zero
             let amount_is_non_zero = amount_is_zero.not();
@@ -372,7 +373,7 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
 
         for i in 0..N_OUTS {
             // Calculate output commitment: commitment = Poseidon3(amount, pubkey, blinding)
-            let expected_commitment = hasher5.hash4(
+            let expected_commitment = hasher_t5.hash4(
                 &out_amounts[i],
                 &out_public_key[i],
                 &out_blindings[i],
