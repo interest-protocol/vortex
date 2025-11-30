@@ -22,7 +22,7 @@ pub fn main() {
 pub struct ProofOutput {
     /// Proof component A (compressed: 32 bytes)
     pub proof_a: Vec<u8>,
-    /// Proof component B (compressed: 64 bytes)  
+    /// Proof component B (compressed: 64 bytes)
     pub proof_b: Vec<u8>,
     /// Proof component C (compressed: 32 bytes)
     pub proof_c: Vec<u8>,
@@ -37,6 +37,7 @@ pub struct ProofOutput {
 #[serde(rename_all = "camelCase")]
 pub struct ProofInput {
     // Public inputs
+    pub vortex: String,
     pub root: String,
     pub public_amount: String,
     pub ext_data_hash: String,
@@ -44,8 +45,10 @@ pub struct ProofInput {
     pub input_nullifier_1: String,
     pub output_commitment_0: String,
     pub output_commitment_1: String,
+    pub hashed_account_secret: String,
 
     // Private inputs - Input UTXOs
+    pub account_secret: String,
     pub in_private_key_0: String,
     pub in_private_key_1: String,
     pub in_amount_0: String,
@@ -101,6 +104,7 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         .map_err(|e| JsValue::from(&format!("Failed to deserialize proving key: {}", e)))?;
 
     // Convert input strings to field elements
+    let vortex = parse_field_element(&input.vortex)?;
     let root = parse_field_element(&input.root)?;
     let public_amount = parse_field_element(&input.public_amount)?;
     let ext_data_hash = parse_field_element(&input.ext_data_hash)?;
@@ -108,6 +112,9 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     let input_nullifier_1 = parse_field_element(&input.input_nullifier_1)?;
     let output_commitment_0 = parse_field_element(&input.output_commitment_0)?;
     let output_commitment_1 = parse_field_element(&input.output_commitment_1)?;
+    let hashed_account_secret = parse_field_element(&input.hashed_account_secret)?;
+
+    let account_secret = parse_field_element(&input.account_secret)?;
 
     let in_private_keys = [
         parse_field_element(&input.in_private_key_0)?,
@@ -152,6 +159,7 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
 
     // Create circuit
     let circuit = TransactionCircuit::new(
+        vortex,
         root,
         public_amount,
         ext_data_hash,
@@ -159,6 +167,8 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         input_nullifier_1,
         output_commitment_0,
         output_commitment_1,
+        hashed_account_secret,
+        account_secret,
         in_private_keys,
         in_amounts,
         in_blindings,
@@ -313,8 +323,17 @@ fn parse_field_element(s: &str) -> Result<Fr, JsValue> {
     // Handle both decimal and hex strings
     let s = s.trim();
 
-    let big_uint = BigUint::from_str(s)
-        .map_err(|e| JsValue::from(&format!("Failed to parse decimal '{}': {}", s, e)))?;
+    let big_uint = if s.starts_with("0x") || s.starts_with("0X") {
+        // Remove 0x prefix and parse as hex
+        let hex_str = &s[2..];
+        BigUint::parse_bytes(hex_str.as_bytes(), 16).ok_or_else(|| {
+            JsValue::from(&format!("Failed to parse hex '{}': invalid hex string", s))
+        })?
+    } else {
+        // Parse as decimal
+        BigUint::from_str(s)
+            .map_err(|e| JsValue::from(&format!("Failed to parse decimal '{}': {}", s, e)))?
+    };
     Ok(Fr::from(big_uint))
 }
 
