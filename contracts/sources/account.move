@@ -1,6 +1,6 @@
 module vortex::vortex_account;
 
-use sui::{coin::{Self, Coin}, event::emit, transfer::Receiving};
+use sui::{coin::{Self, Coin}, transfer::Receiving};
 
 // === Structs ===
 
@@ -8,10 +8,6 @@ public struct VortexAccount has key, store {
     id: UID,
     hashed_secret: u256,
 }
-
-// === Events ===
-
-public struct NewAccount(address, u256) has copy, drop;
 
 // === Public Mutative Functions ===
 
@@ -23,7 +19,7 @@ public fun new(hashed_secret: u256, ctx: &mut TxContext): VortexAccount {
         hashed_secret,
     };
 
-    emit(NewAccount(account.id.to_address(), hashed_secret));
+    vortex::vortex_events::new_account(account.id.to_address(), hashed_secret);
 
     account
 }

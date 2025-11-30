@@ -5,7 +5,6 @@ use sui::{
     balance::{Self, Balance},
     coin::Coin,
     dynamic_object_field as dof,
-    event::emit,
     groth16::{Self, Curve, PreparedVerifyingKey, PublicProofInputs},
     table::{Self, Table},
     transfer::Receiving
@@ -34,20 +33,6 @@ public struct Registry has key {
     pools: Table<String, address>,
     encryption_keys: Table<address, String>,
 }
-
-// === Events ===
-
-public struct NewPool<phantom CoinType>(address) has copy, drop;
-
-public struct NewCommitment<phantom CoinType> has copy, drop {
-    index: u64,
-    commitment: u256,
-    encrypted_output: vector<u8>,
-}
-
-public struct NullifierSpent<phantom CoinType>(u256) has copy, drop;
-
-public struct NewEncryptionKey(address, String) has copy, drop;
 
 // === Initializer ===
 
@@ -84,7 +69,7 @@ public fun new<CoinType>(registry: &mut Registry, ctx: &mut TxContext): Vortex<C
 
     dof::add(&mut vortex.id, MerkleTreeKey(), vortex_merkle_tree::new(ctx));
 
-    emit(NewPool<CoinType>(vortex_address));
+    vortex::vortex_events::new_pool<CoinType>(vortex_address);
 
     vortex
 }
@@ -104,7 +89,7 @@ public fun register(registry: &mut Registry, encryption_key: String, ctx: &mut T
         registry.encryption_keys.add(sender, encryption_key);
     };
 
-    emit(NewEncryptionKey(sender, encryption_key));
+    vortex::vortex_events::new_encryption_key(sender, encryption_key);
 }
 
 public fun transact<CoinType>(
@@ -244,7 +229,7 @@ fun process_transaction<CoinType>(
 
     proof.input_nullifiers().do!(|nullifier| {
         self.nullifier_hashes.add(nullifier, true);
-        emit(NullifierSpent<CoinType>(nullifier));
+        vortex::vortex_events::nullifier_spent<CoinType>(nullifier);
     });
 
     let merkle_tree_mut = self.merkle_tree_mut();
@@ -254,17 +239,16 @@ fun process_transaction<CoinType>(
 
     merkle_tree_mut.append_pair(commitments[0], commitments[1]);
 
-    emit(NewCommitment<CoinType> {
-        index: next_index,
-        commitment: commitments[0],
-        encrypted_output: ext_data.encrypted_output0(),
-    });
-
-    emit(NewCommitment<CoinType> {
-        index: next_index + 1,
-        commitment: commitments[1],
-        encrypted_output: ext_data.encrypted_output1(),
-    });
+    vortex::vortex_events::new_commitment<CoinType>(
+        next_index,
+        commitments[0],
+        ext_data.encrypted_output0(),
+    );
+    vortex::vortex_events::new_commitment<CoinType>(
+        next_index + 1,
+        commitments[1],
+        ext_data.encrypted_output1(),
+    );
 
     if (ext_data.relayer_fee() > 0)
         transfer::public_transfer(
