@@ -16,6 +16,8 @@ public struct NewAccount(address, u256) has copy, drop;
 // === Public Mutative Functions ===
 
 public fun new(hashed_secret: u256, ctx: &mut TxContext): VortexAccount {
+    assert!(hashed_secret != 0, vortex::vortex_errors::invalid_hashed_secret!());
+
     let account = VortexAccount {
         id: object::new(ctx),
         hashed_secret,

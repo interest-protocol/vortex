@@ -78,8 +78,7 @@ public(package) fun public_inputs<CoinType>(self: Proof<CoinType>): PublicProofI
         self.input_nullifiers[1].to_field(),
         self.output_commitments[0].to_field(),
         self.output_commitments[1].to_field(),
-        zero_field!(),
-        zero_field!(),
+        bcs::to_bytes(&0u256),
     ];
 
     groth16::public_proof_inputs_from_bytes(bytes.flatten())
@@ -98,17 +97,10 @@ public(package) fun tto_public_inputs<CoinType>(
         self.input_nullifiers[1].to_field(),
         self.output_commitments[0].to_field(),
         self.output_commitments[1].to_field(),
-        bcs::to_bytes(&1u256),
         hashed_secret.to_field(),
     ];
 
     groth16::public_proof_inputs_from_bytes(bytes.flatten())
-}
-
-// === Private Functions ===
-
-macro fun zero_field(): vector<u8> {
-    bcs::to_bytes(&0u256)
 }
 
 // === Aliases ===

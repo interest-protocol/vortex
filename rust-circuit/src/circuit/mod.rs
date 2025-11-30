@@ -4,7 +4,7 @@ use crate::{
     poseidon_opt::PoseidonOptimizedVar,
 };
 use ark_bn254::Fr;
-use ark_ff::{AdditiveGroup, Field};
+use ark_ff::AdditiveGroup;
 use ark_r1cs_std::{
     fields::fp::FpVar,
     prelude::{AllocVar, Boolean, EqGadget, FieldVar},
@@ -57,7 +57,6 @@ pub struct TransactionCircuit {
     pub input_nullifier_1: Fr,
     pub output_commitment_0: Fr,
     pub output_commitment_1: Fr,
-    pub check_account_secret: Fr,
     pub hashed_account_secret: Fr,
 
     // Private inputs - Input UTXOs
@@ -87,7 +86,6 @@ impl TransactionCircuit {
             input_nullifier_1: Fr::ZERO,
             output_commitment_0: Fr::ZERO,
             output_commitment_1: Fr::ZERO,
-            check_account_secret: Fr::ZERO,
             hashed_account_secret: Fr::ZERO,
 
             account_secret: Fr::ZERO,
@@ -118,7 +116,6 @@ impl TransactionCircuit {
         input_nullifier_1: Fr,
         output_commitment_0: Fr,
         output_commitment_1: Fr,
-        check_account_secret: Fr,
         hashed_account_secret: Fr,
         account_secret: Fr,
         in_private_keys: [Fr; N_INS],
@@ -151,7 +148,6 @@ impl TransactionCircuit {
             input_nullifier_1,
             output_commitment_0,
             output_commitment_1,
-            check_account_secret,
             hashed_account_secret,
             account_secret,
             in_private_keys,
@@ -192,7 +188,6 @@ impl TransactionCircuit {
             self.input_nullifier_1,
             self.output_commitment_0,
             self.output_commitment_1,
-            self.check_account_secret,
             self.hashed_account_secret,
         ]
     }
@@ -243,10 +238,6 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
 
         let output_commitment_1 = FpVar::new_input(ns!(cs, "output_commitment_1"), || {
             Ok(self.output_commitment_1)
-        })?;
-
-        let check_account_secret = FpVar::new_input(ns!(cs, "check_account_secret"), || {
-            Ok(self.check_account_secret)
         })?;
 
         let hashed_account_secret = FpVar::new_input(ns!(cs, "hashed_account_secret"), || {
@@ -314,19 +305,25 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         let hasher_t5 = PoseidonOptimizedVar::new_t5();
 
         // ============================================
+        // CREATE ZERO VARIABLE
+        // ============================================
+        let zero = FpVar::<Fr>::zero();
+
+        // ============================================
         // Verify account secret
         // ============================================
         let expected_hashed_account_secret = hasher_t2.hash1(&account_secret)?;
-        let one = FpVar::<Fr>::constant(Fr::ONE);
-        let check_account_secret_is_one = check_account_secret.is_eq(&one)?;
-        expected_hashed_account_secret
-            .conditional_enforce_equal(&hashed_account_secret, &check_account_secret_is_one)?;
+        // Only enforce equality if account_secret is non-zero (more efficient)
+        let hashed_account_secret_is_non_zero = hashed_account_secret.is_eq(&zero)?.not();
+        expected_hashed_account_secret.conditional_enforce_equal(
+            &hashed_account_secret,
+            &hashed_account_secret_is_non_zero,
+        )?;
 
         // ============================================
         // VERIFY INPUT UTXOs
         // ============================================
         let mut sum_ins = FpVar::<Fr>::zero();
-        let zero = FpVar::<Fr>::zero();
 
         for i in 0..N_INS {
             // Derive public key from private key: pubkey = Poseidon1(privkey)
@@ -526,8 +523,7 @@ fn test_circuit_with_valid_inputs() {
         nullifier_1,
         out_commitment_0,
         out_commitment_1,
-        Fr::from(0u64), // check_account_secret
-        Fr::from(0u64), // account_secret
+        Fr::from(0u64), // hashed_account_secret
         Fr::from(0u64), // account_secret
         [private_key_0, private_key_1],
         [amount_0, amount_1],
@@ -591,12 +587,11 @@ fn test_account_secret_verification() {
 
     let merkle_paths = [Path::empty(), Path::empty()];
 
-    // Test 1: check_account_secret = 1, correct secret (should pass)
+    // Test 1: correct secret with non-zero hashed_account_secret (should pass)
     {
         let cs = ConstraintSystem::<Fr>::new_ref();
         let account_secret = Fr::from(42u64);
         let hashed_account_secret = hash1(&account_secret);
-        let check_account_secret = Fr::ONE;
 
         let circuit = TransactionCircuit::new(
             vortex,
@@ -607,7 +602,6 @@ fn test_account_secret_verification() {
             nullifier_1,
             out_commitment_0,
             out_commitment_1,
-            check_account_secret,
             hashed_account_secret,
             account_secret,
             [private_key_0, private_key_1],
@@ -624,16 +618,15 @@ fn test_account_secret_verification() {
         circuit.generate_constraints(cs.clone()).unwrap();
         assert!(
             cs.is_satisfied().unwrap(),
-            "Circuit should be satisfied when check_account_secret=1 and secret is correct"
+            "Circuit should be satisfied when hashed_account_secret is non-zero and secret is correct"
         );
     }
 
-    // Test 2: check_account_secret = 1, incorrect secret (should fail)
+    // Test 2: incorrect secret with non-zero hashed_account_secret (should fail)
     {
         let cs = ConstraintSystem::<Fr>::new_ref();
         let account_secret = Fr::from(42u64);
         let wrong_hashed_account_secret = hash1(&Fr::from(99u64)); // Wrong hash
-        let check_account_secret = Fr::ONE;
 
         let circuit = TransactionCircuit::new(
             vortex,
@@ -644,7 +637,6 @@ fn test_account_secret_verification() {
             nullifier_1,
             out_commitment_0,
             out_commitment_1,
-            check_account_secret,
             wrong_hashed_account_secret,
             account_secret,
             [private_key_0, private_key_1],
@@ -661,16 +653,15 @@ fn test_account_secret_verification() {
         circuit.generate_constraints(cs.clone()).unwrap();
         assert!(
             !cs.is_satisfied().unwrap(),
-            "Circuit should NOT be satisfied when check_account_secret=1 and secret is incorrect"
+            "Circuit should NOT be satisfied when hashed_account_secret is non-zero and secret is incorrect"
         );
     }
 
-    // Test 3: check_account_secret = 0, secret doesn't matter (should pass)
+    // Test 3: hashed_account_secret is 0, secret doesn't matter (should pass)
     {
         let cs = ConstraintSystem::<Fr>::new_ref();
-        let account_secret = Fr::from(42u64);
-        let wrong_hashed_account_secret = hash1(&Fr::from(99u64)); // Wrong hash, but check is disabled
-        let check_account_secret = Fr::ZERO;
+        let account_secret = Fr::from(44u64);
+        let hashed_account_secret = Fr::ZERO; // Zero hash, check is skipped
 
         let circuit = TransactionCircuit::new(
             vortex,
@@ -681,8 +672,7 @@ fn test_account_secret_verification() {
             nullifier_1,
             out_commitment_0,
             out_commitment_1,
-            check_account_secret,
-            wrong_hashed_account_secret,
+            hashed_account_secret,
             account_secret,
             [private_key_0, private_key_1],
             [amount_0, amount_1],
@@ -698,7 +688,7 @@ fn test_account_secret_verification() {
         circuit.generate_constraints(cs.clone()).unwrap();
         assert!(
             cs.is_satisfied().unwrap(),
-            "Circuit should be satisfied when check_account_secret=0 (check is disabled)"
+            "Circuit should be satisfied when hashed_account_secret is 0 (check is skipped)"
         );
     }
 }
