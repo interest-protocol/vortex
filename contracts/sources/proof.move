@@ -69,24 +69,21 @@ public(package) fun vortex<CoinType>(self: Proof<CoinType>): address {
 }
 
 public(package) fun public_inputs<CoinType>(self: Proof<CoinType>): PublicProofInputs {
-    let bytes = vector[
-        self.vortex.to_u256().to_field(),
-        self.root.to_field(),
-        self.public_value.to_field(),
-        self.ext_data_hash.to_field(),
-        self.input_nullifiers[0].to_field(),
-        self.input_nullifiers[1].to_field(),
-        self.output_commitments[0].to_field(),
-        self.output_commitments[1].to_field(),
-        bcs::to_bytes(&0u256),
-    ];
-
-    groth16::public_proof_inputs_from_bytes(bytes.flatten())
+    self.make_public_inputs(bcs::to_bytes(&0u256))
 }
 
 public(package) fun tto_public_inputs<CoinType>(
     self: Proof<CoinType>,
     hashed_secret: u256,
+): PublicProofInputs {
+    self.make_public_inputs(hashed_secret.to_field())
+}
+
+// === Private Functions ===
+
+fun make_public_inputs<CoinType>(
+    self: Proof<CoinType>,
+    hashed_secret_bytes: vector<u8>,
 ): PublicProofInputs {
     let bytes = vector[
         self.vortex.to_u256().to_field(),
@@ -97,7 +94,7 @@ public(package) fun tto_public_inputs<CoinType>(
         self.input_nullifiers[1].to_field(),
         self.output_commitments[0].to_field(),
         self.output_commitments[1].to_field(),
-        hashed_secret.to_field(),
+        hashed_secret_bytes,
     ];
 
     groth16::public_proof_inputs_from_bytes(bytes.flatten())
