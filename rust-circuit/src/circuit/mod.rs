@@ -52,7 +52,6 @@ pub struct TransactionCircuit {
     pub vortex: Fr,
     pub root: Fr,
     pub public_amount: Fr,
-    pub ext_data_hash: Fr,
     pub input_nullifier_0: Fr,
     pub input_nullifier_1: Fr,
     pub output_commitment_0: Fr,
@@ -81,7 +80,6 @@ impl TransactionCircuit {
             vortex: Fr::ZERO,
             root: Fr::ZERO,
             public_amount: Fr::ZERO,
-            ext_data_hash: Fr::ZERO,
             input_nullifier_0: Fr::ZERO,
             input_nullifier_1: Fr::ZERO,
             output_commitment_0: Fr::ZERO,
@@ -111,7 +109,6 @@ impl TransactionCircuit {
         vortex: Fr,
         root: Fr,
         public_amount: Fr,
-        ext_data_hash: Fr,
         input_nullifier_0: Fr,
         input_nullifier_1: Fr,
         output_commitment_0: Fr,
@@ -143,7 +140,6 @@ impl TransactionCircuit {
             vortex,
             root,
             public_amount,
-            ext_data_hash,
             input_nullifier_0,
             input_nullifier_1,
             output_commitment_0,
@@ -167,13 +163,14 @@ impl TransactionCircuit {
     /// `generate_constraints()` to ensure correct proof generation and verification.
     ///
     /// # Order
-    /// 1. root
-    /// 2. public_amount
-    /// 3. ext_data_hash
+    /// 1. vortex
+    /// 2. root
+    /// 3. public_amount
     /// 4. input_nullifier_0
     /// 5. input_nullifier_1
     /// 6. output_commitment_0
     /// 7. output_commitment_1
+    /// 8. hashed_account_secret
     ///
     /// # Note
     /// This method extracts public inputs from the circuit struct. Groth16's `prove()` function
@@ -183,7 +180,6 @@ impl TransactionCircuit {
             self.vortex,
             self.root,
             self.public_amount,
-            self.ext_data_hash,
             self.input_nullifier_0,
             self.input_nullifier_1,
             self.output_commitment_0,
@@ -223,8 +219,6 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         let root = FpVar::new_input(ns!(cs, "root"), || Ok(self.root))?;
 
         let public_amount = FpVar::new_input(ns!(cs, "public_amount"), || Ok(self.public_amount))?;
-
-        let ext_data_hash = FpVar::new_input(ns!(cs, "ext_data_hash"), || Ok(self.ext_data_hash))?;
 
         let input_nullifier_0 =
             FpVar::new_input(ns!(cs, "input_nullifier_0"), || Ok(self.input_nullifier_0))?;
@@ -410,13 +404,6 @@ impl ConstraintSynthesizer<Fr> for TransactionCircuit {
         // sum(inputs) + public_amount = sum(outputs)
         (sum_ins + public_amount).enforce_equal(&sum_outs)?;
 
-        // Optional safety constraint to make sure ext_data_hash cannot be changed
-        // Compute ext_data_hash^2 as a constraint (similar to Circom: signal extDataSquare <== extDataHash * extDataHash)
-        let ext_data_square = ext_data_hash.square()?;
-        // Enforce the square equals the expected value from the circuit input
-        let expected_square = FpVar::constant(self.ext_data_hash * self.ext_data_hash);
-        ext_data_square.enforce_equal(&expected_square)?;
-
         Ok(())
     }
 }
@@ -518,7 +505,6 @@ fn test_circuit_with_valid_inputs() {
         vortex,
         Fr::from(0u64), // root
         Fr::from(0u64), // public_amount
-        Fr::from(0u64), // ext_data_hash
         nullifier_0,
         nullifier_1,
         out_commitment_0,
@@ -597,7 +583,6 @@ fn test_account_secret_verification() {
             vortex,
             Fr::from(0u64), // root
             Fr::from(0u64), // public_amount
-            Fr::from(0u64), // ext_data_hash
             nullifier_0,
             nullifier_1,
             out_commitment_0,
@@ -632,7 +617,6 @@ fn test_account_secret_verification() {
             vortex,
             Fr::from(0u64), // root
             Fr::from(0u64), // public_amount
-            Fr::from(0u64), // ext_data_hash
             nullifier_0,
             nullifier_1,
             out_commitment_0,
@@ -667,7 +651,6 @@ fn test_account_secret_verification() {
             vortex,
             Fr::from(0u64), // root
             Fr::from(0u64), // public_amount
-            Fr::from(0u64), // ext_data_hash
             nullifier_0,
             nullifier_1,
             out_commitment_0,

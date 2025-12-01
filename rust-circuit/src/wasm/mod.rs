@@ -40,7 +40,6 @@ pub struct ProofInput {
     pub vortex: String,
     pub root: String,
     pub public_amount: String,
-    pub ext_data_hash: String,
     pub input_nullifier_0: String,
     pub input_nullifier_1: String,
     pub output_commitment_0: String,
@@ -107,7 +106,6 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
     let vortex = parse_field_element(&input.vortex)?;
     let root = parse_field_element(&input.root)?;
     let public_amount = parse_field_element(&input.public_amount)?;
-    let ext_data_hash = parse_field_element(&input.ext_data_hash)?;
     let input_nullifier_0 = parse_field_element(&input.input_nullifier_0)?;
     let input_nullifier_1 = parse_field_element(&input.input_nullifier_1)?;
     let output_commitment_0 = parse_field_element(&input.output_commitment_0)?;
@@ -162,7 +160,6 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
         vortex,
         root,
         public_amount,
-        ext_data_hash,
         input_nullifier_0,
         input_nullifier_1,
         output_commitment_0,
@@ -189,8 +186,8 @@ pub fn prove(input_json: &str, proving_key_hex: &str) -> Result<String, JsValue>
 
     // Extract public inputs BEFORE proving (circuit is consumed by prove())
     // The order MUST match the order in which FpVar::new_input() is called in generate_constraints()
-    // This is: root, public_amount, ext_data_hash, input_nullifier_0, input_nullifier_1,
-    //          output_commitment_0, output_commitment_1
+    // This is: vortex, root, public_amount, input_nullifier_0, input_nullifier_1,
+    //          output_commitment_0, output_commitment_1, hashed_account_secret
     let public_inputs_field = circuit.get_public_inputs();
     let public_inputs_serialized = circuit
         .get_public_inputs_serialized()

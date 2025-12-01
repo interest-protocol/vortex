@@ -89,7 +89,6 @@ fun make_public_inputs<CoinType>(
         self.vortex.to_u256().to_field(),
         self.root.to_field(),
         self.public_value.to_field(),
-        self.ext_data_hash.to_field(),
         self.input_nullifiers[0].to_field(),
         self.input_nullifiers[1].to_field(),
         self.output_commitments[0].to_field(),
