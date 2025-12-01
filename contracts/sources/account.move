@@ -4,7 +4,7 @@ use sui::{coin::{Self, Coin}, transfer::Receiving};
 
 // === Structs ===
 
-public struct VortexAccount has key, store {
+public struct VortexAccount has key {
     id: UID,
     hashed_secret: u256,
 }
@@ -22,6 +22,10 @@ public fun new(hashed_secret: u256, ctx: &mut TxContext): VortexAccount {
     vortex::vortex_events::new_account(account.id.to_address(), hashed_secret);
 
     account
+}
+
+public fun share(account: VortexAccount) {
+    transfer::share_object(account);
 }
 
 public fun merge_coins<CoinType>(

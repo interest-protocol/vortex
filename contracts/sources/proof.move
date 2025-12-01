@@ -92,6 +92,10 @@ fun make_public_inputs<CoinType>(
     groth16::public_proof_inputs_from_bytes(bytes.flatten())
 }
 
+fun to_field(value: u256): vector<u8> {
+    bcs::to_bytes(&(value % vortex::vortex_constants::bn254_field_modulus!()))
+}
+
 // === Aliases ===
 
-use fun vortex::vortex_utils::u256_to_field as u256.to_field;
+use fun to_field as u256.to_field;
