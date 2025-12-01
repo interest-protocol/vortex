@@ -3,7 +3,7 @@ module vortex::vortex;
 use std::{ascii::String, type_name};
 use sui::{
     balance::{Self, Balance},
-    coin::Coin,
+    coin::{Self, Coin},
     dynamic_object_field as dof,
     groth16::{Self, Curve, PreparedVerifyingKey, PublicProofInputs},
     table::{Self, Table},
@@ -99,7 +99,9 @@ public fun transact<CoinType>(
     ext_data: ExtData,
     ctx: &mut TxContext,
 ) {
-    self.process_transaction(deposit, proof.public_inputs(), proof, ext_data, ctx);
+    self
+        .process_transaction(deposit, proof.public_inputs(), proof, ext_data, ctx)
+        .send_to_recipient(ext_data);
 }
 
 public fun transact_with_account<CoinType>(
@@ -112,13 +114,24 @@ public fun transact_with_account<CoinType>(
 ) {
     let deposit = account.receive(coins, ctx);
 
-    self.process_transaction(
-        deposit,
-        proof.tto_public_inputs(account.hashed_secret()),
-        proof,
-        ext_data,
-        ctx,
-    );
+    self
+        .process_transaction(
+            deposit,
+            proof.tto_public_inputs(account.hashed_secret()),
+            proof,
+            ext_data,
+            ctx,
+        )
+        .send_to_recipient(ext_data);
+}
+
+public fun withdraw<CoinType>(
+    self: &mut Vortex<CoinType>,
+    proof: Proof<CoinType>,
+    ext_data: ExtData,
+    ctx: &mut TxContext,
+): Coin<CoinType> {
+    self.process_transaction(coin::zero<CoinType>(ctx), proof.public_inputs(), proof, ext_data, ctx)
 }
 
 // === Public Views ===
@@ -170,6 +183,14 @@ fun assert_public_value<CoinType>(proof: Proof<CoinType>, ext_data: ExtData) {
     );
 }
 
+fun send_to_recipient<CoinType>(coin_to_send: Coin<CoinType>, ext_data: ExtData) {
+    if (coin_to_send.value() > 0) {
+        transfer::public_transfer(coin_to_send, ext_data.recipient());
+    } else {
+        coin_to_send.destroy_zero();
+    }
+}
+
 fun process_transaction<CoinType>(
     self: &mut Vortex<CoinType>,
     deposit: Coin<CoinType>,
@@ -177,7 +198,7 @@ fun process_transaction<CoinType>(
     proof: Proof<CoinType>,
     ext_data: ExtData,
     ctx: &mut TxContext,
-) {
+): Coin<CoinType> {
     self.assert_address(proof.vortex());
 
     self.assert_root_is_known(proof.root());
@@ -210,11 +231,10 @@ fun process_transaction<CoinType>(
             vortex::vortex_errors::invalid_deposit_value!(),
         );
 
-    if (!ext_data.value_sign() && ext_value > 0)
-        transfer::public_transfer(
-            self.balance.split(ext_value).into_coin(ctx),
-            ext_data.recipient(),
-        );
+    let recipient_coin = if (!ext_data.value_sign() && ext_value > 0)
+        self.balance.split(ext_value).into_coin(ctx)
+    else
+        coin::zero<CoinType>(ctx);
 
     self.balance.join(deposit.into_balance());
 
@@ -246,6 +266,8 @@ fun process_transaction<CoinType>(
             self.balance.split(ext_data.relayer_fee()).into_coin(ctx),
             ext_data.relayer(),
         );
+
+    recipient_coin
 }
 
 fun merkle_tree<CoinType>(self: &Vortex<CoinType>): &MerkleTree {
@@ -258,4 +280,5 @@ fun merkle_tree_mut<CoinType>(self: &mut Vortex<CoinType>): &mut MerkleTree {
 
 // === Aliases ===
 
+use fun send_to_recipient as Coin.send_to_recipient;
 use fun assert_public_value as Proof.assert_public_value;
