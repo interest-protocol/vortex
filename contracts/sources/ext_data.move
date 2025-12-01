@@ -1,7 +1,5 @@
 module vortex::vortex_ext_data;
 
-use sui::hash;
-
 // === Structs ===
 
 public struct ExtData has copy, drop, store {
@@ -71,20 +69,6 @@ public(package) fun encrypted_output1(self: ExtData): vector<u8> {
     self.encrypted_output1
 }
 
-public(package) fun to_hash(self: ExtData): vector<u8> {
-    let data = vector[
-        self.recipient.to_bytes(),
-        self.value.to_bytes(),
-        self.value_sign.to_bytes(),
-        self.relayer.to_bytes(),
-        self.relayer_fee.to_bytes(),
-        self.encrypted_output0.to_bytes(),
-        self.encrypted_output1.to_bytes(),
-    ];
-
-    hash::blake2b256(&data.flatten()).to_bytes().skip(1)
-}
-
 public(package) fun public_value(ext_data: ExtData): u256 {
     let value = ext_data.value();
     let relayer_fee = ext_data.relayer_fee();
@@ -97,10 +81,3 @@ public(package) fun public_value(ext_data: ExtData): u256 {
         vortex::vortex_constants::bn254_field_modulus!() - ((value + relayer_fee) as u256)
     }
 }
-
-// === Aliases ===
-
-use fun vortex::vortex_utils::u64_to_bytes as u64.to_bytes;
-use fun vortex::vortex_utils::bool_to_bytes as bool.to_bytes;
-use fun vortex::vortex_utils::address_to_bytes as address.to_bytes;
-use fun vortex::vortex_utils::vector_u8_to_bytes as vector.to_bytes;

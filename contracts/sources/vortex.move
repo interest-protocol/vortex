@@ -159,13 +159,6 @@ fun assert_address<CoinType>(self: &Vortex<CoinType>, vortex: address) {
     assert!(vortex == self.id.to_address(), vortex::vortex_errors::invalid_vortex!());
 }
 
-fun assert_ext_data_hash(ext_data: ExtData, ext_data_hash: u256) {
-    assert!(
-        ext_data.to_hash() == ext_data_hash.to_bytes(),
-        vortex::vortex_errors::invalid_ext_data_hash!(),
-    );
-}
-
 fun assert_root_is_known<CoinType>(self: &Vortex<CoinType>, root: u256) {
     assert!(self.merkle_tree().is_known_root(root), vortex::vortex_errors::proof_root_not_known!());
 }
@@ -188,8 +181,6 @@ fun process_transaction<CoinType>(
     self.assert_address(proof.vortex());
 
     self.assert_root_is_known(proof.root());
-
-    ext_data.assert_hash(proof.ext_data_hash());
 
     proof.assert_public_value(ext_data);
 
@@ -267,6 +258,4 @@ fun merkle_tree_mut<CoinType>(self: &mut Vortex<CoinType>): &mut MerkleTree {
 
 // === Aliases ===
 
-use fun assert_ext_data_hash as ExtData.assert_hash;
 use fun assert_public_value as Proof.assert_public_value;
-use fun vortex::vortex_utils::u256_to_bytes as u256.to_bytes;

@@ -10,7 +10,6 @@ public struct Proof<phantom CoinType> has copy, drop, store {
     input_nullifiers: vector<u256>,
     output_commitments: vector<u256>,
     public_value: u256,
-    ext_data_hash: u256,
     vortex: address,
 }
 
@@ -21,7 +20,6 @@ public fun new<CoinType>(
     proof_points: vector<u8>,
     root: u256,
     public_value: u256,
-    ext_data_hash: u256,
     input_nullifier0: u256,
     input_nullifier1: u256,
     output_commitment0: u256,
@@ -33,7 +31,6 @@ public fun new<CoinType>(
         input_nullifiers: vector[input_nullifier0, input_nullifier1],
         output_commitments: vector[output_commitment0, output_commitment1],
         public_value,
-        ext_data_hash,
         vortex,
     }
 }
@@ -58,10 +55,6 @@ public(package) fun output_commitments<CoinType>(self: Proof<CoinType>): vector<
 
 public(package) fun public_value<CoinType>(self: Proof<CoinType>): u256 {
     self.public_value
-}
-
-public(package) fun ext_data_hash<CoinType>(self: Proof<CoinType>): u256 {
-    self.ext_data_hash
 }
 
 public(package) fun vortex<CoinType>(self: Proof<CoinType>): address {
