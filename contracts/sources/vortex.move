@@ -98,10 +98,9 @@ public fun transact<CoinType>(
     proof: Proof<CoinType>,
     ext_data: ExtData,
     ctx: &mut TxContext,
-) {
+): Coin<CoinType> {
     self
         .process_transaction(deposit, proof.public_inputs(), proof, ext_data, ctx)
-        .send_to_recipient(ext_data);
 }
 
 public fun transact_with_account<CoinType>(
@@ -111,7 +110,7 @@ public fun transact_with_account<CoinType>(
     proof: Proof<CoinType>,
     ext_data: ExtData,
     ctx: &mut TxContext,
-) {
+): Coin<CoinType> {
     let deposit = account.receive(coins, ctx);
 
     self
@@ -122,16 +121,6 @@ public fun transact_with_account<CoinType>(
             ext_data,
             ctx,
         )
-        .send_to_recipient(ext_data);
-}
-
-public fun withdraw<CoinType>(
-    self: &mut Vortex<CoinType>,
-    proof: Proof<CoinType>,
-    ext_data: ExtData,
-    ctx: &mut TxContext,
-): Coin<CoinType> {
-    self.process_transaction(coin::zero<CoinType>(ctx), proof.public_inputs(), proof, ext_data, ctx)
 }
 
 // === Public Views ===
@@ -181,14 +170,6 @@ fun assert_public_value<CoinType>(proof: Proof<CoinType>, ext_data: ExtData) {
         proof.public_value() == ext_data.public_value(),
         vortex::vortex_errors::invalid_public_value!(),
     );
-}
-
-fun send_to_recipient<CoinType>(coin_to_send: Coin<CoinType>, ext_data: ExtData) {
-    if (coin_to_send.value() > 0) {
-        transfer::public_transfer(coin_to_send, ext_data.recipient());
-    } else {
-        coin_to_send.destroy_zero();
-    }
 }
 
 fun process_transaction<CoinType>(
@@ -280,5 +261,4 @@ fun merkle_tree_mut<CoinType>(self: &mut Vortex<CoinType>): &mut MerkleTree {
 
 // === Aliases ===
 
-use fun send_to_recipient as Coin.send_to_recipient;
 use fun assert_public_value as Proof.assert_public_value;
