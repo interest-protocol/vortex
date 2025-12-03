@@ -208,12 +208,12 @@ fun process_transaction<CoinType>(
 
     if (ext_data.value_sign() && ext_value > 0)
         assert!(
-            deposit.value() == ext_value + ext_data.relayer_fee(),
+            deposit.value() == ext_value,
             vortex::vortex_errors::invalid_deposit_value!(),
         );
 
     let recipient_coin = if (!ext_data.value_sign() && ext_value > 0)
-        self.balance.split(ext_value).into_coin(ctx)
+        self.balance.split(ext_value - ext_data.relayer_fee()).into_coin(ctx)
     else
         coin::zero<CoinType>(ctx);
 
