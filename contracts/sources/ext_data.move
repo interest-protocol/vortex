@@ -23,11 +23,6 @@ public fun new(
     encrypted_output0: vector<u8>,
     encrypted_output1: vector<u8>,
 ): ExtData {
-    assert!(
-        value >= vortex::vortex_constants::one_sui_in_mist!(),
-        vortex::vortex_errors::invalid_ext_data_value!(),
-    );
-
     ExtData {
         recipient,
         value_sign,
@@ -70,14 +65,8 @@ public(package) fun encrypted_output1(self: ExtData): vector<u8> {
 }
 
 public(package) fun public_value(ext_data: ExtData): u256 {
-    let value = ext_data.value();
-    let relayer_fee = ext_data.relayer_fee();
-
-    if (ext_data.value_sign()) {
-        // If it is a deposit, the pool should get value - fee.
-        (value - relayer_fee) as u256
-    } else {
-        // If it is a withdrawal, the pool should remove value + fee.
-        vortex::vortex_constants::bn254_field_modulus!() - ((value + relayer_fee) as u256)
-    }
+    if (ext_data.value_sign()) // If it is a deposit, the pool should get value - fee.
+        (ext_data.value() - ext_data.relayer_fee()) as u256
+    else // If it is a withdrawal, the pool should remove value
+        vortex::vortex_constants::bn254_field_modulus!() - (ext_data.value() as u256)
 }
