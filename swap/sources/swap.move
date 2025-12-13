@@ -32,6 +32,9 @@ const EInvalidAmountOut: vector<u8> = b"Invalid amount out";
 #[error(code = 1)]
 const EUnauthorizedRelayer: vector<u8> = b"Unauthorized relayer";
 
+#[error(code = 2)]
+const EInvalidMinAmountOut: vector<u8> = b"Minimum amount out must be greater than 0";
+
 // === Public Mutative Functions ===
 
 public fun start_swap<CoinIn, CoinOut>(
@@ -43,6 +46,8 @@ public fun start_swap<CoinIn, CoinOut>(
     min_amount_out: u64,
     ctx: &mut TxContext,
 ): (Receipt<CoinIn, CoinOut>, Coin<CoinIn>) {
+    assert!(min_amount_out != 0, EInvalidMinAmountOut);
+
     let coin_in = vortex.transact(coin::zero(ctx), proof, ext_data, ctx);
 
     let receipt = Receipt<CoinIn, CoinOut> {
