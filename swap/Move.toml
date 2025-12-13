@@ -1,0 +1,11 @@
+[package]
+name = "vortex_swap"
+edition = "2024.beta"
+license = "MIT"
+
+[dependencies]
+
+vortex = { local = "../core" }
+
+[addresses]
+vortex_swap = "0x0"
