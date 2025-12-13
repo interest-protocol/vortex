@@ -70,9 +70,10 @@ public fun finish_swap<CoinIn, CoinOut>(
     assert!(amount_out >= min_amount_out, EInvalidAmountOut);
     assert!(relayer == ctx.sender(), EUnauthorizedRelayer);
 
-    let relayer_coin = coin_out.split(relayer_fee, ctx);
-
-    transfer::public_transfer(relayer_coin, relayer);
+    transfer::public_transfer(
+        coin_out.split(relayer_fee + amount_out.diff(min_amount_out), ctx),
+        relayer,
+    );
 
     vortex.transact(coin_out, proof, ext_data, ctx).destroy_zero();
 
@@ -80,8 +81,8 @@ public fun finish_swap<CoinIn, CoinOut>(
         coin_in: type_name::with_defining_ids<CoinIn>().into_string(),
         coin_out: type_name::with_defining_ids<CoinOut>().into_string(),
         amount_in,
-        amount_out,
+        amount_out: min_amount_out,
         relayer,
-        relayer_fee,
+        relayer_fee: relayer_fee + amount_out.diff(min_amount_out),
     });
 }
