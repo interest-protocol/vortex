@@ -184,6 +184,8 @@ fun process_transaction<CoinType>(
 
     self.assert_root_is_known(proof.root());
 
+    ext_data.assert_relayer( ctx);
+
     proof.assert_public_value(ext_data);
 
     proof.input_nullifiers().do!(|nullifier| {

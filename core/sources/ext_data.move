@@ -34,6 +34,13 @@ public fun new(
     }
 }
 
+// === Assert Functions ===
+
+public(package) fun assert_relayer(self: ExtData, ctx: &TxContext) {
+    if (self.relayer != @0x0) 
+        assert!(self.relayer == ctx.sender(), vortex::vortex_errors::invalid_relayer!());
+}
+
 // === Package View Functions ===
 
 public(package) fun recipient(self: ExtData): address {
