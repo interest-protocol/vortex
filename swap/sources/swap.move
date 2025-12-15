@@ -10,7 +10,6 @@ public struct Receipt<phantom CoinIn, phantom CoinOut> {
     amount_in: u64,
     min_amount_out: u64,
     relayer: address,
-    relayer_fee: u64,
 }
 
 // === Events ===
@@ -42,7 +41,6 @@ public fun start_swap<CoinIn, CoinOut>(
     proof: Proof<CoinIn>,
     ext_data: ExtData,
     relayer: address,
-    relayer_fee: u64,
     min_amount_out: u64,
     ctx: &mut TxContext,
 ): (Receipt<CoinIn, CoinOut>, Coin<CoinIn>) {
@@ -54,7 +52,6 @@ public fun start_swap<CoinIn, CoinOut>(
         amount_in: coin_in.value(),
         min_amount_out,
         relayer,
-        relayer_fee,
     };
 
     (receipt, coin_in)
@@ -68,7 +65,7 @@ public fun finish_swap<CoinIn, CoinOut>(
     ext_data: ExtData,
     ctx: &mut TxContext,
 ) {
-    let Receipt { amount_in, min_amount_out, relayer, relayer_fee } = receipt;
+    let Receipt { amount_in, min_amount_out, relayer } = receipt;
 
     let amount_out = coin_out.value();
 
@@ -76,7 +73,7 @@ public fun finish_swap<CoinIn, CoinOut>(
     assert!(relayer == ctx.sender(), EUnauthorizedRelayer);
 
     transfer::public_transfer(
-        coin_out.split(relayer_fee + amount_out.diff(min_amount_out), ctx),
+        coin_out.split(amount_out.diff(min_amount_out), ctx),
         relayer,
     );
 
@@ -88,6 +85,6 @@ public fun finish_swap<CoinIn, CoinOut>(
         amount_in,
         amount_out: min_amount_out,
         relayer,
-        relayer_fee: relayer_fee + amount_out.diff(min_amount_out),
+        relayer_fee: amount_out.diff(min_amount_out),
     });
 }
