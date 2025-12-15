@@ -3,7 +3,6 @@ module vortex::vortex_ext_data;
 // === Structs ===
 
 public struct ExtData has copy, drop, store {
-    recipient: address,
     value: u64,
     value_sign: bool,
     relayer: address,
@@ -15,7 +14,6 @@ public struct ExtData has copy, drop, store {
 // === Public Mutative Functions ===
 
 public fun new(
-    recipient: address,
     value: u64,
     value_sign: bool,
     relayer: address,
@@ -24,7 +22,6 @@ public fun new(
     encrypted_output1: vector<u8>,
 ): ExtData {
     ExtData {
-        recipient,
         value_sign,
         value,
         relayer,
@@ -42,10 +39,6 @@ public(package) fun assert_relayer(self: ExtData, ctx: &TxContext) {
 }
 
 // === Package View Functions ===
-
-public(package) fun recipient(self: ExtData): address {
-    self.recipient
-}
 
 public(package) fun value(self: ExtData): u64 {
     self.value
