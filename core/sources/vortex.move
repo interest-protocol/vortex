@@ -99,8 +99,7 @@ public fun transact<CoinType>(
     ext_data: ExtData,
     ctx: &mut TxContext,
 ): Coin<CoinType> {
-    self
-        .process_transaction(deposit, proof.public_inputs(), proof, ext_data, ctx)
+    self.process_transaction(deposit, proof.public_inputs(), proof, ext_data, ctx)
 }
 
 public fun transact_with_account<CoinType>(
@@ -113,14 +112,13 @@ public fun transact_with_account<CoinType>(
 ): Coin<CoinType> {
     let deposit = account.receive(coins, ctx);
 
-    self
-        .process_transaction(
-            deposit,
-            proof.tto_public_inputs(account.hashed_secret()),
-            proof,
-            ext_data,
-            ctx,
-        )
+    self.process_transaction(
+        deposit,
+        proof.tto_public_inputs(account.hashed_secret()),
+        proof,
+        ext_data,
+        ctx,
+    )
 }
 
 // === Public Views ===
@@ -184,7 +182,7 @@ fun process_transaction<CoinType>(
 
     self.assert_root_is_known(proof.root());
 
-    ext_data.assert_relayer( ctx);
+    ext_data.assert_relayer(ctx);
 
     proof.assert_public_value(ext_data);
 
@@ -209,15 +207,11 @@ fun process_transaction<CoinType>(
     let ext_value = ext_data.value();
 
     if (ext_data.value_sign() && ext_value > 0)
-        assert!(
-            deposit.value() == ext_value,
-            vortex::vortex_errors::invalid_deposit_value!(),
-        );
+        assert!(deposit.value() == ext_value, vortex::vortex_errors::invalid_deposit_value!());
 
     let recipient_coin = if (!ext_data.value_sign() && ext_value > 0)
         self.balance.split(ext_value - ext_data.relayer_fee()).into_coin(ctx)
-    else
-        coin::zero<CoinType>(ctx);
+    else coin::zero<CoinType>(ctx);
 
     self.balance.join(deposit.into_balance());
 

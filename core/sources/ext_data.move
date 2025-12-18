@@ -34,7 +34,7 @@ public fun new(
 // === Assert Functions ===
 
 public(package) fun assert_relayer(self: ExtData, ctx: &TxContext) {
-    if (self.relayer != @0x0) 
+    if (self.relayer != @0x0)
         assert!(self.relayer == ctx.sender(), vortex::vortex_errors::invalid_relayer!());
 }
 
@@ -65,8 +65,9 @@ public(package) fun encrypted_output1(self: ExtData): vector<u8> {
 }
 
 public(package) fun public_value(ext_data: ExtData): u256 {
-    if (ext_data.value_sign()) // If it is a deposit, the pool should get value - fee.
-        (ext_data.value() - ext_data.relayer_fee()) as u256
+    if (
+        ext_data.value_sign() // If it is a deposit, the pool should get value - fee.
+    ) (ext_data.value() - ext_data.relayer_fee()) as u256
     else // If it is a withdrawal, the pool should remove value
         vortex::vortex_constants::bn254_field_modulus!() - (ext_data.value() as u256)
 }
