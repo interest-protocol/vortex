@@ -1,16 +1,12 @@
-use crate::handlers::{bulk_insert_unordered, process_vortex_events, u256_to_hex};
+use crate::handlers::{process_vortex_events, u256_to_hex};
 use crate::models::NullifierSpentEvent;
-use crate::store::MongoStore;
 use crate::VortexEnv;
 use anyhow::Result;
 use async_trait::async_trait;
 use std::sync::Arc;
-use std::vec::IntoIter;
-use sui_indexer_alt_framework::pipeline::concurrent::{BatchStatus, Handler};
 use sui_indexer_alt_framework::pipeline::Processor;
-use sui_indexer_alt_framework_store_traits::Store;
 use sui_types::full_checkpoint_content::Checkpoint;
-use vortex_schema::{collections, EventBase, NullifierSpent};
+use vortex_schema::{EventBase, NullifierSpent};
 
 pub struct NullifierSpentHandler {
     env: VortexEnv,
@@ -35,7 +31,13 @@ impl Processor for NullifierSpentHandler {
             "NullifierSpent",
             checkpoint.summary.sequence_number,
             checkpoint.summary.timestamp_ms,
-            |event: NullifierSpentEvent, digest, sender, coin_type, checkpoint_seq, checkpoint_ts, idx| {
+            |event: NullifierSpentEvent,
+             digest,
+             sender,
+             coin_type,
+             checkpoint_seq,
+             checkpoint_ts,
+             idx| {
                 NullifierSpent {
                     base: EventBase {
                         event_digest: format!("{digest}:{idx}"),
@@ -54,25 +56,8 @@ impl Processor for NullifierSpentHandler {
     }
 }
 
-#[async_trait]
-impl Handler for NullifierSpentHandler {
-    type Store = MongoStore;
-    type Batch = Vec<Self::Value>;
-
-    fn batch(&self, batch: &mut Self::Batch, values: &mut IntoIter<Self::Value>) -> BatchStatus {
-        batch.extend(values);
-        BatchStatus::Pending
-    }
-
-    async fn commit<'a>(
-        &self,
-        batch: &Self::Batch,
-        conn: &mut <Self::Store as Store>::Connection<'a>,
-    ) -> Result<usize> {
-        let collection = conn
-            .database()
-            .collection::<NullifierSpent>(collections::NULLIFIERS_SPENT);
-
-        bulk_insert_unordered(&collection, batch).await
-    }
-}
+crate::impl_mongo_handler!(
+    NullifierSpentHandler,
+    NullifierSpent,
+    vortex_schema::collections::NULLIFIERS_SPENT
+);

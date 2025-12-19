@@ -16,6 +16,35 @@ use sui_types::full_checkpoint_content::ExecutedTransaction;
 use sui_types::transaction::TransactionDataAPI;
 use tracing::warn;
 
+#[macro_export]
+macro_rules! impl_mongo_handler {
+    ($handler:ty, $value:ty, $collection:expr) => {
+        #[async_trait::async_trait]
+        impl sui_indexer_alt_framework::pipeline::concurrent::Handler for $handler {
+            type Store = $crate::store::MongoStore;
+            type Batch = Vec<$value>;
+
+            fn batch(
+                &self,
+                batch: &mut Self::Batch,
+                values: &mut std::vec::IntoIter<$value>,
+            ) -> sui_indexer_alt_framework::pipeline::concurrent::BatchStatus {
+                batch.extend(values);
+                sui_indexer_alt_framework::pipeline::concurrent::BatchStatus::Pending
+            }
+
+            async fn commit<'a>(
+                &self,
+                batch: &Self::Batch,
+                conn: &mut <Self::Store as sui_indexer_alt_framework_store_traits::Store>::Connection<'a>,
+            ) -> anyhow::Result<usize> {
+                let collection = conn.database().collection::<$value>($collection);
+                $crate::handlers::bulk_insert_unordered(&collection, batch).await
+            }
+        }
+    };
+}
+
 pub fn is_vortex_tx(tx: &ExecutedTransaction, package_address: &AccountAddress) -> bool {
     tx.events
         .as_ref()
@@ -103,8 +132,7 @@ where
                 continue;
             }
 
-            if ev.type_.module.as_str() != "vortex_events" || ev.type_.name.as_str() != event_name
-            {
+            if ev.type_.module.as_str() != "vortex_events" || ev.type_.name.as_str() != event_name {
                 continue;
             }
 

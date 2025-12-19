@@ -1,16 +1,12 @@
-use crate::handlers::{bulk_insert_unordered, bytes_to_address, process_vortex_events};
+use crate::handlers::{bytes_to_address, process_vortex_events};
 use crate::models::NewPoolEvent;
-use crate::store::MongoStore;
 use crate::VortexEnv;
 use anyhow::Result;
 use async_trait::async_trait;
 use std::sync::Arc;
-use std::vec::IntoIter;
-use sui_indexer_alt_framework::pipeline::concurrent::{BatchStatus, Handler};
 use sui_indexer_alt_framework::pipeline::Processor;
-use sui_indexer_alt_framework_store_traits::Store;
 use sui_types::full_checkpoint_content::Checkpoint;
-use vortex_schema::{collections, EventBase, NewPool};
+use vortex_schema::{EventBase, NewPool};
 
 pub struct NewPoolHandler {
     env: VortexEnv,
@@ -55,25 +51,8 @@ impl Processor for NewPoolHandler {
     }
 }
 
-#[async_trait]
-impl Handler for NewPoolHandler {
-    type Store = MongoStore;
-    type Batch = Vec<Self::Value>;
-
-    fn batch(&self, batch: &mut Self::Batch, values: &mut IntoIter<Self::Value>) -> BatchStatus {
-        batch.extend(values);
-        BatchStatus::Pending
-    }
-
-    async fn commit<'a>(
-        &self,
-        batch: &Self::Batch,
-        conn: &mut <Self::Store as Store>::Connection<'a>,
-    ) -> Result<usize> {
-        let collection = conn
-            .database()
-            .collection::<NewPool>(collections::NEW_POOLS);
-
-        bulk_insert_unordered(&collection, batch).await
-    }
-}
+crate::impl_mongo_handler!(
+    NewPoolHandler,
+    NewPool,
+    vortex_schema::collections::NEW_POOLS
+);
