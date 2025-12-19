@@ -11,7 +11,7 @@ use sui_types::full_checkpoint_content::{CheckpointData, CheckpointTransaction};
 use tracing::debug;
 use vortex_schema::{collections, EventBase, NewCommitment, NewPool, NullifierSpent};
 
-/// Check if transaction involves Vortex package (events only)
+/// Check if transaction involves Vortex package
 pub fn is_vortex_tx(tx: &CheckpointTransaction, package_address: &AccountAddress) -> bool {
     tx.events
         .as_ref()
@@ -50,7 +50,6 @@ pub async fn process_checkpoint(
         let sender = tx.transaction.sender_address().to_string();
 
         for (idx, ev) in events.data.iter().enumerate() {
-            // Skip events from other packages
             if &ev.type_.address != package_address {
                 continue;
             }
@@ -126,19 +125,39 @@ pub async fn process_checkpoint(
         }
     }
 
-    // Batch insert all events
-    if !new_pools.is_empty() {
-        store.insert_many(collections::NEW_POOLS, new_pools).await?;
-    }
-    if !new_commitments.is_empty() {
-        store
-            .insert_many(collections::NEW_COMMITMENTS, new_commitments)
-            .await?;
-    }
-    if !nullifiers_spent.is_empty() {
-        store
-            .insert_many(collections::NULLIFIERS_SPENT, nullifiers_spent)
-            .await?;
+    let (pools_res, commits_res, nulls_res) = tokio::try_join!(
+        async {
+            if new_pools.is_empty() {
+                Ok(0)
+            } else {
+                store.insert_many(collections::NEW_POOLS, new_pools).await
+            }
+        },
+        async {
+            if new_commitments.is_empty() {
+                Ok(0)
+            } else {
+                store
+                    .insert_many(collections::NEW_COMMITMENTS, new_commitments)
+                    .await
+            }
+        },
+        async {
+            if nullifiers_spent.is_empty() {
+                Ok(0)
+            } else {
+                store
+                    .insert_many(collections::NULLIFIERS_SPENT, nullifiers_spent)
+                    .await
+            }
+        }
+    )?;
+
+    if pools_res > 0 || commits_res > 0 || nulls_res > 0 {
+        debug!(
+            "Checkpoint {}: {} pools, {} commitments, {} nullifiers",
+            checkpoint_seq, pools_res, commits_res, nulls_res
+        );
     }
 
     Ok(())
