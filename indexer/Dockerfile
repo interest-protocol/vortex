@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY indexer/Cargo.toml indexer/Cargo.lock ./
-COPY indexer/crates ./crates
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
 
 RUN cargo build --release -p vortex-indexer
 
