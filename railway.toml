@@ -1,0 +1,6 @@
+[build]
+dockerfilePath = "indexer/Dockerfile"
+watchPatterns = ["indexer/**"]
+
+[deploy]
+startCommand = "vortex-indexer"
