@@ -1,9 +1,12 @@
 use anyhow::Context;
 use clap::Parser;
 use sui_indexer_alt_framework::{
-    ingestion::{ClientArgs, IngestionConfig},
+    ingestion::{
+        ingestion_client::IngestionClientArgs, streaming_client::StreamingClientArgs, ClientArgs,
+        IngestionConfig,
+    },
     pipeline::concurrent::ConcurrentConfig,
-    Indexer, IndexerArgs,
+    Indexer, IndexerArgs, TaskArgs,
 };
 use tracing::info;
 
@@ -23,23 +26,23 @@ const DEFAULT_VORTEX_PACKAGE: &str =
     about = "Vortex Protocol Indexer for Sui using MongoDB"
 )]
 struct Config {
-    #[clap(long, env = "MONGODB_URI", default_value = "mongodb://localhost:27017")]
+    #[clap(long, env, default_value = "mongodb://localhost:27017")]
     mongodb_uri: String,
 
-    #[clap(long, env = "MONGODB_DATABASE", default_value = "vortex")]
+    #[clap(long, env, default_value = "vortex")]
     mongodb_database: String,
 
-    #[clap(long, env = "SUI_NETWORK", default_value = "testnet")]
+    #[clap(long, env, default_value = "testnet")]
     sui_network: SuiNetwork,
 
-    #[clap(long, env = "VORTEX_PACKAGE", default_value = DEFAULT_VORTEX_PACKAGE)]
+    #[clap(long, env, default_value = DEFAULT_VORTEX_PACKAGE)]
     vortex_package: String,
 
-    #[clap(flatten)]
-    indexer_args: IndexerArgs,
+    #[clap(long, env)]
+    first_checkpoint: Option<u64>,
 
-    #[clap(flatten)]
-    client_args: ClientArgs,
+    #[clap(long, env)]
+    last_checkpoint: Option<u64>,
 }
 
 #[tokio::main]
@@ -71,10 +74,30 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Connected to MongoDB");
 
+    let client_args = ClientArgs {
+        ingestion: IngestionClientArgs {
+            remote_store_url: Some(env.remote_store_url()),
+            local_ingestion_path: None,
+            rpc_api_url: None,
+            rpc_username: None,
+            rpc_password: None,
+        },
+        streaming: StreamingClientArgs {
+            streaming_url: Some(env.streaming_url().to_string().parse().expect("valid URI")),
+        },
+    };
+
+    let indexer_args = IndexerArgs {
+        first_checkpoint: config.first_checkpoint,
+        last_checkpoint: config.last_checkpoint,
+        pipeline: vec![],
+        task: TaskArgs::default(),
+    };
+
     let mut indexer = Indexer::new(
         store,
-        config.indexer_args,
-        config.client_args,
+        indexer_args,
+        client_args,
         IngestionConfig::default(),
         None,
         &prometheus::Registry::new(),

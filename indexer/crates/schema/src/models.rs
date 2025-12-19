@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use mongodb::bson;
 use serde::{Deserialize, Serialize};
 
 pub mod collections {
@@ -54,7 +54,7 @@ pub struct Watermark {
     pub timestamp_ms_hi_inclusive: u64,
     pub reader_lo: u64,
     pub pruner_hi: u64,
-    pub pruner_timestamp: DateTime<Utc>,
+    pub pruner_timestamp: bson::DateTime,
 }
 
 impl Watermark {
@@ -67,7 +67,7 @@ impl Watermark {
             timestamp_ms_hi_inclusive: 0,
             reader_lo: default_checkpoint,
             pruner_hi: default_checkpoint,
-            pruner_timestamp: Utc::now(),
+            pruner_timestamp: bson::DateTime::now(),
         }
     }
 }

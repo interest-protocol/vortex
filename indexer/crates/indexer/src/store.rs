@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use chrono::Utc;
 use mongodb::{
     bson::{self, doc},
     options::{ClientOptions, FindOneAndUpdateOptions, IndexOptions, ReturnDocument},
@@ -58,14 +57,6 @@ impl MongoStore {
     async fn create_indexes(&self) -> Result<()> {
         self.create_index::<vortex_schema::NewCommitment>(
             collections::NEW_COMMITMENTS,
-            doc! { "base.event_digest": 1 },
-            Some("event_digest_idx"),
-            true,
-        )
-        .await?;
-
-        self.create_index::<vortex_schema::NewCommitment>(
-            collections::NEW_COMMITMENTS,
             doc! { "coin_type": 1, "index": 1 },
             Some("coin_type_index_idx"),
             false,
@@ -82,24 +73,8 @@ impl MongoStore {
 
         self.create_index::<vortex_schema::NullifierSpent>(
             collections::NULLIFIERS_SPENT,
-            doc! { "base.event_digest": 1 },
-            Some("event_digest_idx"),
-            true,
-        )
-        .await?;
-
-        self.create_index::<vortex_schema::NullifierSpent>(
-            collections::NULLIFIERS_SPENT,
             doc! { "coin_type": 1, "nullifier": 1 },
             Some("coin_type_nullifier_idx"),
-            true,
-        )
-        .await?;
-
-        self.create_index::<vortex_schema::NewPool>(
-            collections::NEW_POOLS,
-            doc! { "base.event_digest": 1 },
-            Some("event_digest_idx"),
             true,
         )
         .await?;
@@ -280,10 +255,8 @@ impl Connection for MongoConnection {
             return Ok(None);
         };
 
-        let now = Utc::now();
-        let elapsed_ms = now
-            .signed_duration_since(w.pruner_timestamp)
-            .num_milliseconds();
+        let now = bson::DateTime::now();
+        let elapsed_ms = now.timestamp_millis() - w.pruner_timestamp.timestamp_millis();
         let delay_ms = delay.as_millis() as i64;
         let wait_for_ms = delay_ms - elapsed_ms;
 
