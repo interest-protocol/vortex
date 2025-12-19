@@ -177,7 +177,7 @@ async fn run_indexer(
             return Ok(checkpoint.saturating_sub(1));
         }
 
-        let url = format!("{}/{}.chk", base_url, checkpoint);
+        let url = format!("{}/{:020}.chk", base_url, checkpoint);
 
         match client.get(&url).send().await {
             Ok(response) if response.status().is_success() => {
