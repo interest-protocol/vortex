@@ -49,13 +49,21 @@ pub async fn process_checkpoint(
         let digest = tx.transaction.digest().to_string();
         let sender = tx.transaction.sender_address().to_string();
 
+        // Helper closure to construct EventBase with common fields
+        let make_base = |event_digest: String| EventBase {
+            event_digest,
+            digest: digest.clone(),
+            sender: sender.clone(),
+            checkpoint: checkpoint_seq,
+            checkpoint_timestamp_ms: checkpoint_ts,
+        };
+
         for (idx, ev) in events.data.iter().enumerate() {
             if &ev.type_.address != package_address {
                 continue;
             }
 
             let event_digest = format!("{}:{}", digest, idx);
-            let package = ev.type_.address.to_string();
 
             // NewPool
             if NewPoolEvent::<Coin>::matches_event_type(&ev.type_, package_address) {
@@ -63,14 +71,7 @@ pub async fn process_checkpoint(
                     let coin_type = extract_coin_type(&ev.type_.to_string()).unwrap_or_default();
                     let pool_addr = bytes_to_address(&event.0);
                     new_pools.push(NewPool {
-                        base: EventBase {
-                            event_digest,
-                            digest: digest.clone(),
-                            sender: sender.clone(),
-                            checkpoint: checkpoint_seq,
-                            checkpoint_timestamp_ms: checkpoint_ts,
-                            package: package.clone(),
-                        },
+                        base: make_base(event_digest),
                         pool_address: pool_addr.to_string(),
                         coin_type,
                     });
@@ -84,14 +85,7 @@ pub async fn process_checkpoint(
                 if let Ok(event) = bcs::from_bytes::<NewCommitmentEvent<Coin>>(&ev.contents) {
                     let coin_type = extract_coin_type(&ev.type_.to_string()).unwrap_or_default();
                     new_commitments.push(NewCommitment {
-                        base: EventBase {
-                            event_digest,
-                            digest: digest.clone(),
-                            sender: sender.clone(),
-                            checkpoint: checkpoint_seq,
-                            checkpoint_timestamp_ms: checkpoint_ts,
-                            package: package.clone(),
-                        },
+                        base: make_base(event_digest),
                         coin_type,
                         index: event.index,
                         commitment: u256_to_hex(&event.commitment),
@@ -107,14 +101,7 @@ pub async fn process_checkpoint(
                 if let Ok(event) = bcs::from_bytes::<NullifierSpentEvent<Coin>>(&ev.contents) {
                     let coin_type = extract_coin_type(&ev.type_.to_string()).unwrap_or_default();
                     nullifiers_spent.push(NullifierSpent {
-                        base: EventBase {
-                            event_digest,
-                            digest: digest.clone(),
-                            sender: sender.clone(),
-                            checkpoint: checkpoint_seq,
-                            checkpoint_timestamp_ms: checkpoint_ts,
-                            package: package.clone(),
-                        },
+                        base: make_base(event_digest),
                         coin_type,
                         nullifier: u256_to_hex(&event.0),
                     });

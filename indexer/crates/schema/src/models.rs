@@ -14,8 +14,6 @@ pub struct EventBase {
     pub checkpoint: u64,
     /// Checkpoint timestamp in milliseconds
     pub checkpoint_timestamp_ms: u64,
-    /// Package address that emitted the event
-    pub package: String,
 }
 
 /// NewPool event - emitted when a new privacy pool is created
