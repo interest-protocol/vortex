@@ -33,10 +33,13 @@
 
 ### Testing Standards
 - Write tests that define small functionality increments
-- Use meaningful test names describing behavior
-- Implement unit tests, integration tests where appropriate
+- Use meaningful test names describing behavior (without `test_` prefix for clarity)
+- Place integration tests in `tests/` directory at crate root (e.g., `crates/indexer/tests/`)
+- Keep unit tests minimal; prefer integration tests in separate files
+- Organize test files by module: `tests/handlers_tests.rs`, `tests/lib_tests.rs`
 - All tests must pass before commits
 - When fixing bugs, write failing tests first
+- Use `assert_eq!` for equality checks when possible
 
 ### Development Workflow
 - Make one logical change at a time
