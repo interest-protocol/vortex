@@ -58,6 +58,14 @@ impl MongoStore {
     async fn create_indexes(&self) -> Result<()> {
         self.create_index::<vortex_schema::NewCommitment>(
             collections::NEW_COMMITMENTS,
+            doc! { "base.event_digest": 1 },
+            Some("event_digest_idx"),
+            true,
+        )
+        .await?;
+
+        self.create_index::<vortex_schema::NewCommitment>(
+            collections::NEW_COMMITMENTS,
             doc! { "coin_type": 1, "index": 1 },
             Some("coin_type_index_idx"),
             false,
@@ -74,8 +82,24 @@ impl MongoStore {
 
         self.create_index::<vortex_schema::NullifierSpent>(
             collections::NULLIFIERS_SPENT,
+            doc! { "base.event_digest": 1 },
+            Some("event_digest_idx"),
+            true,
+        )
+        .await?;
+
+        self.create_index::<vortex_schema::NullifierSpent>(
+            collections::NULLIFIERS_SPENT,
             doc! { "coin_type": 1, "nullifier": 1 },
             Some("coin_type_nullifier_idx"),
+            true,
+        )
+        .await?;
+
+        self.create_index::<vortex_schema::NewPool>(
+            collections::NEW_POOLS,
+            doc! { "base.event_digest": 1 },
+            Some("event_digest_idx"),
             true,
         )
         .await?;

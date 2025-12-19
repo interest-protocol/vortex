@@ -22,7 +22,7 @@ const DEFAULT_VORTEX_PACKAGE: &str =
     name = "vortex-indexer",
     about = "Vortex Protocol Indexer for Sui using MongoDB"
 )]
-struct Args {
+struct Config {
     #[clap(long, env = "MONGODB_URI", default_value = "mongodb://localhost:27017")]
     mongodb_uri: String,
 
@@ -50,22 +50,22 @@ async fn main() -> anyhow::Result<()> {
         .with_env()
         .init();
 
-    let args = Args::parse();
+    let config = Config::parse();
 
     let package_address =
-        parse_package_address(&args.vortex_package).context("Invalid VORTEX_PACKAGE address")?;
+        parse_package_address(&config.vortex_package).context("Invalid VORTEX_PACKAGE address")?;
 
-    let env = VortexEnv::new(args.sui_network, package_address);
+    let env = VortexEnv::new(config.sui_network, package_address);
 
     info!(
-        network = %args.sui_network,
-        package = %args.vortex_package,
-        mongodb = %args.mongodb_uri,
-        database = %args.mongodb_database,
+        network = %config.sui_network,
+        package = %config.vortex_package,
+        mongodb = %config.mongodb_uri,
+        database = %config.mongodb_database,
         "Starting Vortex Indexer"
     );
 
-    let store = MongoStore::new(&args.mongodb_uri, &args.mongodb_database)
+    let store = MongoStore::new(&config.mongodb_uri, &config.mongodb_database)
         .await
         .context("Failed to connect to MongoDB")?;
 
@@ -73,8 +73,8 @@ async fn main() -> anyhow::Result<()> {
 
     let mut indexer = Indexer::new(
         store,
-        args.indexer_args,
-        args.client_args,
+        config.indexer_args,
+        config.client_args,
         IngestionConfig::default(),
         None,
         &prometheus::Registry::new(),
