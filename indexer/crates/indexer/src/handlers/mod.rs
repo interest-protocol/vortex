@@ -1,18 +1,17 @@
-use crate::models::{
-    bytes_to_address, extract_coin_type, u256_to_hex, Coin, NewCommitmentEvent, NewPoolEvent,
-    NullifierSpentEvent,
-};
-use crate::store::MongoStore;
-use crate::traits::MoveStruct;
-use anyhow::Result;
-use move_core_types::account_address::AccountAddress;
-use std::sync::Arc;
-use sui_types::full_checkpoint_content::{CheckpointData, CheckpointTransaction};
-use tracing::debug;
-use vortex_schema::{collections, EventBase, NewCommitment, NewPool, NullifierSpent};
+mod new_commitment;
+mod new_pool;
+mod nullifier_spent;
 
-/// Check if transaction involves Vortex package
-pub fn is_vortex_tx(tx: &CheckpointTransaction, package_address: &AccountAddress) -> bool {
+pub use new_commitment::NewCommitmentHandler;
+pub use new_pool::NewPoolHandler;
+pub use nullifier_spent::NullifierSpentHandler;
+
+use move_core_types::account_address::AccountAddress;
+use once_cell::sync::Lazy;
+use regex::Regex;
+use sui_types::full_checkpoint_content::ExecutedTransaction;
+
+pub fn is_vortex_tx(tx: &ExecutedTransaction, package_address: &AccountAddress) -> bool {
     tx.events
         .as_ref()
         .map(|events| {
@@ -24,106 +23,19 @@ pub fn is_vortex_tx(tx: &CheckpointTransaction, package_address: &AccountAddress
         .unwrap_or(false)
 }
 
-/// Process a single checkpoint and insert all events into MongoDB
-pub async fn process_checkpoint(
-    store: &Arc<MongoStore>,
-    checkpoint: &Arc<CheckpointData>,
-    package_address: &AccountAddress,
-) -> Result<()> {
-    let mut new_pools = Vec::new();
-    let mut new_commitments = Vec::new();
-    let mut nullifiers_spent = Vec::new();
+pub fn u256_to_hex(value: &[u8; 32]) -> String {
+    format!("0x{}", hex::encode(value))
+}
 
-    let checkpoint_seq = checkpoint.checkpoint_summary.sequence_number;
-    let checkpoint_ts = checkpoint.checkpoint_summary.timestamp_ms;
+pub fn bytes_to_address(bytes: &[u8; 32]) -> AccountAddress {
+    AccountAddress::new(*bytes)
+}
 
-    for tx in &checkpoint.transactions {
-        if !is_vortex_tx(tx, package_address) {
-            continue;
-        }
+static COIN_TYPE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<(.+)>").unwrap());
 
-        let Some(events) = &tx.events else {
-            continue;
-        };
-
-        let digest = tx.transaction.digest().to_string();
-        let sender = tx.transaction.sender_address().to_string();
-
-        // Helper closure to construct EventBase with common fields
-        let make_base = |event_digest: String| EventBase {
-            event_digest,
-            digest: digest.clone(),
-            sender: sender.clone(),
-            checkpoint: checkpoint_seq,
-            checkpoint_timestamp_ms: checkpoint_ts,
-        };
-
-        for (idx, ev) in events.data.iter().enumerate() {
-            if &ev.type_.address != package_address {
-                continue;
-            }
-
-            let event_digest = format!("{}:{}", digest, idx);
-
-            // NewPool
-            if NewPoolEvent::<Coin>::matches_event_type(&ev.type_, package_address) {
-                if let Ok(event) = bcs::from_bytes::<NewPoolEvent<Coin>>(&ev.contents) {
-                    let coin_type = extract_coin_type(&ev.type_.to_string()).unwrap_or_default();
-                    let pool_addr = bytes_to_address(&event.0);
-                    new_pools.push(NewPool {
-                        base: make_base(event_digest),
-                        pool_address: pool_addr.to_string(),
-                        coin_type,
-                    });
-                    debug!("NewPool: {}", pool_addr);
-                }
-                continue;
-            }
-
-            // NewCommitment
-            if NewCommitmentEvent::<Coin>::matches_event_type(&ev.type_, package_address) {
-                if let Ok(event) = bcs::from_bytes::<NewCommitmentEvent<Coin>>(&ev.contents) {
-                    let coin_type = extract_coin_type(&ev.type_.to_string()).unwrap_or_default();
-                    new_commitments.push(NewCommitment {
-                        base: make_base(event_digest),
-                        coin_type,
-                        index: event.index,
-                        commitment: u256_to_hex(&event.commitment),
-                        encrypted_output: event.encrypted_output,
-                    });
-                    debug!("NewCommitment: index={}", event.index);
-                }
-                continue;
-            }
-
-            // NullifierSpent
-            if NullifierSpentEvent::<Coin>::matches_event_type(&ev.type_, package_address) {
-                if let Ok(event) = bcs::from_bytes::<NullifierSpentEvent<Coin>>(&ev.contents) {
-                    let coin_type = extract_coin_type(&ev.type_.to_string()).unwrap_or_default();
-                    nullifiers_spent.push(NullifierSpent {
-                        base: make_base(event_digest),
-                        coin_type,
-                        nullifier: u256_to_hex(&event.0),
-                    });
-                    debug!("NullifierSpent: {}", u256_to_hex(&event.0));
-                }
-                continue;
-            }
-        }
-    }
-
-    let (pools_res, commits_res, nulls_res) = tokio::try_join!(
-        store.insert_many(collections::NEW_POOLS, new_pools),
-        store.insert_many(collections::NEW_COMMITMENTS, new_commitments),
-        store.insert_many(collections::NULLIFIERS_SPENT, nullifiers_spent)
-    )?;
-
-    if pools_res > 0 || commits_res > 0 || nulls_res > 0 {
-        debug!(
-            "Checkpoint {}: {} pools, {} commitments, {} nullifiers",
-            checkpoint_seq, pools_res, commits_res, nulls_res
-        );
-    }
-
-    Ok(())
+pub fn extract_coin_type(type_str: &str) -> Option<String> {
+    COIN_TYPE_RE
+        .captures(type_str)
+        .and_then(|caps| caps.get(1))
+        .map(|m| m.as_str().to_string())
 }
