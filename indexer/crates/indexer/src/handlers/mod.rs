@@ -126,31 +126,9 @@ pub async fn process_checkpoint(
     }
 
     let (pools_res, commits_res, nulls_res) = tokio::try_join!(
-        async {
-            if new_pools.is_empty() {
-                Ok(0)
-            } else {
-                store.insert_many(collections::NEW_POOLS, new_pools).await
-            }
-        },
-        async {
-            if new_commitments.is_empty() {
-                Ok(0)
-            } else {
-                store
-                    .insert_many(collections::NEW_COMMITMENTS, new_commitments)
-                    .await
-            }
-        },
-        async {
-            if nullifiers_spent.is_empty() {
-                Ok(0)
-            } else {
-                store
-                    .insert_many(collections::NULLIFIERS_SPENT, nullifiers_spent)
-                    .await
-            }
-        }
+        store.insert_many(collections::NEW_POOLS, new_pools),
+        store.insert_many(collections::NEW_COMMITMENTS, new_commitments),
+        store.insert_many(collections::NULLIFIERS_SPENT, nullifiers_spent)
     )?;
 
     if pools_res > 0 || commits_res > 0 || nulls_res > 0 {
