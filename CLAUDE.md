@@ -98,3 +98,105 @@
 - Public functions first, then `public(package)`, then private
 - Prefer macros over constants
 - Only import necessary items
+
+## TypeScript/JavaScript Guidelines (API)
+
+### Tech Stack
+- Runtime: Bun
+- Framework: Hono
+- Database: MongoDB (native driver)
+- Cache: Redis (ioredis)
+- Validation: Zod
+- Logging: Pino
+
+### Code Style
+- Do not add comments unless logic is complex
+- Use strict TypeScript (`strict: true` in tsconfig)
+- Prefer `type` over `interface` unless extending
+- Use `const` by default; `let` only when reassignment needed
+- Prefer arrow functions for callbacks and handlers
+- Use template literals over string concatenation
+- Destructure objects and arrays when accessing multiple properties
+
+### Type Safety
+- Never use `any`; use `unknown` and narrow with type guards
+- Always annotate function return types explicitly
+- Use branded types for domain IDs (e.g., `type UserId = string & { readonly brand: unique symbol }`)
+- Prefer `satisfies` operator over type assertions
+- Use discriminated unions for state machines and variants
+- Enable `noUncheckedIndexedAccess` for safer array/object access
+
+### Imports & Exports
+- Use `type` imports for type-only imports: `import type { Foo } from './foo'`
+- Group imports: built-ins → external packages → internal modules
+- Use named exports; avoid default exports
+- Use `.js` extension in imports (required for ESM)
+
+### Error Handling
+- Use custom error classes extending `Error`
+- Prefer early returns over nested conditionals
+- Always handle Promise rejections
+- Use Result pattern for expected failures: `type Result<T, E> = { ok: true; value: T } | { ok: false; error: E }`
+
+### Async Patterns
+- Always use `async/await` over raw Promises
+- Use `Promise.all()` for concurrent independent operations
+- Avoid floating promises; always await or void them
+- Use `AbortController` for cancellable operations
+
+### API Design (Hono)
+- Group routes by domain in separate files under `src/routes/`
+- Use Zod schemas for request validation
+- Return consistent response shapes: `{ success: boolean; data?: T; error?: string }`
+- Use proper HTTP status codes (200, 201, 400, 401, 404, 500)
+- Inject dependencies via Hono context, not globals
+
+### Database (MongoDB)
+- Use typed collections: `db.collection<User>('users')`
+- Create indexes for frequently queried fields
+- Use projection to limit returned fields
+- Prefer bulk operations for batch writes
+- Always handle connection errors gracefully
+
+### Testing Standards
+- Place tests in `tests/` directory
+- Use descriptive test names: `'returns 404 when user not found'`
+- Test behavior, not implementation
+- Mock external services (DB, Redis, APIs)
+- Run `bun test` before commits
+
+### Quality Checks
+- Run `bun run typecheck` to verify types
+- Run `bun run lint` for ESLint analysis
+- All warnings must be resolved before completion
+- Verify server starts without errors
+
+### Bun Commands
+- `bun run dev` - Start dev server with hot reload
+- `bun run build` - Build for production
+- `bun run start` - Run production build
+- `bun run lint` - Run ESLint
+- `bun run typecheck` - Type check without emit
+- `bun test` - Run tests
+
+### Project Structure
+```
+api/
+├── src/
+│   ├── index.ts          # Entry point
+│   ├── config/           # Environment and app config
+│   ├── db/               # Database connections
+│   ├── middleware/       # Hono middleware
+│   ├── routes/           # Route handlers by domain
+│   ├── services/         # Business logic
+│   ├── types/            # Shared type definitions
+│   └── utils/            # Helper functions
+├── tests/                # Test files
+└── package.json
+```
+
+### Development Workflow
+- Make one logical change at a time
+- Run typecheck and lint after each change
+- Prefer small, focused commits
+- Never mix refactoring with feature changes

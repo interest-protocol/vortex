@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@interest-protocol/vortex-sdk": "^6.2.0",
+    "@mysten/sui": "^1.45.2",
     "hono": "^4.6.14",
     "ioredis": "^5.4.2",
     "mongodb": "^6.12.0",
