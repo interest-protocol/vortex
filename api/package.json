@@ -14,7 +14,7 @@
         "prepare": "husky"
     },
     "dependencies": {
-        "@interest-protocol/vortex-sdk": "^6.2.0",
+        "@interest-protocol/vortex-sdk": "6.3.0",
         "@mysten/sui": "^1.45.2",
         "@shinami/clients": "^0.9.8",
         "hono": "^4.6.14",

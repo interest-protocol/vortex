@@ -1,4 +1,4 @@
-import type { MerklePath } from '@interest-protocol/vortex-sdk';
+import type { MerklePath } from '@/services/merkle-tree.ts';
 
 export type MerklePathResponse = {
     path: MerklePath;

@@ -3,14 +3,18 @@ import type { Redis } from 'ioredis';
 import {
     buildMerkleTree,
     deserializeMerkleTree,
-    getMerklePath as sdkGetMerklePath,
-    type Utxo,
+    ZERO_VALUE,
+    MERKLE_TREE_HEIGHT,
+    poseidon2,
+    Utxo,
     type MerkleTree,
-    type MerklePath,
 } from '@interest-protocol/vortex-sdk';
 import type { SerializedTreeState } from 'fixed-merkle-tree';
 import { COMMITMENTS_COLLECTION, type CommitmentDocument } from '@/db/collections/index.ts';
 import { REDIS_KEYS } from '@/constants/index.ts';
+import { hexToDecimal } from '@/utils/hex.ts';
+
+export type MerklePath = [string, string][];
 
 const getTreeKey = (coinType: string): string => `${REDIS_KEYS.MERKLE_TREE_PREFIX}${coinType}`;
 
@@ -87,12 +91,12 @@ export const getOrBuildMerkleTree = async ({
 
     if (!tree) {
         const allCommitments = await fetchCommitmentsFromIndex({ db, coinType, fromIndex: 0 });
-        const elements = allCommitments.map((c) => c.commitment);
+        const elements = allCommitments.map((c) => hexToDecimal(c.commitment));
         tree = buildMerkleTree(elements);
         const lastCommitment = allCommitments[allCommitments.length - 1];
         lastIndex = lastCommitment ? lastCommitment.index : -1;
     } else {
-        const elements = newCommitments.map((c) => c.commitment);
+        const elements = newCommitments.map((c) => hexToDecimal(c.commitment));
         tree.bulkInsert(elements);
         const lastNewCommitment = newCommitments[newCommitments.length - 1];
         if (lastNewCommitment) {
@@ -105,31 +109,68 @@ export const getOrBuildMerkleTree = async ({
     return tree;
 };
 
-export type { MerklePath };
-
 export type MerklePathResponse = {
     path: MerklePath;
     root: string;
+};
+
+export type UtxoData = {
+    amount: bigint;
+    publicKey: string;
+    blinding: bigint;
+    vortexPool: string;
 };
 
 type GetMerklePathParams = {
     db: Db;
     redis: Redis;
     coinType: string;
-    utxo: Utxo;
+    index: number;
+    utxo: UtxoData;
 };
 
 export const getMerklePath = async ({
     db,
     redis,
     coinType,
+    index,
     utxo,
 }: GetMerklePathParams): Promise<MerklePathResponse> => {
     const tree = await getOrBuildMerkleTree({ db, redis, coinType });
-    const path = sdkGetMerklePath(tree, utxo);
+    const treeSize = tree.elements.length;
+
+    if (index < 0 || index >= treeSize) {
+        const zeroPath: MerklePath = Array(MERKLE_TREE_HEIGHT)
+            .fill(null)
+            .map(() => [ZERO_VALUE.toString(), ZERO_VALUE.toString()]);
+        return { path: zeroPath, root: tree.root.toString() };
+    }
+
+    const { pathElements, pathIndices } = tree.path(index);
+    const commitment = Utxo.makeCommitment(utxo);
+
+    const storedCommitment = BigInt(tree.elements[index] as string);
+    if (storedCommitment !== commitment) {
+        throw new Error(`Commitment mismatch at index ${String(index)}`);
+    }
+
+    const wasmPath: MerklePath = [];
+    let currentHash = commitment;
+
+    for (let i = 0; i < MERKLE_TREE_HEIGHT; i++) {
+        const sibling = BigInt(pathElements[i] as string);
+        const isLeft = pathIndices[i] === 0;
+
+        const leftHash = isLeft ? currentHash : sibling;
+        const rightHash = isLeft ? sibling : currentHash;
+
+        wasmPath.push([leftHash.toString(), rightHash.toString()]);
+
+        currentHash = poseidon2(leftHash, rightHash);
+    }
 
     return {
-        path,
+        path: wasmPath,
         root: tree.root.toString(),
     };
 };
