@@ -114,7 +114,8 @@
 - Use strict TypeScript (`strict: true` in tsconfig)
 - Prefer `type` over `interface` unless extending
 - Use `const` by default; `let` only when reassignment needed
-- Prefer arrow functions for callbacks and handlers
+- Always use arrow functions (not `function` declarations)
+- Functions with more than 2 parameters must use an object parameter with named properties
 - Use template literals over string concatenation
 - Destructure objects and arrays when accessing multiple properties
 
