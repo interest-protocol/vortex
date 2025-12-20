@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use mongodb::{
     bson::{self, doc},
-    options::{ClientOptions, FindOneAndUpdateOptions, IndexOptions, ReturnDocument},
+    options::{ClientOptions, IndexOptions},
     Client, Collection, Database, IndexModel,
 };
 use scoped_futures::ScopedBoxFuture;
@@ -163,49 +163,6 @@ impl MongoConnection {
 
 #[async_trait]
 impl Connection for MongoConnection {
-    async fn init_watermark(
-        &mut self,
-        pipeline_task: &str,
-        default_next_checkpoint: u64,
-    ) -> Result<Option<u64>> {
-        let Some(_checkpoint_hi_inclusive) = default_next_checkpoint.checked_sub(1) else {
-            return Ok(self
-                .committer_watermark(pipeline_task)
-                .await?
-                .map(|w| w.checkpoint_hi_inclusive));
-        };
-
-        let watermark = Watermark::new(pipeline_task.to_string(), default_next_checkpoint);
-
-        let options = FindOneAndUpdateOptions::builder()
-            .upsert(true)
-            .return_document(ReturnDocument::After)
-            .build();
-
-        let pruner_ts = bson::DateTime::from_millis(watermark.pruner_timestamp.timestamp_millis());
-        let result = self
-            .watermarks()
-            .find_one_and_update(
-                doc! { "_id": pipeline_task },
-                doc! {
-                    "$setOnInsert": {
-                        "epoch_hi_inclusive": watermark.epoch_hi_inclusive as i64,
-                        "checkpoint_hi_inclusive": watermark.checkpoint_hi_inclusive as i64,
-                        "tx_hi": watermark.tx_hi as i64,
-                        "timestamp_ms_hi_inclusive": watermark.timestamp_ms_hi_inclusive as i64,
-                        "reader_lo": watermark.reader_lo as i64,
-                        "pruner_hi": watermark.pruner_hi as i64,
-                        "pruner_timestamp": pruner_ts,
-                    }
-                },
-            )
-            .with_options(options)
-            .await
-            .context("Failed to init watermark")?;
-
-        Ok(result.map(|w| w.checkpoint_hi_inclusive))
-    }
-
     async fn committer_watermark(
         &mut self,
         pipeline_task: &str,

@@ -1,5 +1,5 @@
-use move_core_types::account_address::AccountAddress;
 use std::str::FromStr;
+use sui_types::base_types::SuiAddress;
 use url::Url;
 
 pub mod handlers;
@@ -72,12 +72,12 @@ impl std::fmt::Display for SuiNetwork {
 #[derive(Debug, Clone, Copy)]
 pub struct VortexEnv {
     pub network: SuiNetwork,
-    pub package_address: AccountAddress,
+    pub package_address: SuiAddress,
 }
 
 impl VortexEnv {
     #[must_use]
-    pub const fn new(network: SuiNetwork, package_address: AccountAddress) -> Self {
+    pub fn new(network: SuiNetwork, package_address: SuiAddress) -> Self {
         Self {
             network,
             package_address,
@@ -95,7 +95,7 @@ impl VortexEnv {
     }
 }
 
-pub fn parse_package_address(package: &str) -> anyhow::Result<AccountAddress> {
-    AccountAddress::from_str(package)
+pub fn parse_package_address(package: &str) -> anyhow::Result<SuiAddress> {
+    SuiAddress::from_str(package)
         .map_err(|e| anyhow::anyhow!("Invalid package address '{}': {}", package, e))
 }

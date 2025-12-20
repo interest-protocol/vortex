@@ -1,4 +1,4 @@
-use move_core_types::account_address::AccountAddress;
+use sui_types::base_types::SuiAddress;
 use vortex_indexer::handlers::{bytes_to_address, extract_coin_type, u256_to_hex};
 
 #[test]
@@ -27,11 +27,11 @@ fn test_u256_to_hex() {
 fn test_bytes_to_address() {
     let bytes = [0u8; 32];
     let addr = bytes_to_address(&bytes);
-    assert_eq!(addr, AccountAddress::new([0u8; 32]));
+    assert_eq!(addr, SuiAddress::from_bytes(&[0u8; 32]).unwrap());
 
     let bytes = [0xff; 32];
     let addr = bytes_to_address(&bytes);
-    assert_eq!(addr, AccountAddress::new([0xff; 32]));
+    assert_eq!(addr, SuiAddress::from_bytes(&[0xff; 32]).unwrap());
 }
 
 #[test]

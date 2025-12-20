@@ -1,27 +1,22 @@
-FROM rust:1.83-bookworm AS builder
+FROM rustlang/rust:nightly AS builder
 
-WORKDIR /app
+WORKDIR work
 
-RUN apt-get update && apt-get install -y \
-    clang \
-    libclang-dev \
-    cmake \
-    pkg-config \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y build-essential libssl-dev pkg-config curl cmake clang ca-certificates
+ENV PATH="/root/.cargo/bin:${PATH}"
 
-COPY indexer/Cargo.toml indexer/Cargo.lock ./
-COPY indexer/crates ./crates
+COPY indexer/Cargo.lock indexer/Cargo.toml ./
+COPY indexer/crates/ ./crates/
 
-RUN cargo build --release -p vortex-indexer
+RUN cargo build --release --bin vortex-indexer --config net.git-fetch-with-cli=true
 
-FROM debian:bookworm-slim
+FROM debian:sid-slim
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/vortex-indexer /usr/local/bin/
+COPY --from=builder /work/target/release/vortex-indexer /usr/local/bin/
 
 CMD ["vortex-indexer"]

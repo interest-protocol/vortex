@@ -17,7 +17,6 @@ clap.workspace = true
 dotenvy.workspace = true
 hex.workspace = true
 mongodb.workspace = true
-move-core-types.workspace = true
 once_cell.workspace = true
 prometheus.workspace = true
 regex.workspace = true

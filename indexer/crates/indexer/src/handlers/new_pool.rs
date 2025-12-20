@@ -27,7 +27,7 @@ impl Processor for NewPoolHandler {
     async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
         let results = process_vortex_events(
             &checkpoint.transactions,
-            &self.env.package_address,
+            self.env.package_address,
             "NewPool",
             checkpoint.summary.sequence_number,
             checkpoint.summary.timestamp_ms,

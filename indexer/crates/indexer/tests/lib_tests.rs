@@ -1,5 +1,5 @@
-use move_core_types::account_address::AccountAddress;
 use std::str::FromStr;
+use sui_types::base_types::SuiAddress;
 use vortex_indexer::{parse_package_address, SuiNetwork, VortexEnv};
 
 #[test]
@@ -73,7 +73,7 @@ fn sui_network_streaming_url() {
 
 #[test]
 fn vortex_env_new() {
-    let addr = AccountAddress::new([1u8; 32]);
+    let addr = SuiAddress::from_bytes(&[1u8; 32]).unwrap();
     let env = VortexEnv::new(SuiNetwork::Mainnet, addr);
     assert_eq!(env.network, SuiNetwork::Mainnet);
     assert_eq!(env.package_address, addr);
@@ -81,7 +81,7 @@ fn vortex_env_new() {
 
 #[test]
 fn vortex_env_urls() {
-    let addr = AccountAddress::new([0u8; 32]);
+    let addr = SuiAddress::from_bytes(&[0u8; 32]).unwrap();
     let env = VortexEnv::new(SuiNetwork::Testnet, addr);
     assert_eq!(
         env.remote_store_url().as_str(),
@@ -98,7 +98,7 @@ fn parse_package_address_valid() {
     let addr = "0x0000000000000000000000000000000000000000000000000000000000000001";
     let result = parse_package_address(addr);
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), AccountAddress::from_str(addr).unwrap());
+    assert_eq!(result.unwrap(), SuiAddress::from_str(addr).unwrap());
 }
 
 #[test]

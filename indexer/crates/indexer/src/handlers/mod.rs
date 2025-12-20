@@ -8,10 +8,10 @@ pub use nullifier_spent::NullifierSpentHandler;
 
 use anyhow::Result;
 use mongodb::options::InsertManyOptions;
-use move_core_types::account_address::AccountAddress;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::de::DeserializeOwned;
+use sui_types::base_types::SuiAddress;
 use sui_types::full_checkpoint_content::ExecutedTransaction;
 use sui_types::transaction::TransactionDataAPI;
 use tracing::warn;
@@ -45,14 +45,14 @@ macro_rules! impl_mongo_handler {
     };
 }
 
-pub fn is_vortex_tx(tx: &ExecutedTransaction, package_address: &AccountAddress) -> bool {
+pub fn is_vortex_tx(tx: &ExecutedTransaction, package_address: SuiAddress) -> bool {
     tx.events
         .as_ref()
         .map(|events| {
             events
                 .data
                 .iter()
-                .any(|e| &e.type_.address == package_address)
+                .any(|e| e.type_.address == package_address.into())
         })
         .unwrap_or(false)
 }
@@ -61,8 +61,8 @@ pub fn u256_to_hex(value: &[u8; 32]) -> String {
     format!("0x{}", hex::encode(value))
 }
 
-pub fn bytes_to_address(bytes: &[u8; 32]) -> AccountAddress {
-    AccountAddress::new(*bytes)
+pub fn bytes_to_address(bytes: &[u8; 32]) -> SuiAddress {
+    SuiAddress::from_bytes(bytes).expect("32 bytes is valid SuiAddress")
 }
 
 static COIN_TYPE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<(.+)>").unwrap());
@@ -103,7 +103,7 @@ where
 
 pub fn process_vortex_events<TEvent, TResult, F>(
     transactions: &[ExecutedTransaction],
-    package_address: &AccountAddress,
+    package_address: SuiAddress,
     event_name: &str,
     checkpoint_seq: u64,
     checkpoint_ts: u64,
@@ -114,6 +114,7 @@ where
     F: FnMut(TEvent, String, String, String, u64, u64, usize) -> TResult,
 {
     let mut results = Vec::new();
+    let account_address = package_address.into();
 
     for tx in transactions {
         if !is_vortex_tx(tx, package_address) {
@@ -128,7 +129,7 @@ where
         let sender = tx.transaction.sender().to_string();
 
         for (idx, ev) in events.data.iter().enumerate() {
-            if ev.type_.address != *package_address {
+            if ev.type_.address != account_address {
                 continue;
             }
 
