@@ -1,0 +1,1 @@
+cd api && bun run typecheck && npx lint-staged
