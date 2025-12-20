@@ -188,22 +188,33 @@ api/
 ├── src/
 │   ├── index.ts          # Entry point
 │   ├── config/           # Environment and app config
-│   ├── constants/        # Shared constants (pagination, collections)
+│   ├── constants/        # Shared constants (pagination, etc.)
 │   ├── db/               # Database connections
+│   │   └── collections/  # Collection types and constants
 │   ├── middleware/       # Hono middleware
-│   ├── routes/           # Route handlers
+│   ├── routes/           # Route definitions
 │   │   ├── v1/           # API version 1
-│   │   │   └── pools/    # Domain route folder
-│   │   │       ├── index.ts   # Route handler
-│   │   │       ├── schema.ts  # Zod validation schemas
-│   │   │       └── types.ts   # Domain-specific types
+│   │   │   └── {domain}/ # Domain route folder (pools, accounts, etc.)
+│   │   │       ├── index.ts     # Route definitions only
+│   │   │       ├── handlers.ts  # Handler functions
+│   │   │       ├── schema.ts    # Zod validation schemas
+│   │   │       ├── types.ts     # Domain-specific types
+│   │   │       └── mappers.ts   # DB → API transformations
 │   │   └── health.ts     # Health check route
-│   ├── services/         # Business logic
+│   ├── services/         # Business logic (sui.ts, etc.)
 │   ├── types/            # Shared type definitions
-│   └── utils/            # Helper functions
+│   └── utils/            # Helper functions (validation.ts, logger.ts)
 ├── tests/                # Test files
 └── package.json
 ```
+
+### Route Structure Pattern
+Each route domain folder follows this structure:
+- `index.ts` - Route definitions only (keep minimal, just wire handlers to routes)
+- `handlers.ts` - Handler functions containing the business logic
+- `schema.ts` - Zod validation schemas for request body/query
+- `types.ts` - Domain-specific types and filter types
+- `mappers.ts` - Transform DB documents to API response shapes
 
 ### Development Workflow
 - Make one logical change at a time

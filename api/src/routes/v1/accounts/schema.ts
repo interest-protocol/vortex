@@ -5,4 +5,6 @@ export const createAccountSchema = z.object({
     hashedSecret: z.string().min(1),
 });
 
-export type CreateAccountInput = z.infer<typeof createAccountSchema>;
+export const getAccountsQuerySchema = z.object({
+    hashed_secret: z.string().min(1),
+});

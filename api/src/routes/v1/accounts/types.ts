@@ -8,3 +8,7 @@ export type Account = {
     createdAt: Date;
     txDigest: string;
 };
+
+export type AccountFilter = {
+    hashed_secret: string;
+};
