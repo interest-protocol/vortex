@@ -7,6 +7,8 @@ const envSchema = z.object({
     MONGODB_URI: z.string().default('mongodb://localhost:27017/vortex'),
     REDIS_URL: z.string().default('redis://localhost:6379'),
     CORS_ORIGIN: z.string().optional(),
+    SUI_PRIVATE_KEY: z.string(),
+    SHINAMI_RPC_KEY: z.string(),
 });
 
 const parsed = envSchema.safeParse(Bun.env);

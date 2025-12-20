@@ -1,30 +1,25 @@
 import { Hono } from 'hono';
 import type { AppBindings, PaginatedResponse } from '@/types/index.js';
-import { COLLECTIONS } from '@/constants/index.js';
+import { POOLS_COLLECTION, type PoolDocument } from '@/db/collections/index.js';
+import { validateQuery } from '@/utils/validation.js';
 import { poolsQuerySchema } from './schema.js';
 import { toPool } from './mappers.js';
-import type { Pool, PoolDocument, PoolFilter } from './types.js';
+import type { Pool, PoolFilter } from './types.js';
 
 export const poolsRoutes = new Hono<AppBindings>().get('/', async (c) => {
     const db = c.get('db');
 
-    const queryParams = poolsQuerySchema.safeParse({
+    const validation = validateQuery(c, poolsQuerySchema, {
         page: c.req.query('page'),
         limit: c.req.query('limit'),
         coin_type: c.req.query('coin_type'),
     });
 
-    if (!queryParams.success) {
-        return c.json(
-            {
-                success: false,
-                error: queryParams.error.flatten().fieldErrors,
-            },
-            400
-        );
+    if (!validation.success) {
+        return validation.response;
     }
 
-    const { page, limit, coin_type } = queryParams.data;
+    const { page, limit, coin_type } = validation.data;
     const skip = (page - 1) * limit;
 
     const filter: PoolFilter = {};
@@ -32,7 +27,7 @@ export const poolsRoutes = new Hono<AppBindings>().get('/', async (c) => {
         filter.coin_type = coin_type;
     }
 
-    const collection = db.collection<PoolDocument>(COLLECTIONS.NEW_POOLS);
+    const collection = db.collection<PoolDocument>(POOLS_COLLECTION);
 
     const [poolDocs, total] = await Promise.all([
         collection.find(filter).sort({ checkpoint: -1 }).skip(skip).limit(limit).toArray(),
