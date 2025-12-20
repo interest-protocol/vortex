@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PAGINATION } from '@/constants/index.js';
+import { PAGINATION } from '@/constants/index.ts';
 
 export const poolsQuerySchema = z.object({
     page: z.coerce.number().int().min(PAGINATION.MIN_PAGE).default(PAGINATION.MIN_PAGE),

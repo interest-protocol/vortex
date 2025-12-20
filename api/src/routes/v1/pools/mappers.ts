@@ -1,4 +1,4 @@
-import type { Pool, PoolDocument } from './types.js';
+import type { Pool, PoolDocument } from './types.ts';
 
 export function toPool(doc: PoolDocument): Pool {
     return {

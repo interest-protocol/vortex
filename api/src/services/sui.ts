@@ -2,8 +2,8 @@ import { GasStationClient, createSuiClient, buildGaslessTransaction } from '@shi
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import type { Transaction } from '@mysten/sui/transactions';
 import { fromBase64 } from '@mysten/sui/utils';
-import { env } from '@/config/env.js';
-import { logger } from '@/utils/logger.js';
+import { env } from '@/config/env.ts';
+import { logger } from '@/utils/logger.ts';
 
 export const nodeClient = createSuiClient(env.SHINAMI_RPC_KEY);
 export const gasClient = new GasStationClient(env.SHINAMI_RPC_KEY);

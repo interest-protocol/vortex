@@ -1,13 +1,13 @@
 import type { Context } from 'hono';
 import { Transaction } from '@mysten/sui/transactions';
 import { VORTEX_PACKAGE_ID } from '@interest-protocol/vortex-sdk';
-import type { AppBindings } from '@/types/index.js';
-import { ACCOUNTS_COLLECTION, type AccountDocument } from '@/db/collections/index.js';
-import { sponsorAndExecuteTransaction } from '@/services/sui.js';
-import { validateBody, validateQuery } from '@/utils/validation.js';
-import { createAccountSchema, getAccountsQuerySchema } from './schema.js';
-import { toAccount } from './mappers.js';
-import type { AccountFilter } from './types.js';
+import type { AppBindings } from '@/types/index.ts';
+import { ACCOUNTS_COLLECTION, type AccountDocument } from '@/db/collections/index.ts';
+import { sponsorAndExecuteTransaction } from '@/services/sui.ts';
+import { validateBody, validateQuery } from '@/utils/validation.ts';
+import { createAccountSchema, getAccountsQuerySchema } from './schema.ts';
+import { toAccount } from './mappers.ts';
+import type { AccountFilter } from './types.ts';
 
 export async function getAccounts(c: Context<AppBindings>) {
     const db = c.get('db');

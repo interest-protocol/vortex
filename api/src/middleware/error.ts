@@ -1,7 +1,7 @@
 import type { ErrorHandler } from 'hono';
-import type { AppBindings } from '@/types/index.js';
-import { env } from '@/config/env.js';
-import { logger } from '@/utils/logger.js';
+import type { AppBindings } from '@/types/index.ts';
+import { env } from '@/config/env.ts';
+import { logger } from '@/utils/logger.ts';
 
 export const errorHandler: ErrorHandler<AppBindings> = (err, c) => {
     logger.error({ err }, 'Unhandled error');

@@ -1,10 +1,10 @@
 import type { Context } from 'hono';
-import type { AppBindings, PaginatedResponse } from '@/types/index.js';
-import { POOLS_COLLECTION, type PoolDocument } from '@/db/collections/index.js';
-import { validateQuery } from '@/utils/validation.js';
-import { poolsQuerySchema } from './schema.js';
-import { toPool } from './mappers.js';
-import type { Pool, PoolFilter } from './types.js';
+import type { AppBindings, PaginatedResponse } from '@/types/index.ts';
+import { POOLS_COLLECTION, type PoolDocument } from '@/db/collections/index.ts';
+import { validateQuery } from '@/utils/validation.ts';
+import { poolsQuerySchema } from './schema.ts';
+import { toPool } from './mappers.ts';
+import type { Pool, PoolFilter } from './types.ts';
 
 export async function getPools(c: Context<AppBindings>) {
     const db = c.get('db');

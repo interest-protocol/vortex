@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
-import { env } from '@/config/env.js';
-import { connectMongoDB, disconnectMongoDB } from '@/db/mongodb.js';
-import { connectRedis, disconnectRedis } from '@/db/redis.js';
-import { corsMiddleware, databaseMiddleware, errorHandler } from '@/middleware/index.js';
-import { routes } from '@/routes/index.js';
-import type { AppBindings } from '@/types/index.js';
-import { logger } from '@/utils/logger.js';
+import { env } from '@/config/env.ts';
+import { connectMongoDB, disconnectMongoDB } from '@/db/mongodb.ts';
+import { connectRedis, disconnectRedis } from '@/db/redis.ts';
+import { corsMiddleware, databaseMiddleware, errorHandler } from '@/middleware/index.ts';
+import { routes } from '@/routes/index.ts';
+import type { AppBindings } from '@/types/index.ts';
+import { logger } from '@/utils/logger.ts';
 
 const app = new Hono<AppBindings>();
 

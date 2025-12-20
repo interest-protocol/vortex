@@ -1,7 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
-import type { AppBindings } from '@/types/index.js';
-import { getDb } from '@/db/mongodb.js';
-import { getRedis } from '@/db/redis.js';
+import type { AppBindings } from '@/types/index.ts';
+import { getDb } from '@/db/mongodb.ts';
+import { getRedis } from '@/db/redis.ts';
 
 export const databaseMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
     c.set('db', getDb());

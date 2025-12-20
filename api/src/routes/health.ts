@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import type { AppBindings } from '@/types/index.js';
+import type { AppBindings } from '@/types/index.ts';
 
 type HealthStatus = 'healthy' | 'unhealthy';
 

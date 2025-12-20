@@ -1,4 +1,4 @@
-export type { AccountDocument } from '@/db/collections/index.js';
+export type { AccountDocument } from '@/db/collections/index.ts';
 
 export type Account = {
     id: string;

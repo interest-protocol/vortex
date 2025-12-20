@@ -1,4 +1,4 @@
-import type { Account, AccountDocument } from './types.js';
+import type { Account, AccountDocument } from './types.ts';
 
 export function toAccount(doc: AccountDocument): Account {
     return {

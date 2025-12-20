@@ -1,3 +1,3 @@
-export { connectMongoDB, disconnectMongoDB, getDb } from './mongodb.js';
+export { connectMongoDB, disconnectMongoDB, getDb } from './mongodb.ts';
 
-export { connectRedis, disconnectRedis, getRedis } from './redis.js';
+export { connectRedis, disconnectRedis, getRedis } from './redis.ts';

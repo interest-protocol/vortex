@@ -1,4 +1,4 @@
-export type { PoolDocument } from '@/db/collections/index.js';
+export type { PoolDocument } from '@/db/collections/index.ts';
 
 export type Pool = {
     id: string;
