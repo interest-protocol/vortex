@@ -47,7 +47,15 @@ async function shutdown() {
     process.exit(0);
 }
 
-process.on('SIGINT', () => void shutdown());
-process.on('SIGTERM', () => void shutdown());
+process.on('SIGINT', () => {
+    shutdown().catch((err: unknown) => {
+        logger.error({ err }, 'Shutdown error');
+    });
+});
+process.on('SIGTERM', () => {
+    shutdown().catch((err: unknown) => {
+        logger.error({ err }, 'Shutdown error');
+    });
+});
 
 export default await main();

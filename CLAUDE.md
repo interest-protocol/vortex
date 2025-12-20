@@ -142,7 +142,7 @@
 ### Async Patterns
 - Always use `async/await` over raw Promises
 - Use `Promise.all()` for concurrent independent operations
-- Avoid floating promises; always await or void them
+- Never use `void` operator; use `.catch()` for fire-and-forget promises
 - Use `AbortController` for cancellable operations
 
 ### API Design (Hono)
@@ -210,3 +210,9 @@ api/
 - Run typecheck and lint after each change
 - Prefer small, focused commits
 - Never mix refactoring with feature changes
+
+### Git Commits
+- Use conventional commits format: `type(scope): subject`
+- Emojis are allowed at the start: `✨ feat(api): add pools endpoint`
+- Do NOT add "Generated with Claude" or "Co-Authored-By: Claude" to commits
+- Keep commit messages concise and descriptive

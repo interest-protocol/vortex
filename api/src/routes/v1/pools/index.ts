@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import type { AppBindings, PaginatedResponse } from '@/types/index.js';
 import { COLLECTIONS } from '@/constants/index.js';
 import { poolsQuerySchema } from './schema.js';
-import type { Pool, PoolFilter } from './types.js';
+import { toPool } from './mappers.js';
+import type { Pool, PoolDocument, PoolFilter } from './types.js';
 
 export const poolsRoutes = new Hono<AppBindings>().get('/', async (c) => {
     const db = c.get('db');
@@ -31,9 +32,9 @@ export const poolsRoutes = new Hono<AppBindings>().get('/', async (c) => {
         filter.coin_type = coin_type;
     }
 
-    const collection = db.collection<Pool>(COLLECTIONS.NEW_POOLS);
+    const collection = db.collection<PoolDocument>(COLLECTIONS.NEW_POOLS);
 
-    const [pools, total] = await Promise.all([
+    const [poolDocs, total] = await Promise.all([
         collection.find(filter).sort({ checkpoint: -1 }).skip(skip).limit(limit).toArray(),
         collection.countDocuments(filter),
     ]);
@@ -41,7 +42,7 @@ export const poolsRoutes = new Hono<AppBindings>().get('/', async (c) => {
     const totalPages = Math.ceil(total / limit);
 
     const data: PaginatedResponse<Pool> = {
-        items: pools,
+        items: poolDocs.map(toPool),
         pagination: {
             page,
             limit,
