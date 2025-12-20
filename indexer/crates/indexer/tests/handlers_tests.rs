@@ -27,11 +27,11 @@ fn test_u256_to_hex() {
 fn test_bytes_to_address() {
     let bytes = [0u8; 32];
     let addr = bytes_to_address(&bytes);
-    assert_eq!(addr, SuiAddress::from_bytes(&[0u8; 32]).unwrap());
+    assert_eq!(addr, SuiAddress::from_bytes([0u8; 32]).unwrap());
 
     let bytes = [0xff; 32];
     let addr = bytes_to_address(&bytes);
-    assert_eq!(addr, SuiAddress::from_bytes(&[0xff; 32]).unwrap());
+    assert_eq!(addr, SuiAddress::from_bytes([0xff; 32]).unwrap());
 }
 
 #[test]

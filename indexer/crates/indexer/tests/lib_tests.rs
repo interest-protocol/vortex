@@ -73,7 +73,7 @@ fn sui_network_streaming_url() {
 
 #[test]
 fn vortex_env_new() {
-    let addr = SuiAddress::from_bytes(&[1u8; 32]).unwrap();
+    let addr = SuiAddress::from_bytes([1u8; 32]).unwrap();
     let env = VortexEnv::new(SuiNetwork::Mainnet, addr);
     assert_eq!(env.network, SuiNetwork::Mainnet);
     assert_eq!(env.package_address, addr);
@@ -81,7 +81,7 @@ fn vortex_env_new() {
 
 #[test]
 fn vortex_env_urls() {
-    let addr = SuiAddress::from_bytes(&[0u8; 32]).unwrap();
+    let addr = SuiAddress::from_bytes([0u8; 32]).unwrap();
     let env = VortexEnv::new(SuiNetwork::Testnet, addr);
     assert_eq!(
         env.remote_store_url().as_str(),
