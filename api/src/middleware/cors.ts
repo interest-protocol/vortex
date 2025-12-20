@@ -1,7 +1,7 @@
 import { cors } from 'hono/cors';
 import type { MiddlewareHandler } from 'hono';
-import type { AppBindings } from '../types/index.js';
-import { env } from '../config/env.js';
+import type { AppBindings } from '@/types/index.js';
+import { env } from '@/config/env.js';
 
 export const corsMiddleware: MiddlewareHandler<AppBindings> =
     env.NODE_ENV === 'production'

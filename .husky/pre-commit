@@ -1,1 +1,1 @@
-cd api && bun run typecheck && npx lint-staged
+cd api && ~/.bun/bin/bun run typecheck && ~/.bun/bin/bunx lint-staged

@@ -127,8 +127,9 @@
 - Enable `noUncheckedIndexedAccess` for safer array/object access
 
 ### Imports & Exports
-- Use `type` imports for type-only imports: `import type { Foo } from './foo'`
-- Group imports: built-ins → external packages → internal modules
+- Use `@/` path alias for internal imports: `import { env } from '@/config/env.js'`
+- Use `type` imports for type-only imports: `import type { Foo } from '@/types/index.js'`
+- Group imports: built-ins → external packages → internal modules (`@/`)
 - Use named exports; avoid default exports
 - Use `.js` extension in imports (required for ESM)
 
@@ -166,17 +167,19 @@
 - Run `bun test` before commits
 
 ### Quality Checks
-- Run `bun run typecheck` to verify types
-- Run `bun run lint` for ESLint analysis
-- All warnings must be resolved before completion
+- After EVERY code change, run: `bun run typecheck && bun run lint && bun run format`
+- All type errors must be resolved before proceeding
+- All lint warnings must be resolved before completion
 - Verify server starts without errors
+- Never commit code that fails typecheck or lint
 
 ### Bun Commands
 - `bun run dev` - Start dev server with hot reload
 - `bun run build` - Build for production
 - `bun run start` - Run production build
-- `bun run lint` - Run ESLint
 - `bun run typecheck` - Type check without emit
+- `bun run lint` - Run ESLint
+- `bun run format` - Format code with Prettier
 - `bun test` - Run tests
 
 ### Project Structure
@@ -185,9 +188,16 @@ api/
 ├── src/
 │   ├── index.ts          # Entry point
 │   ├── config/           # Environment and app config
+│   ├── constants/        # Shared constants (pagination, collections)
 │   ├── db/               # Database connections
 │   ├── middleware/       # Hono middleware
-│   ├── routes/           # Route handlers by domain
+│   ├── routes/           # Route handlers
+│   │   ├── v1/           # API version 1
+│   │   │   └── pools/    # Domain route folder
+│   │   │       ├── index.ts   # Route handler
+│   │   │       ├── schema.ts  # Zod validation schemas
+│   │   │       └── types.ts   # Domain-specific types
+│   │   └── health.ts     # Health check route
 │   ├── services/         # Business logic
 │   ├── types/            # Shared type definitions
 │   └── utils/            # Helper functions
