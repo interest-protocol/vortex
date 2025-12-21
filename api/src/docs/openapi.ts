@@ -203,7 +203,7 @@ export const openApiSpec: OpenAPIV3.Document = {
                 },
             },
         },
-        '/api/v1/merkle': {
+        '/api/v1/merkle/path': {
             post: {
                 tags: ['Merkle'],
                 summary: 'Get Merkle path for a commitment',

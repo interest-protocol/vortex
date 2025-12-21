@@ -41,6 +41,10 @@ const createApp = () => {
 
     app.route('/api', routes);
 
+    app.notFound((c) =>
+        c.json({ success: false, error: `Route ${c.req.method} ${c.req.path} not found` }, 404)
+    );
+
     return app;
 };
 
