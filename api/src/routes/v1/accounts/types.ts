@@ -1,5 +1,3 @@
-export type { AccountDocument } from '@/db/collections/index.ts';
-
 export type Account = {
     id: string;
     accountObjectId: string;
@@ -7,8 +5,4 @@ export type Account = {
     owner: string;
     createdAt: Date;
     txDigest: string;
-};
-
-export type AccountFilter = {
-    hashed_secret: string;
 };

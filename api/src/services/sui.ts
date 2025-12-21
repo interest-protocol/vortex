@@ -9,11 +9,9 @@ export const nodeClient = createSuiClient(env.SHINAMI_RPC_KEY);
 export const gasClient = new GasStationClient(env.SHINAMI_RPC_KEY);
 export const keypair = Ed25519Keypair.fromSecretKey(env.SUI_PRIVATE_KEY);
 
-export async function sponsorAndExecuteTransaction(tx: Transaction) {
+export const sponsorAndExecuteTransaction = async (tx: Transaction) => {
     const sender = keypair.toSuiAddress();
-
     const gaslessTx = await buildGaslessTransaction(tx, { sui: nodeClient, sender });
-
     const { txBytes, signature: sponsorSignature } = await gasClient.sponsorTransaction(gaslessTx);
 
     const txBytesArray = typeof txBytes === 'string' ? fromBase64(txBytes) : txBytes;
@@ -32,4 +30,4 @@ export async function sponsorAndExecuteTransaction(tx: Transaction) {
 
     logger.info({ digest: result.digest }, 'Transaction executed');
     return result;
-}
+};

@@ -1,27 +1,17 @@
 import type { Context } from 'hono';
 import type { AppBindings } from '@/types/index.ts';
-import { getMerklePath } from '@/services/merkle-tree.ts';
+import { validateBody } from '@/utils/validation.ts';
 import { getMerklePathBodySchema } from './schema.ts';
-import type { MerklePathResponse } from './types.ts';
 
 export const getMerklePathHandler = async (c: Context<AppBindings>) => {
-    const db = c.get('db');
-    const redis = c.get('redis');
+    const merkleService = c.get('merkleService');
 
-    const body: unknown = await c.req.json();
-    const parsed = getMerklePathBodySchema.safeParse(body);
+    const validated = await validateBody(c, getMerklePathBodySchema);
+    if (!validated.success) return validated.response;
 
-    if (!parsed.success) {
-        return c.json({ success: false, error: parsed.error.flatten() }, 400);
-    }
-
-    const { coinType, index, amount, publicKey, blinding, vortexPool } = parsed.data;
-
+    const { coinType, index, amount, publicKey, blinding, vortexPool } = validated.data;
     const utxo = { amount, publicKey, blinding, vortexPool };
-
-    const result = await getMerklePath({ db, redis, coinType, index, utxo });
-
-    const data: MerklePathResponse = result;
+    const data = await merkleService.getMerklePath({ coinType, index, utxo });
 
     return c.json({ success: true, data });
 };

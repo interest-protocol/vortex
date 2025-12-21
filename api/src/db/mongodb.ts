@@ -5,10 +5,8 @@ import { logger } from '@/utils/logger.ts';
 let client: MongoClient | null = null;
 let db: Db | null = null;
 
-export async function connectMongoDB(): Promise<Db> {
-    if (db) {
-        return db;
-    }
+export const connectMongoDB = async (): Promise<Db> => {
+    if (db) return db;
 
     client = new MongoClient(env.MONGODB_URI);
     await client.connect();
@@ -16,20 +14,18 @@ export async function connectMongoDB(): Promise<Db> {
 
     logger.info('Connected to MongoDB');
     return db;
-}
+};
 
-export async function disconnectMongoDB(): Promise<void> {
-    if (client) {
-        await client.close();
-        client = null;
-        db = null;
-        logger.info('Disconnected from MongoDB');
-    }
-}
+export const disconnectMongoDB = async (): Promise<void> => {
+    if (!client) return;
 
-export function getDb(): Db {
-    if (!db) {
-        throw new Error('MongoDB not connected. Call connectMongoDB first.');
-    }
+    await client.close();
+    client = null;
+    db = null;
+    logger.info('Disconnected from MongoDB');
+};
+
+export const getDb = (): Db => {
+    if (!db) throw new Error('MongoDB not connected. Call connectMongoDB first.');
     return db;
-}
+};

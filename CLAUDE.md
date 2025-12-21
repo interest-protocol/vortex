@@ -192,22 +192,57 @@ api/
 │   ├── constants/        # Shared constants (pagination, etc.)
 │   ├── db/               # Database connections
 │   │   └── collections/  # Collection types and constants
-│   ├── middleware/       # Hono middleware
+│   ├── middleware/       # Hono middleware (DI injection)
+│   ├── repositories/     # Data access layer (MongoDB queries)
+│   │   ├── accounts.ts   # AccountsRepository
+│   │   ├── commitments.ts # CommitmentsRepository
+│   │   ├── pools.ts      # PoolsRepository
+│   │   └── index.ts      # Re-exports all repositories
 │   ├── routes/           # Route definitions
 │   │   ├── v1/           # API version 1
 │   │   │   └── {domain}/ # Domain route folder (pools, accounts, etc.)
 │   │   │       ├── index.ts     # Route definitions only
 │   │   │       ├── handlers.ts  # Handler functions
 │   │   │       ├── schema.ts    # Zod validation schemas
-│   │   │       ├── types.ts     # Domain-specific types
+│   │   │       ├── types.ts     # API response types only
 │   │   │       └── mappers.ts   # DB → API transformations
 │   │   └── health.ts     # Health check route
-│   ├── services/         # Business logic (sui.ts, etc.)
-│   ├── types/            # Shared type definitions
+│   ├── services/         # Business logic layer
+│   │   ├── accounts.ts   # AccountsService (Sui transactions)
+│   │   ├── health.ts     # HealthService (connectivity checks)
+│   │   ├── merkle.ts     # MerkleService (tree operations)
+│   │   ├── sui.ts        # Low-level Sui client
+│   │   └── index.ts      # Re-exports all services
+│   ├── types/            # Shared type definitions (AppBindings, etc.)
 │   └── utils/            # Helper functions (validation.ts, logger.ts)
 ├── tests/                # Test files
 └── package.json
 ```
+
+### Architecture Pattern (Dependency Injection)
+- **Repositories**: Handle data access (MongoDB queries). No business logic.
+- **Services**: Handle business logic. Depend on repositories, not raw db/redis.
+- **Handlers**: Handle HTTP. Use services via `c.get('serviceName')`.
+- **Middleware**: Creates and injects all dependencies into Hono context.
+
+Example handler pattern:
+```typescript
+export const getAccounts = async (c: Context<AppBindings>) => {
+    const accountsService = c.get('accountsService');
+    const validation = validateQuery(c, schema);
+    if (!validation.success) return validation.response;
+    const data = await accountsService.findByHashedSecret(validation.data.hashed_secret);
+    return c.json({ success: true, data });
+};
+```
+
+### Code Simplicity Rules
+- Avoid redundant operations (e.g., `Buffer.from(Buffer.from(...))`)
+- Use `.at(-1)` instead of `arr[arr.length - 1]` for safe last element access
+- Use nullish coalescing (`??`) and optional chaining (`?.`) for cleaner null handling
+- Eliminate intermediate variables that are only used once
+- Prefer method chaining over multiple assignments
+- Use `Promise.all()` for parallel operations instead of sequential awaits
 
 ### Route Structure Pattern
 Each route domain folder follows this structure:
@@ -228,3 +263,21 @@ Each route domain folder follows this structure:
 - Emojis are allowed at the start: `✨ feat(api): add pools endpoint`
 - Do NOT add "Generated with Claude" or "Co-Authored-By: Claude" to commits
 - Keep commit messages concise and descriptive
+
+Commit types (enforced by commitlint):
+- `feat` - New feature
+- `fix` - Bug fix
+- `docs` - Documentation only
+- `style` - Code style (formatting, semicolons, etc.)
+- `refactor` - Code change that neither fixes a bug nor adds a feature
+- `perf` - Performance improvement
+- `test` - Adding or updating tests
+- `build` - Build system or external dependencies
+- `ci` - CI configuration
+- `chore` - Other changes (updating dependencies, etc.)
+- `revert` - Revert a previous commit
+
+Rules:
+- Subject must be lowercase
+- Subject cannot be empty
+- Type cannot be empty

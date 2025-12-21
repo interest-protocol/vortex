@@ -1,11 +1,19 @@
 import type { Context } from 'hono';
-import type { Db } from 'mongodb';
-import type { Redis } from 'ioredis';
+import type {
+    PoolsRepository,
+    AccountsRepository,
+    CommitmentsRepository,
+} from '@/repositories/index.ts';
+import type { AccountsService, HealthService, MerkleService } from '@/services/index.ts';
 
 export type AppBindings = {
     Variables: {
-        db: Db;
-        redis: Redis;
+        pools: PoolsRepository;
+        accounts: AccountsRepository;
+        commitments: CommitmentsRepository;
+        accountsService: AccountsService;
+        healthService: HealthService;
+        merkleService: MerkleService;
     };
 };
 

@@ -8,28 +8,34 @@ import { routes } from '@/routes/index.ts';
 import type { AppBindings } from '@/types/index.ts';
 import { logger } from '@/utils/logger.ts';
 
-const app = new Hono<AppBindings>();
+const createApp = () => {
+    const app = new Hono<AppBindings>();
 
-app.use(honoLogger());
-app.use(corsMiddleware);
-app.use(databaseMiddleware);
-app.onError(errorHandler);
+    app.use(honoLogger());
+    app.use(corsMiddleware);
+    app.use(databaseMiddleware);
+    app.onError(errorHandler);
 
-app.get('/', (c) =>
-    c.json({
-        success: true,
-        data: {
-            name: 'Vortex API',
-            version: '1.0.0',
-        },
-    })
-);
+    app.get('/', (c) =>
+        c.json({
+            success: true,
+            data: {
+                name: 'Vortex API',
+                version: '1.0.0',
+            },
+        })
+    );
 
-app.route('/api', routes);
+    app.route('/api', routes);
 
-async function main() {
+    return app;
+};
+
+const main = async () => {
     await connectMongoDB();
     connectRedis();
+
+    const app = createApp();
 
     logger.info({ host: env.HOST, port: env.PORT }, 'Server started');
 
@@ -38,24 +44,22 @@ async function main() {
         hostname: env.HOST,
         fetch: app.fetch,
     };
-}
+};
 
-async function shutdown() {
+const shutdown = async () => {
     logger.info('Shutting down...');
     await disconnectMongoDB();
     await disconnectRedis();
     process.exit(0);
-}
+};
 
-process.on('SIGINT', () => {
+const handleShutdown = () => {
     shutdown().catch((err: unknown) => {
         logger.error({ err }, 'Shutdown error');
     });
-});
-process.on('SIGTERM', () => {
-    shutdown().catch((err: unknown) => {
-        logger.error({ err }, 'Shutdown error');
-    });
-});
+};
+
+process.on('SIGINT', handleShutdown);
+process.on('SIGTERM', handleShutdown);
 
 export default await main();

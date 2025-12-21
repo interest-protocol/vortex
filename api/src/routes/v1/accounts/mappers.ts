@@ -1,4 +1,5 @@
-import type { Account, AccountDocument } from './types.ts';
+import type { AccountDocument } from '@/db/collections/index.ts';
+import type { Account } from './types.ts';
 
 export const toAccount = (doc: AccountDocument): Account => ({
     id: doc._id,

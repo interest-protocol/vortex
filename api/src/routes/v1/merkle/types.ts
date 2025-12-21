@@ -1,4 +1,4 @@
-import type { MerklePath } from '@/services/merkle-tree.ts';
+import type { MerklePath } from '@/services/merkle.ts';
 
 export type MerklePathResponse = {
     path: MerklePath;

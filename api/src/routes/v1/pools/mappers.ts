@@ -1,4 +1,5 @@
-import type { Pool, PoolDocument } from './types.ts';
+import type { PoolDocument } from '@/db/collections/index.ts';
+import type { Pool } from './types.ts';
 
 export const toPool = (doc: PoolDocument): Pool => ({
     id: doc._id,

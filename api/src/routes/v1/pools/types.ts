@@ -1,5 +1,3 @@
-export type { PoolDocument } from '@/db/collections/index.ts';
-
 export type Pool = {
     id: string;
     digest: string;
@@ -8,8 +6,4 @@ export type Pool = {
     checkpointTimestampMs: number;
     poolAddress: string;
     coinType: string;
-};
-
-export type PoolFilter = {
-    coin_type?: string;
 };

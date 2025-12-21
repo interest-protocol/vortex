@@ -1,40 +1,29 @@
 import { Hono } from 'hono';
 import type { AppBindings } from '@/types/index.ts';
-
-type HealthStatus = 'healthy' | 'unhealthy';
+import type { HealthStatus } from '@/services/health.ts';
 
 type HealthData = {
     status: 'healthy' | 'degraded';
     services: {
         mongodb: HealthStatus;
         redis: HealthStatus;
+        sui: HealthStatus;
     };
     timestamp: string;
 };
 
 export const healthRoutes = new Hono<AppBindings>().get('/', async (c) => {
-    const db = c.get('db');
-    const redis = c.get('redis');
+    const healthService = c.get('healthService');
+    const services = await healthService.check();
 
-    const [mongoStatus, redisStatus] = await Promise.all([
-        db
-            .command({ ping: 1 })
-            .then((): HealthStatus => 'healthy')
-            .catch((): HealthStatus => 'unhealthy'),
-        redis
-            .ping()
-            .then((): HealthStatus => 'healthy')
-            .catch((): HealthStatus => 'unhealthy'),
-    ]);
-
-    const isHealthy = mongoStatus === 'healthy' && redisStatus === 'healthy';
+    const isHealthy =
+        services.mongodb === 'healthy' &&
+        services.redis === 'healthy' &&
+        services.sui === 'healthy';
 
     const data: HealthData = {
         status: isHealthy ? 'healthy' : 'degraded',
-        services: {
-            mongodb: mongoStatus,
-            redis: redisStatus,
-        },
+        services,
         timestamp: new Date().toISOString(),
     };
 
