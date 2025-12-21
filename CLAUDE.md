@@ -98,3 +98,199 @@
 - Public functions first, then `public(package)`, then private
 - Prefer macros over constants
 - Only import necessary items
+
+## TypeScript/JavaScript Guidelines (API)
+
+### Tech Stack
+- Runtime: Bun
+- Framework: Hono
+- Database: MongoDB (native driver)
+- Cache: Redis (ioredis)
+- Validation: Zod
+- Logging: Pino
+
+### Code Style
+- Do not add comments unless logic is complex
+- Use strict TypeScript (`strict: true` in tsconfig)
+- Prefer `type` over `interface` unless extending
+- Use `const` by default; `let` only when reassignment needed
+- Always use arrow functions (not `function` declarations)
+- Functions with more than 2 parameters must use an object parameter with named properties
+- Use template literals over string concatenation
+- Destructure objects and arrays when accessing multiple properties
+- Eliminate duplicate code ruthlessly - extract to shared utils (e.g., `src/utils/schemas.ts`)
+
+### Code Readability
+- Code is read by humans - make it readable, easy to understand and reason with
+- Add blank lines between all top-level declarations (constants, types, functions, exports)
+- Separate logical groups of code with blank lines for visual clarity
+
+### Type Safety
+- Never use `any`; use `unknown` and narrow with type guards
+- Always annotate function return types explicitly
+- Use branded types for domain IDs (e.g., `type UserId = string & { readonly brand: unique symbol }`)
+- Prefer `satisfies` operator over type assertions
+- Use discriminated unions for state machines and variants
+- Enable `noUncheckedIndexedAccess` for safer array/object access
+
+### Imports & Exports
+- Use `@/` path alias for internal imports: `import { env } from '@/config/env.js'`
+- Use `type` imports for type-only imports: `import type { Foo } from '@/types/index.js'`
+- Group imports: built-ins → external packages → internal modules (`@/`)
+- Use named exports; avoid default exports
+- Use `.js` extension in imports (required for ESM)
+
+### Error Handling
+- Use `invariant` from `tiny-invariant` for assertions instead of `if (!x) throw new Error()`
+- Use custom error classes extending `Error` for domain errors
+- Prefer early returns over nested conditionals
+- Always handle Promise rejections
+- Use Result pattern for expected failures: `type Result<T, E> = { ok: true; value: T } | { ok: false; error: E }`
+
+### Async Patterns
+- Always use `async/await` over raw Promises
+- Use `Promise.all()` for concurrent independent operations
+- Never use `void` operator; use `.catch()` for fire-and-forget promises
+- Use `AbortController` for cancellable operations
+
+### API Design (Hono)
+- Group routes by domain in separate files under `src/routes/`
+- Use Zod schemas for request validation
+- Return consistent response shapes: `{ success: boolean; data?: T; error?: string }`
+- Use proper HTTP status codes (200, 201, 400, 401, 404, 500)
+- Inject dependencies via Hono context, not globals
+
+### Database (MongoDB)
+- Use typed collections: `db.collection<User>('users')`
+- Create indexes for frequently queried fields
+- Use projection to limit returned fields
+- Prefer bulk operations for batch writes
+- Always handle connection errors gracefully
+
+### Testing Standards
+- Place tests in `tests/` directory
+- Use descriptive test names: `'returns 404 when user not found'`
+- Test behavior, not implementation
+- Mock external services (DB, Redis, APIs)
+- Run `bun test` before commits
+
+### Quality Checks
+- After EVERY code change, run: `bun run typecheck && bun run lint && bun run format`
+- All type errors must be resolved before proceeding
+- All lint warnings must be resolved before completion
+- Verify server starts without errors
+- Never commit code that fails typecheck or lint
+
+### Bun Commands
+- `bun run dev` - Start dev server with hot reload
+- `bun run build` - Build for production
+- `bun run start` - Run production build
+- `bun run typecheck` - Type check without emit
+- `bun run lint` - Run ESLint
+- `bun run format` - Format code with Prettier
+- `bun test` - Run tests
+
+### Project Structure
+```
+api/
+├── src/
+│   ├── index.ts          # Entry point
+│   ├── config/           # Environment and app config
+│   ├── constants/        # Shared constants (pagination, etc.)
+│   ├── db/               # Database connections
+│   │   └── collections/  # Collection types and constants
+│   ├── middleware/       # Hono middleware (DI injection)
+│   ├── repositories/     # Data access layer (MongoDB queries)
+│   │   ├── accounts.ts   # AccountsRepository
+│   │   ├── commitments.ts # CommitmentsRepository
+│   │   ├── pools.ts      # PoolsRepository
+│   │   └── index.ts      # Re-exports all repositories
+│   ├── routes/           # Route definitions
+│   │   ├── v1/           # API version 1
+│   │   │   └── {domain}/ # Domain route folder (pools, accounts, etc.)
+│   │   │       ├── index.ts     # Route definitions only
+│   │   │       ├── handlers.ts  # Handler functions
+│   │   │       ├── schema.ts    # Zod validation schemas
+│   │   │       ├── types.ts     # API response types only
+│   │   │       └── mappers.ts   # DB → API transformations
+│   │   └── health.ts     # Health check route
+│   ├── services/         # Business logic layer
+│   │   ├── accounts.ts   # AccountsService (Sui transactions)
+│   │   ├── health.ts     # HealthService (connectivity checks)
+│   │   ├── merkle.ts     # MerkleService (tree operations)
+│   │   ├── sui.ts        # Low-level Sui client
+│   │   └── index.ts      # Re-exports all services
+│   ├── types/            # Shared type definitions (AppBindings, etc.)
+│   └── utils/            # Helper functions (validation.ts, logger.ts)
+├── tests/                # Test files
+└── package.json
+```
+
+### Architecture Pattern (Dependency Injection)
+- **Repositories**: Handle data access (MongoDB queries). No business logic.
+- **Services**: Handle business logic. Depend on repositories, not raw db/redis.
+- **Handlers**: Handle HTTP. Use services via `c.get('serviceName')`.
+- **Middleware**: Creates and injects all dependencies into Hono context.
+
+Example handler pattern:
+```typescript
+export const getAccounts = async (c: Context<AppBindings>) => {
+    const accountsService = c.get('accountsService');
+    const validation = validateQuery(c, schema);
+    if (!validation.success) return validation.response;
+    const data = await accountsService.findByHashedSecret(validation.data.hashed_secret);
+    return c.json({ success: true, data });
+};
+```
+
+### Code Simplicity Rules
+- No unnecessary one-time-use variables - inline values when used only once
+- Avoid redundant operations (e.g., `Buffer.from(Buffer.from(...))`)
+- Use `.at(-1)` instead of `arr[arr.length - 1]` for safe last element access
+- Use nullish coalescing (`??`) and optional chaining (`?.`) for cleaner null handling
+- Prefer method chaining over multiple assignments
+- Use `Promise.all()` for parallel operations instead of sequential awaits
+- Write succinct, readable code - fewer lines when clarity is maintained
+
+### Route Structure Pattern
+Each route domain folder follows this structure:
+- `index.ts` - Route definitions only (keep minimal, just wire handlers to routes)
+- `handlers.ts` - Handler functions containing the business logic
+- `schema.ts` - Zod validation schemas for request body/query
+- `types.ts` - Domain-specific types and filter types
+- `mappers.ts` - Transform DB documents to API response shapes
+
+### Development Workflow
+- Make one logical change at a time
+- Run typecheck and lint after each change
+- Prefer small, focused commits
+- Never mix refactoring with feature changes
+
+### Git Commits
+- Use conventional commits format: `emoji type(scope): subject`
+- ALWAYS use emoji at the start of commit messages
+- Do NOT add "Generated with Claude" or "Co-Authored-By: Claude" to commits
+- Keep commit messages concise and descriptive
+
+Commit types with required emojis:
+- `✨ feat` - New feature
+- `🐛 fix` - Bug fix
+- `📝 docs` - Documentation only
+- `🎨 style` - Code style (formatting, semicolons, etc.)
+- `♻️ refactor` - Code change that neither fixes a bug nor adds a feature
+- `⚡ perf` - Performance improvement
+- `✅ test` - Adding or updating tests
+- `📦 build` - Build system or external dependencies
+- `👷 ci` - CI configuration
+- `🔧 chore` - Other changes (updating dependencies, etc.)
+- `⏪ revert` - Revert a previous commit
+
+Examples:
+- `✨ feat(api): add user authentication`
+- `🐛 fix(indexer): handle null checkpoint`
+- `♻️ refactor(api): implement dependency injection`
+
+Rules:
+- Subject must be lowercase
+- Subject cannot be empty
+- Type cannot be empty

@@ -1,0 +1,1 @@
+cd api && ~/.bun/bin/bun run typecheck && ~/.bun/bin/bunx lint-staged
