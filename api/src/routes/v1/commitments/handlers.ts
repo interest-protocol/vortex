@@ -1,10 +1,10 @@
 import type { Context } from 'hono';
-import type { AppBindings, PaginatedResponse } from '@/types/index.ts';
+import type { AppBindings } from '@/types/index.ts';
+import { buildPaginatedResponse } from '@/types/index.ts';
 import { validateQuery } from '@/utils/validation.ts';
 import { withErrorHandler } from '@/utils/handler.ts';
 import { getCommitmentsQuerySchema } from './schema.ts';
 import { toCommitment } from './mappers.ts';
-import type { Commitment } from './types.ts';
 
 const getCommitmentsHandler = async (c: Context<AppBindings>) => {
     const validation = validateQuery(c, getCommitmentsQuerySchema);
@@ -20,19 +20,7 @@ const getCommitmentsHandler = async (c: Context<AppBindings>) => {
         commitments.count(filter),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-
-    const data: PaginatedResponse<Commitment> = {
-        items: docs.map(toCommitment),
-        pagination: {
-            page,
-            limit,
-            total,
-            totalPages,
-            hasNext: page < totalPages,
-            hasPrev: page > 1,
-        },
-    };
+    const data = buildPaginatedResponse(docs, toCommitment, { page, limit, total });
 
     return c.json({ success: true, data });
 };

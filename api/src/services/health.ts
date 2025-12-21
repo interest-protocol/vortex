@@ -14,21 +14,15 @@ export type HealthService = {
     check: () => Promise<HealthCheckResult>;
 };
 
+const toHealthStatus = (promise: Promise<unknown>): Promise<HealthStatus> =>
+    promise.then((): HealthStatus => 'healthy').catch((): HealthStatus => 'unhealthy');
+
 export const createHealthService = (db: Db, redis: Redis): HealthService => ({
     check: async () => {
         const [mongodb, redisStatus, sui] = await Promise.all([
-            db
-                .command({ ping: 1 })
-                .then((): HealthStatus => 'healthy')
-                .catch((): HealthStatus => 'unhealthy'),
-            redis
-                .ping()
-                .then((): HealthStatus => 'healthy')
-                .catch((): HealthStatus => 'unhealthy'),
-            nodeClient
-                .getLatestCheckpointSequenceNumber()
-                .then((): HealthStatus => 'healthy')
-                .catch((): HealthStatus => 'unhealthy'),
+            toHealthStatus(db.command({ ping: 1 })),
+            toHealthStatus(redis.ping()),
+            toHealthStatus(nodeClient.getLatestCheckpointSequenceNumber()),
         ]);
 
         return { mongodb, redis: redisStatus, sui };

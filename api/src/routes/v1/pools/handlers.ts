@@ -1,10 +1,10 @@
 import type { Context } from 'hono';
-import type { AppBindings, PaginatedResponse } from '@/types/index.ts';
+import type { AppBindings } from '@/types/index.ts';
+import { buildPaginatedResponse } from '@/types/index.ts';
 import { validateQuery } from '@/utils/validation.ts';
 import { withErrorHandler } from '@/utils/handler.ts';
 import { poolsQuerySchema } from './schema.ts';
 import { toPool } from './mappers.ts';
-import type { Pool } from './types.ts';
 
 const getPoolsHandler = async (c: Context<AppBindings>) => {
     const validation = validateQuery(c, poolsQuerySchema);
@@ -15,24 +15,12 @@ const getPoolsHandler = async (c: Context<AppBindings>) => {
     const skip = (page - 1) * limit;
     const filter = coin_type ? { coin_type } : {};
 
-    const [poolDocs, total] = await Promise.all([
+    const [docs, total] = await Promise.all([
         pools.find({ filter, skip, limit }),
         pools.count(filter),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-
-    const data: PaginatedResponse<Pool> = {
-        items: poolDocs.map(toPool),
-        pagination: {
-            page,
-            limit,
-            total,
-            totalPages,
-            hasNext: page < totalPages,
-            hasPrev: page > 1,
-        },
-    };
+    const data = buildPaginatedResponse(docs, toPool, { page, limit, total });
 
     return c.json({ success: true, data });
 };

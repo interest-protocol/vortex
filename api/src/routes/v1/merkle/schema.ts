@@ -1,10 +1,15 @@
 import { z } from 'zod';
-import { suiAddressSchema, poseidonHashSchema, coinTypeSchema } from '@/utils/schemas.ts';
+import {
+    suiAddressSchema,
+    poseidonHashSchema,
+    coinTypeSchema,
+    indexSchema,
+} from '@/utils/schemas.ts';
 
 export const getMerklePathBodySchema = z
     .object({
         coin_type: coinTypeSchema,
-        index: z.coerce.number().int().min(0),
+        index: indexSchema,
         amount: poseidonHashSchema,
         public_key: poseidonHashSchema,
         blinding: poseidonHashSchema,

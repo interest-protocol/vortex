@@ -9,3 +9,5 @@ export const poseidonHashSchema = z
     .max(80);
 
 export const coinTypeSchema = z.string().regex(/^0x[a-fA-F0-9]+::\w+::\w+$/);
+
+export const indexSchema = z.coerce.number().int().min(0);
