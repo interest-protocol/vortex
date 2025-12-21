@@ -119,6 +119,7 @@
 - Use template literals over string concatenation
 - Destructure objects and arrays when accessing multiple properties
 - Eliminate duplicate code ruthlessly - extract to shared utils (e.g., `src/utils/schemas.ts`)
+- Use kebab-case for file names (e.g., `rate-limit.ts`, not `rateLimit.ts`)
 
 ### Code Readability
 - Code is read by humans - make it readable, easy to understand and reason with
@@ -251,6 +252,7 @@ export const getAccounts = async (c: Context<AppBindings>) => {
 - Prefer method chaining over multiple assignments
 - Use `Promise.all()` for parallel operations instead of sequential awaits
 - Write succinct, readable code - fewer lines when clarity is maintained
+- Never leave dead code in the codebase - remove unused exports, functions, and variables
 
 ### Route Structure Pattern
 Each route domain folder follows this structure:

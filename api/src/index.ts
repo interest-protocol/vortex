@@ -5,7 +5,12 @@ import { env } from '@/config/env.ts';
 import { connectMongoDB, disconnectMongoDB } from '@/db/mongodb.ts';
 import { connectRedis, disconnectRedis } from '@/db/redis.ts';
 import { openApiSpec } from '@/docs/openapi.ts';
-import { corsMiddleware, databaseMiddleware, errorHandler } from '@/middleware/index.ts';
+import {
+    corsMiddleware,
+    databaseMiddleware,
+    errorHandler,
+    rateLimitMiddleware,
+} from '@/middleware/index.ts';
 import { routes } from '@/routes/index.ts';
 import type { AppBindings } from '@/types/index.ts';
 import { logger } from '@/utils/logger.ts';
@@ -16,6 +21,7 @@ const createApp = () => {
     app.use(honoLogger());
     app.use(corsMiddleware);
     app.use(databaseMiddleware);
+    app.use(rateLimitMiddleware);
     app.onError(errorHandler);
 
     app.get('/', (c) =>
