@@ -17,6 +17,7 @@ export const openApiSpec: OpenAPIV3.Document = {
         { name: 'Pools', description: 'Privacy pool queries' },
         { name: 'Commitments', description: 'Commitment queries' },
         { name: 'Merkle', description: 'Merkle tree operations' },
+        { name: 'Relayer', description: 'Relayer information' },
         { name: 'Transactions', description: 'Sponsored transaction execution' },
     ],
     paths: {
@@ -230,6 +231,23 @@ export const openApiSpec: OpenAPIV3.Document = {
                         content: {
                             'application/json': {
                                 schema: { $ref: '#/components/schemas/ErrorResponse' },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        '/api/v1/relayer': {
+            get: {
+                tags: ['Relayer'],
+                summary: 'Get relayer address',
+                description: 'Returns the Sui public address of the relayer',
+                responses: {
+                    '200': {
+                        description: 'Relayer address',
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/RelayerResponse' },
                             },
                         },
                     },
@@ -491,6 +509,23 @@ export const openApiSpec: OpenAPIV3.Document = {
                         type: 'object',
                         properties: {
                             digest: { type: 'string', description: 'Transaction digest' },
+                        },
+                    },
+                },
+            },
+            RelayerResponse: {
+                type: 'object',
+                properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                        type: 'object',
+                        properties: {
+                            address: {
+                                type: 'string',
+                                description: 'Sui address of the relayer',
+                                example:
+                                    '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+                            },
                         },
                     },
                 },

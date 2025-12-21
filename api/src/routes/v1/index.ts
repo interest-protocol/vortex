@@ -4,6 +4,7 @@ import { accountsRoutes } from './accounts/index.ts';
 import { commitmentsRoutes } from './commitments/index.ts';
 import { merkleRoutes } from './merkle/index.ts';
 import { poolsRoutes } from './pools/index.ts';
+import { relayerRoutes } from './relayer/index.ts';
 import { transactionsRoutes } from './transactions/index.ts';
 
 export const v1Routes = new Hono<AppBindings>()
@@ -11,4 +12,5 @@ export const v1Routes = new Hono<AppBindings>()
     .route('/commitments', commitmentsRoutes)
     .route('/merkle', merkleRoutes)
     .route('/pools', poolsRoutes)
+    .route('/relayer', relayerRoutes)
     .route('/transactions', transactionsRoutes);

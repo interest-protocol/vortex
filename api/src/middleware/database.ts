@@ -10,6 +10,7 @@ import {
 import { createAccountsService } from '@/services/accounts.ts';
 import { createHealthService } from '@/services/health.ts';
 import { createMerkleService } from '@/services/merkle.ts';
+import { createRelayerService } from '@/services/relayer.ts';
 import { createTransactionsService } from '@/services/transactions.ts';
 import { nodeClient, gasClient, keypair } from '@/services/sui.ts';
 
@@ -27,6 +28,7 @@ export const databaseMiddleware: MiddlewareHandler<AppBindings> = async (c, next
     c.set('accountsService', createAccountsService(accounts));
     c.set('healthService', createHealthService(db, redis));
     c.set('merkleService', createMerkleService(redis, commitments));
+    c.set('relayerService', createRelayerService(keypair));
     c.set('transactionsService', createTransactionsService(nodeClient, gasClient, keypair));
 
     await next();

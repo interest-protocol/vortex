@@ -105,12 +105,17 @@ export const createMerkleService = (
 ): MerkleService => ({
     getMerklePath: async ({ coinType, index, utxo }) => {
         const tree = await getOrBuildMerkleTree(redis, commitmentsRepo, coinType);
+        const zeroPath: MerklePath = Array(MERKLE_TREE_HEIGHT)
+            .fill(null)
+            .map(() => [ZERO_VALUE.toString(), ZERO_VALUE.toString()]);
+
+        if (utxo.amount === 0n) {
+            return { path: zeroPath, root: tree.root.toString() };
+        }
+
         const treeSize = tree.elements.length;
 
         if (index < 0 || index >= treeSize) {
-            const zeroPath: MerklePath = Array(MERKLE_TREE_HEIGHT)
-                .fill(null)
-                .map(() => [ZERO_VALUE.toString(), ZERO_VALUE.toString()]);
             return { path: zeroPath, root: tree.root.toString() };
         }
 

@@ -10,4 +10,7 @@ export { createMerkleService } from './merkle.ts';
 export type { TransactionsService } from './transactions.ts';
 export { createTransactionsService } from './transactions.ts';
 
+export type { RelayerService } from './relayer.ts';
+export { createRelayerService } from './relayer.ts';
+
 export { nodeClient, gasClient, keypair, sponsorAndExecuteTransaction } from './sui.ts';

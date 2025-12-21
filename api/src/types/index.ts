@@ -8,6 +8,7 @@ import type {
     AccountsService,
     HealthService,
     MerkleService,
+    RelayerService,
     TransactionsService,
 } from '@/services/index.ts';
 
@@ -19,6 +20,7 @@ export type AppBindings = {
         accountsService: AccountsService;
         healthService: HealthService;
         merkleService: MerkleService;
+        relayerService: RelayerService;
         transactionsService: TransactionsService;
     };
 };
