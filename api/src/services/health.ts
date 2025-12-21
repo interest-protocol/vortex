@@ -26,7 +26,7 @@ export const createHealthService = (db: Db, redis: Redis): HealthService => ({
                 .then((): HealthStatus => 'healthy')
                 .catch((): HealthStatus => 'unhealthy'),
             nodeClient
-                .getCurrentEpoch()
+                .getLatestCheckpointSequenceNumber()
                 .then((): HealthStatus => 'healthy')
                 .catch((): HealthStatus => 'unhealthy'),
         ]);
