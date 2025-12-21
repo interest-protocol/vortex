@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const envSchema = z.object({
+const baseSchema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     PORT: z.coerce.number().default(3000),
     HOST: z.string().default('0.0.0.0'),
@@ -9,6 +9,11 @@ const envSchema = z.object({
     CORS_ORIGIN: z.string().optional(),
     SUI_PRIVATE_KEY: z.string(),
     SHINAMI_RPC_KEY: z.string(),
+});
+
+const envSchema = baseSchema.refine((data) => data.NODE_ENV !== 'production' || data.CORS_ORIGIN, {
+    message: 'CORS_ORIGIN is required in production',
+    path: ['CORS_ORIGIN'],
 });
 
 const parsed = envSchema.safeParse(Bun.env);

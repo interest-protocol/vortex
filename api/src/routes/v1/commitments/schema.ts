@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { PAGINATION } from '@/constants/index.ts';
 
 const operators = ['gt', 'gte', 'lt', 'lte'] as const;
+
 const MAX_LIMIT = 500;
+
 const DEFAULT_LIMIT = 100;
 
 export const getCommitmentsQuerySchema = z

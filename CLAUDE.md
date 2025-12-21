@@ -119,6 +119,11 @@
 - Use template literals over string concatenation
 - Destructure objects and arrays when accessing multiple properties
 
+### Code Readability
+- Code is read by humans - make it readable, easy to understand and reason with
+- Add blank lines between all top-level declarations (constants, types, functions, exports)
+- Separate logical groups of code with blank lines for visual clarity
+
 ### Type Safety
 - Never use `any`; use `unknown` and narrow with type guards
 - Always annotate function return types explicitly

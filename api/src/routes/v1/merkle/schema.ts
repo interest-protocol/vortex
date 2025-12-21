@@ -1,13 +1,21 @@
+import { isValidSuiAddress } from '@mysten/sui/utils';
 import { z } from 'zod';
+
+const suiAddressSchema = z.string().refine(isValidSuiAddress, 'Invalid Sui address');
+
+const poseidonHashSchema = z
+    .string()
+    .regex(/^[0-9]+$/)
+    .max(80);
 
 export const getMerklePathBodySchema = z
     .object({
         coin_type: z.string().regex(/^0x[a-fA-F0-9]+::\w+::\w+$/),
         index: z.coerce.number().int().min(0),
-        amount: z.string(),
-        public_key: z.string(),
-        blinding: z.string(),
-        vortex_pool: z.string().regex(/^0x[a-fA-F0-9]+$/),
+        amount: poseidonHashSchema,
+        public_key: poseidonHashSchema,
+        blinding: poseidonHashSchema,
+        vortex_pool: suiAddressSchema,
     })
     .transform((data) => ({
         coinType: data.coin_type,

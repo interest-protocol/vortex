@@ -6,7 +6,9 @@ import { env } from '@/config/env.ts';
 import { logger } from '@/utils/logger.ts';
 
 export const nodeClient = createSuiClient(env.SHINAMI_RPC_KEY);
+
 export const gasClient = new GasStationClient(env.SHINAMI_RPC_KEY);
+
 export const keypair = Ed25519Keypair.fromSecretKey(env.SUI_PRIVATE_KEY);
 
 export const sponsorAndExecuteTransaction = async (tx: Transaction) => {

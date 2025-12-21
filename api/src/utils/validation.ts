@@ -24,8 +24,15 @@ export const validateBody = async <T extends z.ZodSchema>(
     c: Context,
     schema: T
 ): Promise<ValidationResult<z.infer<T>>> => {
-    const body: unknown = await c.req.json().catch(() => ({}));
-    return validate(c, schema, body);
+    try {
+        const body: unknown = await c.req.json();
+        return validate(c, schema, body);
+    } catch {
+        return {
+            success: false,
+            response: c.json({ success: false, error: { body: ['Invalid JSON'] } }, 400),
+        };
+    }
 };
 
 export const validateQuery = <T extends z.ZodSchema>(

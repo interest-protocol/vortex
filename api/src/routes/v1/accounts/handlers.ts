@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { AppBindings } from '@/types/index.ts';
+import { logger } from '@/utils/logger.ts';
 import { validateBody, validateQuery } from '@/utils/validation.ts';
 import { createAccountSchema, getAccountsQuerySchema } from './schema.ts';
 import { toAccount } from './mappers.ts';
@@ -25,7 +26,7 @@ export const createAccount = async (c: Context<AppBindings>) => {
         const accountDoc = await accountsService.create(validation.data);
         return c.json({ success: true, data: toAccount(accountDoc) }, 201);
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to create account';
-        return c.json({ success: false, error: message }, 500);
+        logger.error({ error }, 'Failed to create account');
+        return c.json({ success: false, error: 'Failed to create account' }, 500);
     }
 };

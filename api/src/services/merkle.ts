@@ -36,6 +36,7 @@ export type MerkleService = {
 };
 
 const getTreeKey = (coinType: string): string => `${REDIS_KEYS.MERKLE_TREE_PREFIX}${coinType}`;
+
 const getLastIndexKey = (coinType: string): string =>
     `${REDIS_KEYS.MERKLE_LAST_INDEX_PREFIX}${coinType}`;
 
@@ -43,8 +44,13 @@ const getCachedTree = async (redis: Redis, coinType: string): Promise<MerkleTree
     const data = await redis.get(getTreeKey(coinType));
     if (!data) return null;
 
-    const serialized = JSON.parse(data) as SerializedTreeState;
-    return deserializeMerkleTree(serialized);
+    try {
+        const serialized = JSON.parse(data) as SerializedTreeState;
+        return deserializeMerkleTree(serialized);
+    } catch {
+        await redis.del(getTreeKey(coinType));
+        return null;
+    }
 };
 
 const getCachedLastIndex = async (redis: Redis, coinType: string): Promise<number> => {

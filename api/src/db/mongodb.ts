@@ -4,6 +4,7 @@ import { env } from '@/config/env.ts';
 import { logger } from '@/utils/logger.ts';
 
 let client: MongoClient | null = null;
+
 let db: Db | null = null;
 
 export const connectMongoDB = async (): Promise<Db> => {
