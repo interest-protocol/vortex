@@ -1,0 +1,32 @@
+{
+  "cSpell.words": [
+    "arkworks",
+    "bigint",
+    "bson",
+    "commitlint",
+    "denque",
+    "groth",
+    "hono",
+    "ioredis",
+    "merkle",
+    "mysten",
+    "nocheck",
+    "nonempty",
+    "nullifier",
+    "nullifiers",
+    "pino",
+    "poseidon",
+    "shinami",
+    "snark",
+    "snarks",
+    "stdlib",
+    "typecheck",
+    "utxo",
+    "utxos",
+    "vortex",
+    "wasm",
+    "zklogin",
+    "zkp",
+    "zod"
+  ]
+}
