@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
+import { Scalar } from '@scalar/hono-api-reference';
 import { env } from '@/config/env.ts';
 import { connectMongoDB, disconnectMongoDB } from '@/db/mongodb.ts';
 import { connectRedis, disconnectRedis } from '@/db/redis.ts';
+import { openApiSpec } from '@/docs/openapi.ts';
 import { corsMiddleware, databaseMiddleware, errorHandler } from '@/middleware/index.ts';
 import { routes } from '@/routes/index.ts';
 import type { AppBindings } from '@/types/index.ts';
@@ -22,7 +24,18 @@ const createApp = () => {
             data: {
                 name: 'Vortex API',
                 version: '1.0.0',
+                docs: '/docs',
             },
+        })
+    );
+
+    app.get('/openapi.json', (c) => c.json(openApiSpec));
+
+    app.get(
+        '/docs',
+        Scalar({
+            url: '/openapi.json',
+            pageTitle: 'Vortex API Documentation',
         })
     );
 
