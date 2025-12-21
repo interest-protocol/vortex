@@ -238,12 +238,13 @@ export const getAccounts = async (c: Context<AppBindings>) => {
 ```
 
 ### Code Simplicity Rules
+- No unnecessary one-time-use variables - inline values when used only once
 - Avoid redundant operations (e.g., `Buffer.from(Buffer.from(...))`)
 - Use `.at(-1)` instead of `arr[arr.length - 1]` for safe last element access
 - Use nullish coalescing (`??`) and optional chaining (`?.`) for cleaner null handling
-- Eliminate intermediate variables that are only used once
 - Prefer method chaining over multiple assignments
 - Use `Promise.all()` for parallel operations instead of sequential awaits
+- Write succinct, readable code - fewer lines when clarity is maintained
 
 ### Route Structure Pattern
 Each route domain folder follows this structure:
