@@ -135,11 +135,11 @@
 - Enable `noUncheckedIndexedAccess` for safer array/object access
 
 ### Imports & Exports
-- Use `@/` path alias for internal imports: `import { env } from '@/config/env.js'`
-- Use `type` imports for type-only imports: `import type { Foo } from '@/types/index.js'`
+- Use `@/` path alias for internal imports: `import { env } from '@/config/env.ts'`
+- Use `type` imports for type-only imports: `import type { Foo } from '@/types/index.ts'`
 - Group imports: built-ins → external packages → internal modules (`@/`)
 - Use named exports; avoid default exports
-- Use `.js` extension in imports (required for ESM)
+- Use `.ts` extension in imports (Bun with bundler module resolution)
 
 ### Error Handling
 - Use `invariant` from `tiny-invariant` for assertions instead of `if (!x) throw new Error()`
