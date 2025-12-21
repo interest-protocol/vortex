@@ -4,7 +4,12 @@ import type {
     AccountsRepository,
     CommitmentsRepository,
 } from '@/repositories/index.ts';
-import type { AccountsService, HealthService, MerkleService } from '@/services/index.ts';
+import type {
+    AccountsService,
+    HealthService,
+    MerkleService,
+    TransactionsService,
+} from '@/services/index.ts';
 
 export type AppBindings = {
     Variables: {
@@ -14,6 +19,7 @@ export type AppBindings = {
         accountsService: AccountsService;
         healthService: HealthService;
         merkleService: MerkleService;
+        transactionsService: TransactionsService;
     };
 };
 

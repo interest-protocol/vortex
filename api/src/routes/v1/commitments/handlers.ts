@@ -1,16 +1,16 @@
 import type { Context } from 'hono';
 import type { AppBindings, PaginatedResponse } from '@/types/index.ts';
 import { validateQuery } from '@/utils/validation.ts';
+import { withErrorHandler } from '@/utils/handler.ts';
 import { getCommitmentsQuerySchema } from './schema.ts';
 import { toCommitment } from './mappers.ts';
 import type { Commitment } from './types.ts';
 
-export const getCommitments = async (c: Context<AppBindings>) => {
-    const commitments = c.get('commitments');
-
+const getCommitmentsHandler = async (c: Context<AppBindings>) => {
     const validation = validateQuery(c, getCommitmentsQuerySchema);
     if (!validation.success) return validation.response;
 
+    const commitments = c.get('commitments');
     const { coinType, index, mongoOp, page, limit } = validation.data;
     const skip = (page - 1) * limit;
     const filter = { coin_type: coinType, index: { [mongoOp]: index } };
@@ -36,3 +36,8 @@ export const getCommitments = async (c: Context<AppBindings>) => {
 
     return c.json({ success: true, data });
 };
+
+export const getCommitments = withErrorHandler(
+    getCommitmentsHandler,
+    'Failed to fetch commitments'
+);

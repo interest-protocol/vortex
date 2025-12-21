@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { AppBindings } from '@/types/index.ts';
 import type { HealthStatus } from '@/services/health.ts';
+import { withErrorHandler } from '@/utils/handler.ts';
 
 type HealthData = {
     status: 'healthy' | 'degraded';
@@ -12,7 +13,7 @@ type HealthData = {
     timestamp: string;
 };
 
-export const healthRoutes = new Hono<AppBindings>().get('/', async (c) => {
+const checkHealthHandler = withErrorHandler(async (c) => {
     const healthService = c.get('healthService');
     const services = await healthService.check();
 
@@ -28,4 +29,6 @@ export const healthRoutes = new Hono<AppBindings>().get('/', async (c) => {
     };
 
     return c.json({ success: true, data }, isHealthy ? 200 : 503);
-});
+}, 'Health check failed');
+
+export const healthRoutes = new Hono<AppBindings>().get('/', checkHealthHandler);
