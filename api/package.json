@@ -15,7 +15,7 @@
     },
     "dependencies": {
         "@hono/zod-openapi": "^1.2.0",
-        "@interest-protocol/vortex-sdk": "6.3.0",
+        "@interest-protocol/vortex-sdk": "7.3.0",
         "@mysten/sui": "^1.45.2",
         "@scalar/hono-api-reference": "^0.9.30",
         "@shinami/clients": "^0.9.8",
@@ -48,5 +48,6 @@
         "*.{json,mjs}": [
             "prettier --write"
         ]
-    }
+    },
+    "packageManager": "pnpm@9.1.0+sha512.67f5879916a9293e5cf059c23853d571beaf4f753c707f40cb22bed5fb1578c6aad3b6c4107ccb3ba0b35be003eb621a16471ac836c87beb53f9d54bb4612724"
 }

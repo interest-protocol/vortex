@@ -1,10 +1,25 @@
 import type { SuiClient } from '@mysten/sui/client';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
-import { fromBase64 } from '@mysten/sui/utils';
+import { fromBase64, fromHex } from '@mysten/sui/utils';
 import { buildGaslessTransaction, type GasStationClient } from '@shinami/clients/sui';
+import {
+    validateDepositWithAccountCommands,
+    validateWithdrawCommands,
+} from '@interest-protocol/vortex-sdk';
 import { logger } from '@/utils/logger.ts';
-import { fromHex } from '@mysten/sui/utils';
+
+type TransactionJson = {
+    commands: object[];
+};
+
+const validateTransactionCommands = (commands: object[]): void => {
+    try {
+        validateDepositWithAccountCommands(commands);
+    } catch {
+        validateWithdrawCommands(commands);
+    }
+};
 
 export type TransactionsService = {
     execute: (txBytes: string) => Promise<string>;
@@ -18,6 +33,9 @@ export const createTransactionsService = (
     execute: async (txBytes) => {
         const sender = keypair.toSuiAddress();
         const rebuiltTransaction = Transaction.from(fromHex(txBytes));
+
+        const transactionJson = JSON.parse(await rebuiltTransaction.toJSON()) as TransactionJson;
+        validateTransactionCommands(transactionJson.commands);
 
         rebuiltTransaction.setSender(sender);
 
