@@ -118,6 +118,7 @@
 - Functions with more than 2 parameters must use an object parameter with named properties
 - Use template literals over string concatenation
 - Destructure objects and arrays when accessing multiple properties
+- Eliminate duplicate code ruthlessly - extract to shared utils (e.g., `src/utils/schemas.ts`)
 
 ### Code Readability
 - Code is read by humans - make it readable, easy to understand and reason with

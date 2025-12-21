@@ -1,16 +1,9 @@
-import { isValidSuiAddress } from '@mysten/sui/utils';
 import { z } from 'zod';
-
-const suiAddressSchema = z.string().refine(isValidSuiAddress, 'Invalid Sui address');
-
-const poseidonHashSchema = z
-    .string()
-    .regex(/^[0-9]+$/)
-    .max(80);
+import { suiAddressSchema, poseidonHashSchema, coinTypeSchema } from '@/utils/schemas.ts';
 
 export const getMerklePathBodySchema = z
     .object({
-        coin_type: z.string().regex(/^0x[a-fA-F0-9]+::\w+::\w+$/),
+        coin_type: coinTypeSchema,
         index: z.coerce.number().int().min(0),
         amount: poseidonHashSchema,
         public_key: poseidonHashSchema,
