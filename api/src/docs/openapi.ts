@@ -9,7 +9,7 @@ export const openApiSpec: OpenAPIV3.Document = {
     },
     servers: [
         { url: 'http://localhost:5005', description: 'Development' },
-        { url: 'https://api.vortex.finance', description: 'Production' },
+        { url: 'https://api.vortexfi.xyz', description: 'Production' },
     ],
     tags: [
         { name: 'Health', description: 'Health check endpoints' },
