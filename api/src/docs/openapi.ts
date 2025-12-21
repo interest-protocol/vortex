@@ -260,6 +260,7 @@ export const openApiSpec: OpenAPIV3.Document = {
                 summary: 'Execute a sponsored transaction',
                 description:
                     'Takes transaction bytes from client, rebuilds, sponsors with Shinami, and executes',
+                security: [{ ApiKeyAuth: [] }],
                 requestBody: {
                     required: true,
                     content: {
@@ -285,6 +286,14 @@ export const openApiSpec: OpenAPIV3.Document = {
                             },
                         },
                     },
+                    '401': {
+                        description: 'Missing or invalid API key',
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                            },
+                        },
+                    },
                     '500': {
                         description: 'Transaction failed',
                         content: {
@@ -298,6 +307,14 @@ export const openApiSpec: OpenAPIV3.Document = {
         },
     },
     components: {
+        securitySchemes: {
+            ApiKeyAuth: {
+                type: 'apiKey',
+                in: 'header',
+                name: 'x-api-key',
+                description: 'API key required for transaction execution',
+            },
+        },
         schemas: {
             ErrorResponse: {
                 type: 'object',
