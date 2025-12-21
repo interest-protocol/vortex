@@ -1,0 +1,34 @@
+# Other packages
+circuit/
+contracts/
+indexer/
+
+# Git
+.git/
+.gitignore
+
+# Dependencies
+node_modules/
+api/node_modules/
+
+# Build outputs
+api/dist/
+
+# Environment files
+.env*
+api/.env*
+!api/.env.example
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Editor/IDE
+.idea/
+.vscode/
+.claude/
+
+# Docs
+*.md
