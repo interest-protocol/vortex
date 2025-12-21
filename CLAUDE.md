@@ -135,7 +135,8 @@
 - Use `.js` extension in imports (required for ESM)
 
 ### Error Handling
-- Use custom error classes extending `Error`
+- Use `invariant` from `tiny-invariant` for assertions instead of `if (!x) throw new Error()`
+- Use custom error classes extending `Error` for domain errors
 - Prefer early returns over nested conditionals
 - Always handle Promise rejections
 - Use Result pattern for expected failures: `type Result<T, E> = { ok: true; value: T } | { ok: false; error: E }`
@@ -259,23 +260,28 @@ Each route domain folder follows this structure:
 - Never mix refactoring with feature changes
 
 ### Git Commits
-- Use conventional commits format: `type(scope): subject`
-- Emojis are allowed at the start: `✨ feat(api): add pools endpoint`
+- Use conventional commits format: `emoji type(scope): subject`
+- ALWAYS use emoji at the start of commit messages
 - Do NOT add "Generated with Claude" or "Co-Authored-By: Claude" to commits
 - Keep commit messages concise and descriptive
 
-Commit types (enforced by commitlint):
-- `feat` - New feature
-- `fix` - Bug fix
-- `docs` - Documentation only
-- `style` - Code style (formatting, semicolons, etc.)
-- `refactor` - Code change that neither fixes a bug nor adds a feature
-- `perf` - Performance improvement
-- `test` - Adding or updating tests
-- `build` - Build system or external dependencies
-- `ci` - CI configuration
-- `chore` - Other changes (updating dependencies, etc.)
-- `revert` - Revert a previous commit
+Commit types with required emojis:
+- `✨ feat` - New feature
+- `🐛 fix` - Bug fix
+- `📝 docs` - Documentation only
+- `🎨 style` - Code style (formatting, semicolons, etc.)
+- `♻️ refactor` - Code change that neither fixes a bug nor adds a feature
+- `⚡ perf` - Performance improvement
+- `✅ test` - Adding or updating tests
+- `📦 build` - Build system or external dependencies
+- `👷 ci` - CI configuration
+- `🔧 chore` - Other changes (updating dependencies, etc.)
+- `⏪ revert` - Revert a previous commit
+
+Examples:
+- `✨ feat(api): add user authentication`
+- `🐛 fix(indexer): handle null checkpoint`
+- `♻️ refactor(api): implement dependency injection`
 
 Rules:
 - Subject must be lowercase

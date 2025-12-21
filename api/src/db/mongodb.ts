@@ -1,4 +1,5 @@
 import { MongoClient, type Db } from 'mongodb';
+import invariant from 'tiny-invariant';
 import { env } from '@/config/env.ts';
 import { logger } from '@/utils/logger.ts';
 
@@ -26,6 +27,6 @@ export const disconnectMongoDB = async (): Promise<void> => {
 };
 
 export const getDb = (): Db => {
-    if (!db) throw new Error('MongoDB not connected. Call connectMongoDB first.');
+    invariant(db, 'MongoDB not connected. Call connectMongoDB first.');
     return db;
 };

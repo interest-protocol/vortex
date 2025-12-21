@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import invariant from 'tiny-invariant';
 import { env } from '@/config/env.ts';
 import { logger } from '@/utils/logger.ts';
 
@@ -31,6 +32,6 @@ export const disconnectRedis = async (): Promise<void> => {
 };
 
 export const getRedis = (): Redis => {
-    if (!redis) throw new Error('Redis not connected. Call connectRedis first.');
+    invariant(redis, 'Redis not connected. Call connectRedis first.');
     return redis;
 };
