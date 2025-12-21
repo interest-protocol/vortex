@@ -496,7 +496,7 @@ export const openApiSpec: OpenAPIV3.Document = {
                 properties: {
                     txBytes: {
                         type: 'string',
-                        description: 'Base64 encoded transaction bytes from transaction.build()',
+                        description: 'Hex encoded transaction bytes from transaction.build()',
                     },
                 },
                 required: ['txBytes'],

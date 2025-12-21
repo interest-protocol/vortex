@@ -4,6 +4,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { fromBase64 } from '@mysten/sui/utils';
 import { buildGaslessTransaction, type GasStationClient } from '@shinami/clients/sui';
 import { logger } from '@/utils/logger.ts';
+import { fromHex } from '@mysten/sui/utils';
 
 export type TransactionsService = {
     execute: (txBytes: string) => Promise<string>;
@@ -16,7 +17,7 @@ export const createTransactionsService = (
 ): TransactionsService => ({
     execute: async (txBytes) => {
         const sender = keypair.toSuiAddress();
-        const rebuiltTransaction = Transaction.from(txBytes);
+        const rebuiltTransaction = Transaction.from(fromHex(txBytes));
 
         rebuiltTransaction.setSender(sender);
 
