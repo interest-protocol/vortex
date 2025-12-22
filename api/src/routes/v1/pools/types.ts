@@ -4,6 +4,6 @@ export type Pool = {
     sender: string;
     checkpoint: number;
     checkpointTimestampMs: number;
-    poolAddress: string;
+    objectId: string;
     coinType: string;
 };

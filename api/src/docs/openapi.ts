@@ -365,7 +365,8 @@ export const openApiSpec: OpenAPIV3.Document = {
             Account: {
                 type: 'object',
                 properties: {
-                    accountObjectId: { type: 'string' },
+                    id: { type: 'string', description: 'Unique identifier' },
+                    objectId: { type: 'string', description: 'Sui object ID' },
                     hashedSecret: { type: 'string' },
                     owner: { type: 'string' },
                     createdAt: { type: 'string', format: 'date-time' },
@@ -392,11 +393,13 @@ export const openApiSpec: OpenAPIV3.Document = {
             Pool: {
                 type: 'object',
                 properties: {
-                    poolAddress: { type: 'string' },
-                    coinType: { type: 'string' },
+                    id: { type: 'string', description: 'Unique identifier' },
                     digest: { type: 'string' },
+                    sender: { type: 'string' },
                     checkpoint: { type: 'integer' },
                     checkpointTimestampMs: { type: 'integer' },
+                    objectId: { type: 'string', description: 'Sui object ID' },
+                    coinType: { type: 'string' },
                 },
             },
             Pagination: {
@@ -429,13 +432,15 @@ export const openApiSpec: OpenAPIV3.Document = {
             Commitment: {
                 type: 'object',
                 properties: {
-                    index: { type: 'integer' },
-                    commitment: { type: 'string' },
-                    coinType: { type: 'string' },
-                    encryptedOutput: { type: 'array', items: { type: 'integer' } },
+                    id: { type: 'string', description: 'Unique identifier' },
                     digest: { type: 'string' },
+                    sender: { type: 'string' },
                     checkpoint: { type: 'integer' },
                     checkpointTimestampMs: { type: 'integer' },
+                    coinType: { type: 'string' },
+                    index: { type: 'integer' },
+                    commitment: { type: 'string' },
+                    encryptedOutput: { type: 'array', items: { type: 'integer' } },
                 },
             },
             CommitmentsResponse: {

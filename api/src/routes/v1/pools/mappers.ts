@@ -1,3 +1,5 @@
+import { normalizeSuiObjectId, normalizeStructTag } from '@mysten/sui/utils';
+
 import type { PoolDocument } from '@/db/collections/index.ts';
 import type { Pool } from './types.ts';
 
@@ -7,6 +9,6 @@ export const toPool = (doc: PoolDocument): Pool => ({
     sender: doc.sender,
     checkpoint: doc.checkpoint,
     checkpointTimestampMs: doc.checkpoint_timestamp_ms,
-    poolAddress: doc.pool_address,
-    coinType: doc.coin_type,
+    objectId: normalizeSuiObjectId(doc.pool_address),
+    coinType: normalizeStructTag(doc.coin_type),
 });

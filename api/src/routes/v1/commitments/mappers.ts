@@ -1,3 +1,5 @@
+import { normalizeStructTag } from '@mysten/sui/utils';
+
 import { hexToDecimal } from '@/utils/hex.ts';
 import type { CommitmentDocument, Commitment } from './types.ts';
 
@@ -7,7 +9,7 @@ export const toCommitment = (doc: CommitmentDocument): Commitment => ({
     sender: doc.sender,
     checkpoint: doc.checkpoint,
     checkpointTimestampMs: doc.checkpoint_timestamp_ms,
-    coinType: doc.coin_type,
+    coinType: normalizeStructTag(doc.coin_type),
     index: doc.index,
     commitment: hexToDecimal(doc.commitment),
     encryptedOutput: doc.encrypted_output,

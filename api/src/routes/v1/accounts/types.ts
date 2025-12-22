@@ -1,6 +1,6 @@
 export type Account = {
     id: string;
-    accountObjectId: string;
+    objectId: string;
     hashedSecret: string;
     owner: string;
     createdAt: Date;
