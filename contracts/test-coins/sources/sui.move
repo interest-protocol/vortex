@@ -1,32 +1,28 @@
 /// ! Important: This module is for testing purposes only.
-module usdc_exchange::usdc;
+module test_coins::sui;
 
 use sui::coin::{TreasuryCap, Coin};
 use sui::coin_registry;
 
-// === Constants ===
-
-const USDC_DECIMALS_FACTOR: u64 = 1_000_000;
-
 // === Structs ===
 
-public struct USDC() has drop;
+public struct SUI() has drop;
 
 public struct Treasury has key {
     id: UID,
-    treasury_cap: TreasuryCap<USDC>,
+    treasury_cap: TreasuryCap<SUI>,
 }
 
 // === Initializer ===
 
-fun init(otw: USDC, ctx: &mut TxContext) {
+fun init(otw: SUI, ctx: &mut TxContext) {
     let (currency_initializer, treasury_cap) = coin_registry::new_currency_with_otw(
         otw,
-        6,
-        b"USDC".to_string(),
-        b"USDC".to_string(),
-        b"".to_string(),
-        b"".to_string(),
+        9,
+        b"SUI".to_string(),
+        b"SUI".to_string(),
+        b"Test Sui Coin for Vortex".to_string(),
+        b"https://cryptologos.cc/logos/sui-sui-logo.png".to_string(),
         ctx,
     );
 
@@ -44,8 +40,6 @@ fun init(otw: USDC, ctx: &mut TxContext) {
 
 // === Public Mutative Functions ===
 
-public fun mint(self: &mut Treasury, value: u64, ctx: &mut TxContext): Coin<USDC> {
-    assert!(15 * USDC_DECIMALS_FACTOR >= value);
-
+public fun mint(self: &mut Treasury, value: u64, ctx: &mut TxContext): Coin<SUI> {
     self.treasury_cap.mint(value, ctx)
 }

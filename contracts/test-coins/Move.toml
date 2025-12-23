@@ -1,9 +1,9 @@
 [package]
-name = "usdc_exchange"
+name = "test_coins"
 edition = "2024.beta"
 license = "MIT"
 
 [dependencies]
 
 [addresses]
-usdc_exchange = "0x0"
+test_coins = "0x0"
