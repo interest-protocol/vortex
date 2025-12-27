@@ -9,17 +9,16 @@ const parseOrigins = (origin: string): string | string[] => {
 };
 
 const createCorsMiddleware = (): MiddlewareHandler<AppBindings> => {
-    if (env.NODE_ENV !== 'production' || !env.CORS_ORIGIN) {
-        return cors();
-    }
+    const origin =
+        env.NODE_ENV === 'production' && env.CORS_ORIGIN ? parseOrigins(env.CORS_ORIGIN) : '*';
 
     return cors({
-        origin: parseOrigins(env.CORS_ORIGIN),
+        origin,
         allowMethods: ['GET', 'POST', 'OPTIONS'],
-        allowHeaders: ['Content-Type', 'Authorization'],
+        allowHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
         exposeHeaders: ['Content-Length'],
         maxAge: 86400,
-        credentials: true,
+        credentials: origin !== '*',
     });
 };
 
