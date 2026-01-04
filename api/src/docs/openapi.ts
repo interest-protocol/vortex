@@ -5,7 +5,12 @@ export const openApiSpec: OpenAPIV3.Document = {
     info: {
         title: 'Vortex API',
         version: '1.0.0',
-        description: 'API for Vortex privacy protocol on Sui blockchain',
+        description:
+            'API for Vortex privacy protocol on Sui blockchain. For TypeScript integration, use the official SDK: [@interest-protocol/vortex-sdk](https://www.npmjs.com/package/@interest-protocol/vortex-sdk)',
+    },
+    externalDocs: {
+        description: 'TypeScript SDK Documentation',
+        url: 'https://github.com/interest-protocol/sdk-monorepo/tree/main/packages/vortex',
     },
     servers: [
         { url: 'http://localhost:5005', description: 'Development' },

@@ -1,22 +1,7 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { fromHex } from '@mysten/sui/utils';
-import {
-    validateDepositWithAccountCommands,
-    validateWithdrawCommands,
-} from '@interest-protocol/vortex-sdk';
 import { keypair, sponsorAndExecuteTransaction } from '@/services/sui.ts';
-
-type TransactionJson = {
-    commands: object[];
-};
-
-const validateTransactionCommands = (commands: object[]): void => {
-    try {
-        validateDepositWithAccountCommands(commands);
-    } catch {
-        validateWithdrawCommands(commands);
-    }
-};
+import { validateTransactionCommands, type TransactionJson } from '@/utils/validate-commands.ts';
 
 export type TransactionsService = {
     execute: (txBytes: string) => Promise<string>;
