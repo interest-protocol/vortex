@@ -63,6 +63,13 @@ export const openApiSpec: OpenAPIV3.Document = {
                         description: 'Poseidon hash of the secret (decimal string)',
                         schema: { type: 'string', pattern: '^[0-9]+$' },
                     },
+                    {
+                        name: 'exclude_hidden',
+                        in: 'query',
+                        required: false,
+                        description: 'Exclude hidden accounts from results',
+                        schema: { type: 'string', enum: ['true', 'false'] },
+                    },
                 ],
                 responses: {
                     '200': {
@@ -106,6 +113,57 @@ export const openApiSpec: OpenAPIV3.Document = {
                     },
                     '400': {
                         description: 'Invalid request',
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                            },
+                        },
+                    },
+                    '500': {
+                        description: 'Server error',
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        '/api/v1/accounts/hide': {
+            post: {
+                tags: ['Accounts'],
+                summary: 'Hide accounts',
+                description:
+                    'Marks accounts as hidden. At least one of accountObjectIds or hashedSecret must be provided.',
+                security: [{ ApiKeyAuth: [] }],
+                requestBody: {
+                    required: true,
+                    content: {
+                        'application/json': {
+                            schema: { $ref: '#/components/schemas/HideAccountsRequest' },
+                        },
+                    },
+                },
+                responses: {
+                    '200': {
+                        description: 'Accounts hidden',
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/HideAccountsResponse' },
+                            },
+                        },
+                    },
+                    '400': {
+                        description: 'Invalid request',
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                            },
+                        },
+                    },
+                    '401': {
+                        description: 'Missing or invalid API key',
                         content: {
                             'application/json': {
                                 schema: { $ref: '#/components/schemas/ErrorResponse' },
@@ -376,6 +434,37 @@ export const openApiSpec: OpenAPIV3.Document = {
                     owner: { type: 'string' },
                     createdAt: { type: 'string', format: 'date-time' },
                     txDigest: { type: 'string' },
+                    hidden: { type: 'boolean', description: 'Whether the account is hidden' },
+                },
+            },
+            HideAccountsRequest: {
+                type: 'object',
+                properties: {
+                    accountObjectIds: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'Array of Sui object IDs to hide',
+                    },
+                    hashedSecret: {
+                        type: 'string',
+                        description: 'Hide all accounts with this hashed secret',
+                    },
+                },
+                description: 'At least one of accountObjectIds or hashedSecret must be provided',
+            },
+            HideAccountsResponse: {
+                type: 'object',
+                properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                        type: 'object',
+                        properties: {
+                            modifiedCount: {
+                                type: 'integer',
+                                description: 'Number of accounts that were hidden',
+                            },
+                        },
+                    },
                 },
             },
             AccountResponse: {

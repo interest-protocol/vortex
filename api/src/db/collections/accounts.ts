@@ -7,4 +7,5 @@ export type AccountDocument = {
     owner: string;
     created_at: Date;
     tx_digest: string;
+    hidden?: boolean;
 };

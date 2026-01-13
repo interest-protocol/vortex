@@ -5,4 +5,5 @@ export type Account = {
     owner: string;
     createdAt: Date;
     txDigest: string;
+    hidden: boolean;
 };

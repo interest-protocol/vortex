@@ -10,4 +10,5 @@ export const toAccount = (doc: AccountDocument): Account => ({
     owner: doc.owner,
     createdAt: doc.created_at,
     txDigest: doc.tx_digest,
+    hidden: doc.hidden ?? false,
 });

@@ -1,7 +1,9 @@
-import { isValidSuiAddress } from '@mysten/sui/utils';
+import { isValidSuiAddress, isValidSuiObjectId } from '@mysten/sui/utils';
 import { z } from 'zod';
 
 export const suiAddressSchema = z.string().refine(isValidSuiAddress, 'Invalid Sui address');
+
+export const suiObjectIdSchema = z.string().refine(isValidSuiObjectId, 'Invalid Sui object ID');
 
 export const poseidonHashSchema = z
     .string()

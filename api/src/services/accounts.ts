@@ -1,7 +1,11 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { VORTEX_PACKAGE_ID } from '@interest-protocol/vortex-sdk';
 import type { AccountDocument } from '@/db/collections/index.ts';
-import type { AccountsRepository } from '@/repositories/index.ts';
+import type {
+    AccountsRepository,
+    FindAccountsParams,
+    HideAccountsParams,
+} from '@/repositories/index.ts';
 import { sponsorAndExecuteTransaction } from './sui.ts';
 
 export type CreateAccountParams = {
@@ -10,12 +14,15 @@ export type CreateAccountParams = {
 };
 
 export type AccountsService = {
-    findByHashedSecret: (hashedSecret: string) => Promise<AccountDocument[]>;
+    findByHashedSecret: (params: FindAccountsParams) => Promise<AccountDocument[]>;
     create: (params: CreateAccountParams) => Promise<AccountDocument>;
+    hideMany: (params: HideAccountsParams) => Promise<number>;
 };
 
 export const createAccountsService = (repository: AccountsRepository): AccountsService => ({
-    findByHashedSecret: (hashedSecret) => repository.findByHashedSecret(hashedSecret),
+    findByHashedSecret: (params) => repository.findByHashedSecret(params),
+
+    hideMany: (params) => repository.hideMany(params),
 
     create: async ({ owner, hashedSecret }) => {
         const tx = new Transaction();
