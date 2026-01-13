@@ -1,15 +1,17 @@
 module secret::secret;
 
+use std::ascii::String;
+
 // === Structs ===
 
 public struct Secret has key {
     id: UID,
-    encrypted_secret: u256
+    encrypted_secret: String,
 }
 
 // === Public Mutative Functions ===
 
-public fun new(encrypted_secret: u256, ctx: &mut TxContext): Secret {
+public fun new(encrypted_secret: String, ctx: &mut TxContext): Secret {
     Secret {
         id: object::new(ctx),
         encrypted_secret,
