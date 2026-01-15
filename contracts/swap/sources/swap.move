@@ -45,6 +45,7 @@ public fun start_swap<CoinIn, CoinOut>(
     ctx: &mut TxContext,
 ): (Receipt<CoinIn, CoinOut>, Coin<CoinIn>) {
     assert!(min_amount_out != 0, EInvalidMinAmountOut);
+    assert!(relayer == ctx.sender(), EUnauthorizedRelayer);
 
     let coin_in = vortex.transact(coin::zero(ctx), proof, ext_data, ctx);
 
@@ -70,7 +71,6 @@ public fun finish_swap<CoinIn, CoinOut>(
     let amount_out = coin_out.value();
 
     assert!(amount_out >= min_amount_out, EInvalidAmountOut);
-    assert!(relayer == ctx.sender(), EUnauthorizedRelayer);
 
     transfer::public_transfer(
         coin_out.split(amount_out.diff(min_amount_out), ctx),
