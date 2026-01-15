@@ -5,6 +5,7 @@ import {
     RateLimiterRes,
     type RateLimiterAbstract,
 } from 'rate-limiter-flexible';
+import { env } from '@/config/env.ts';
 import { getRedis } from '@/db/redis.ts';
 import type { AppBindings } from '@/types/index.ts';
 import { logger } from '@/utils/logger.ts';
@@ -96,6 +97,12 @@ export const createRateLimiter = (
     };
 
     return async (c, next) => {
+        const apiKey = c.req.header('x-api-key');
+        if (apiKey && env.API_KEY && apiKey === env.API_KEY) {
+            await next();
+            return;
+        }
+
         const clientIp = getClientIp(c);
         const limiters = getLimiters();
 
