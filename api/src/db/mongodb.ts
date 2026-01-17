@@ -23,11 +23,11 @@ const ensureIndexes = async (database: Db): Promise<void> => {
             ]),
         database
             .collection(COMMITMENTS_COLLECTION)
-            .createIndexes([{ key: { coin_type: 1, index: 1 } }]),
+            .createIndexes([{ key: { coin_type: 1, index: 1 }, name: 'coin_type_index_idx' }]),
         database
             .collection(POOLS_COLLECTION)
             .createIndexes([
-                { key: { coin_type: 1, checkpoint: -1 } },
+                { key: { coin_type: 1 }, name: 'coin_type_idx' },
                 { key: { checkpoint: -1 } },
             ]),
     ]);
