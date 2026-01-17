@@ -2,14 +2,35 @@ import { MongoClient, type Db } from 'mongodb';
 import invariant from 'tiny-invariant';
 import { env } from '@/config/env.ts';
 import { logger } from '@/utils/logger.ts';
-import { ACCOUNTS_COLLECTION } from './collections/index.ts';
+import {
+    ACCOUNTS_COLLECTION,
+    COMMITMENTS_COLLECTION,
+    POOLS_COLLECTION,
+} from './collections/index.ts';
 
 let client: MongoClient | null = null;
 
 let db: Db | null = null;
 
 const ensureIndexes = async (database: Db): Promise<void> => {
-    await database.collection(ACCOUNTS_COLLECTION).createIndex({ hidden: 1 });
+    await Promise.all([
+        database
+            .collection(ACCOUNTS_COLLECTION)
+            .createIndexes([
+                { key: { hashed_secret: 1 } },
+                { key: { account_object_id: 1 } },
+                { key: { hidden: 1 } },
+            ]),
+        database
+            .collection(COMMITMENTS_COLLECTION)
+            .createIndexes([{ key: { coin_type: 1, index: 1 } }]),
+        database
+            .collection(POOLS_COLLECTION)
+            .createIndexes([
+                { key: { coin_type: 1, checkpoint: -1 } },
+                { key: { checkpoint: -1 } },
+            ]),
+    ]);
 };
 
 export const connectMongoDB = async (): Promise<Db> => {
