@@ -2,12 +2,45 @@
 
 ## Project Overview
 
-Vortex is a privacy protocol for Sui blockchain that breaks the on-chain link between deposit and withdrawal addresses using zero-knowledge proofs. The codebase consists of:
+Vortex is a privacy protocol for Sui blockchain that breaks the on-chain link between deposit and withdrawal addresses using zero-knowledge proofs.
 
-- **`contracts/`** - Sui Move smart contracts (core, swap, test-coins)
-- **`circuit/`** - Rust zkSNARK circuit (Groth16 with Arkworks)
-- **`indexer/`** - Rust Sui indexer service
-- **`api/`** - TypeScript REST API (Bun + Hono)
+**Directory Structure:**
+- `contracts/` - Sui Move smart contracts (core, swap, test-coins)
+- `circuit/` - Rust zkSNARK circuit (Groth16 with Arkworks)
+- `indexer/` - Rust Sui indexer service
+- `api/` - TypeScript REST API (Bun + Hono)
+
+---
+
+## Agent Behavior
+
+### Task Execution
+
+1. **Understand first** - Read relevant files before making changes
+2. **Verify assumptions** - Check existing patterns in the codebase
+3. **Incremental changes** - Small, testable changes over large refactors
+4. **Validate after changes** - Run build and tests before completing
+
+### Decision Framework
+
+**Ask for clarification when:**
+- Requirements are ambiguous
+- Multiple valid approaches exist with significant tradeoffs
+- Changes affect public APIs or interfaces
+- Unsure about business logic intent
+
+**Proceed autonomously when:**
+- Task is well-defined
+- Following established codebase patterns
+- Changes are easily reversible
+- Standard refactoring or bug fixes
+
+### Change Principles
+
+1. **Minimize blast radius** - Touch only what's necessary
+2. **Preserve patterns** - Match existing code style and architecture
+3. **No surprise dependencies** - Discuss before adding new packages
+4. **Single responsibility** - One logical change per commit
 
 ---
 
@@ -15,7 +48,7 @@ Vortex is a privacy protocol for Sui blockchain that breaks the on-chain link be
 
 ### Code Quality Standards
 
-Code must be self-documenting through clear naming. No comments except for complex algorithms or non-obvious business logic. No TODOs, FIXMEs, or placeholder code.
+Code must be self-documenting through clear naming. No comments except for complex algorithms or non-obvious business logic.
 
 | Forbidden | Required Alternative |
 |-----------|---------------------|
@@ -24,6 +57,8 @@ Code must be self-documenting through clear naming. No comments except for compl
 | Magic numbers | Named constants |
 | `any` type (TypeScript) | Proper types or `unknown` with narrowing |
 | `.unwrap()` in production (Rust) | `?` operator or `.expect()` with context |
+| Commented-out code | Delete it, git has history |
+| Re-exports at end of file | Export inline on declarations |
 
 ### Naming Conventions
 
@@ -34,14 +69,14 @@ Code must be self-documenting through clear naming. No comments except for compl
 | Types/Structs | `PascalCase` | `PascalCase` | `PascalCase` |
 | Variables | `snake_case` | `camelCase` | `snake_case` |
 | Files | `snake_case.rs` | `kebab-case.ts` | `snake_case.move` |
-| Error Constants (Move) | - | - | `EPascalCase` |
+| Error Macros (Move) | - | - | `snake_case!()` |
 
 ### Error Handling
 
 Every error must be handled. No silent failures.
 
 ```rust
-// Rust: Use ? operator, never unwrap
+// Rust: Use ? operator with context
 let value = operation().context("failed to perform operation")?;
 ```
 
@@ -52,9 +87,51 @@ invariant(user, 'User must exist');
 ```
 
 ```move
-// Move: Use assert! with error constants
-assert!(balance >= amount, EInsufficientBalance);
+// Move: Use assert! with error macros
+assert!(bytes.length() == 32, vortex::errors::invalid_length!());
 ```
+
+### Implementation Standards
+
+Write optimal code on the first attempt. Use canonical solutions.
+
+1. **Parallel when independent** - Don't await sequentially if operations are independent
+   ```typescript
+   // DO: parallel fetches
+   const [a, b, c] = await Promise.all([fetchA(), fetchB(), fetchC()]);
+
+   // DON'T: sequential when independent
+   const a = await fetchA();
+   const b = await fetchB();
+   ```
+
+2. **Actionable error messages** - Include what failed AND what's expected
+   ```typescript
+   // DO: actionable
+   invariant(bytes.length === 32, `Address must be 32 bytes, got ${bytes.length}`);
+
+   // DON'T: vague
+   invariant(bytes.length === 32, 'Invalid address');
+   ```
+
+3. **Fail fast** - Validate inputs at function entry
+   ```typescript
+   const processOrder = (order: Order) => {
+     invariant(order.items.length > 0, 'Order must have items');
+     invariant(order.total > 0, 'Total must be positive');
+     // ... rest of logic
+   };
+   ```
+
+4. **Pre-compute constants** - Move computation out of hot paths
+   ```typescript
+   // DO: compute once at module load
+   const BCS_BYTES = bcs.vector(bcs.u8());
+   const fn = (data: Uint8Array) => tx.pure(BCS_BYTES.serialize(data));
+
+   // DON'T: recompute on every call
+   const fn = (data: Uint8Array) => tx.pure(bcs.vector(bcs.u8()).serialize(data));
+   ```
 
 ---
 
@@ -71,21 +148,68 @@ assert!(balance >= amount, EInsufficientBalance);
 ```move
 module vortex::pool;
 
-use sui::coin::Coin;
-use sui::balance::Balance;
+// === Imports ===
+use vortex::errors;
 
-// Error constants (EPascalCase)
-const EInsufficientBalance: u64 = 0;
-const EInvalidProof: u64 = 1;
-
-// Regular constants (UPPER_SNAKE_CASE)
+// === Constants ===
 const MAX_TREE_DEPTH: u64 = 20;
 
-// Struct ordering: OTW → Witness → Cap → Keys → Owned → Shared → Data → Events
+// === Structs (OTW → Witness → Cap → Keys → Owned → Shared → Data → Events) ===
 public struct POOL has drop {}
 public struct AdminCap has key, store { id: UID }
-public struct Pool has key { id: UID, balance: Balance<SUI> }
-public struct DepositEvent has copy, drop { amount: u64 }
+public struct MerkleTreeKey() has copy, drop, store;
+public struct Pool<phantom CoinType> has key { id: UID, balance: Balance<CoinType> }
+public struct DepositEvent<phantom CoinType> has copy, drop { amount: u64 }
+
+// === Initialization ===
+fun init(otw: POOL, ctx: &mut TxContext) { ... }
+
+// === Public Functions ===
+
+// === Package Functions ===
+
+// === Private Functions ===
+
+// === Macros ===
+
+// === Test Only ===
+
+// === Aliases ===
+```
+
+### Error Handling Pattern
+
+Errors are defined as macros in a dedicated errors module:
+
+```move
+// In errors.move
+#[test_only] const EInvalidLength: u64 = 0;
+public(package) macro fun invalid_length(): u64 { 0 }
+
+#[test_only] const EPoolAlreadyExists: u64 = 1;
+public(package) macro fun pool_already_exists(): u64 { 1 }
+
+// Usage in other modules - fully qualified, no import needed
+assert!(bytes.length() == 32, vortex::errors::invalid_length!());
+```
+
+### Struct Conventions
+
+```move
+// One-time witness (OTW): ALL_CAPS, matches module name
+public struct VORTEX has drop {}
+
+// Capability: ends with Cap
+public struct AdminCap has key, store { id: UID }
+
+// Dynamic field key: positional with Key suffix
+public struct MerkleTreeKey() has copy, drop, store;
+
+// Shared object with phantom type: has key
+public struct Vortex<phantom CoinType> has key { id: UID, ... }
+
+// Event: past tense naming, phantom for coin types
+public struct NewCommitment<phantom CoinType> has copy, drop { ... }
 ```
 
 ### Syntax Preferences
@@ -93,16 +217,16 @@ public struct DepositEvent has copy, drop { amount: u64 }
 Use dot syntax (method calls) over module function calls:
 
 ```move
-// Preferred
+// DO
 self.id.delete();
-coin.split(amount);
+coin.split(amount, ctx);
 ctx.sender();
 vec[0];
 b"hello".to_string();
 
-// Avoid
+// DON'T
 object::delete(self.id);
-coin::split(&mut coin, amount);
+coin::split(&mut coin, amount, ctx);
 tx_context::sender(ctx);
 vector::borrow(&vec, 0);
 string::utf8(b"hello");
@@ -110,19 +234,22 @@ string::utf8(b"hello");
 
 ### Function Ordering
 
-1. `public` functions first (for composability)
-2. `public(package)` functions
-3. Private functions
-4. Test functions
+1. `init` (if present)
+2. `public` functions (for composability)
+3. `public(package)` functions
+4. Private functions
+5. Macros
+6. Test-only functions
+7. Use fun aliases (at end)
 
 ### Parameter Ordering
 
 1. `self` (if method)
-2. Shared objects
+2. Shared objects (mut before immut)
 3. Capabilities
 4. Owned structs
 5. Primitive values
-6. `TxContext` (always last)
+6. `TxContext` (always last, even if unused - for upgrade compatibility)
 
 ### Testing
 
@@ -132,8 +259,7 @@ fun deposit_increases_balance() {
     // Test implementation
 }
 
-#[test]
-#[expected_failure(abort_code = EInsufficientBalance)]
+#[test, expected_failure(abort_code = vortex::errors::EInsufficientBalance)]
 fun withdraw_fails_with_insufficient_balance() {
     // Test that triggers expected failure
 }
@@ -164,15 +290,14 @@ bunx prettier-move -c *.move --write
 - Express intent through naming and structure
 - Keep methods small with single responsibility
 - Minimize state and side effects
-- Use simplest solution possible
 - Eliminate duplication ruthlessly
 
 ### Error Handling
 
 ```rust
-// Production code: Use ? operator with context
 use anyhow::{Context, Result};
 
+// Production: Use ? operator with context
 fn process_event(event: &Event) -> Result<()> {
     let data = parse_event(event)
         .context("failed to parse event")?;
@@ -184,7 +309,7 @@ fn process_event(event: &Event) -> Result<()> {
     Ok(())
 }
 
-// Only use .expect() for true invariants
+// Only use .expect() for true invariants at startup
 let config = Config::from_env()
     .expect("CONFIG must be set at startup");
 ```
@@ -200,13 +325,40 @@ let config = Config::from_env()
 | Logging | `tracing` |
 | Database | `mongodb` |
 | CLI parsing | `clap` |
+| ZK circuits | `ark-*` (Arkworks) |
+
+### Indexer Patterns
+
+Handler pattern with `Processor` trait:
+
+```rust
+pub struct NewCommitmentHandler;
+
+#[async_trait]
+impl Processor for NewCommitmentHandler {
+    const NAME: &'static str = "new_commitment";
+
+    async fn process(&self, checkpoint: Arc<Checkpoint>) -> Result<()> {
+        let events = process_vortex_events::<NewCommitmentEvent>(
+            &checkpoint,
+            &self.package_id,
+            "NewCommitment",
+        )?;
+        // ... handle events
+        Ok(())
+    }
+}
+```
+
+Use the `impl_mongo_handler!` macro for MongoDB persistence:
+```rust
+impl_mongo_handler!(NewCommitmentHandler, NewCommitmentDocument, "new_commitments");
+```
 
 ### Testing
 
 ```rust
-// Place integration tests in tests/ directory
-// crates/indexer/tests/handlers_tests.rs
-
+// Integration tests in tests/ directory
 #[tokio::test]
 async fn processes_deposit_event() {
     let db = setup_test_db().await;
@@ -222,23 +374,12 @@ async fn processes_deposit_event() {
 ### Commands
 
 ```bash
-# Fast type checking
-cargo check
-
-# Build with optimizations
-cargo build --release
-
-# Run tests
-cargo test
-
-# Lint (must pass with zero warnings)
-cargo clippy -- -D warnings
-
-# Format
-cargo fmt
-
-# Security audit
-cargo audit
+cargo check                      # Fast type checking
+cargo build --release            # Optimized build
+cargo test                       # Run tests
+cargo clippy -- -D warnings      # Lint (must pass with zero warnings)
+cargo fmt                        # Format
+cargo audit                      # Security audit
 ```
 
 ---
@@ -296,10 +437,6 @@ export const findById = async (id: string): Promise<User | null> => {
     return db.collection<User>('users').findOne({ _id: id });
 };
 
-// Use branded types for domain IDs
-type AccountId = string & { readonly __brand: 'AccountId' };
-type PoolId = string & { readonly __brand: 'PoolId' };
-
 // Use discriminated unions for state
 type TransactionStatus =
     | { status: 'pending' }
@@ -327,44 +464,46 @@ import { logger } from '@/utils/logger.ts';
 Request → Middleware → Handler → Service → Repository → Database
 ```
 
-**Repositories**: Data access only, no business logic
-```typescript
-export class AccountsRepository {
-    constructor(private readonly db: Db) {}
+**Factory Functions** (preferred over classes):
 
-    findByHashedSecret = async (hashedSecret: string): Promise<Account[]> => {
-        return this.db
-            .collection<AccountDocument>('accounts')
+```typescript
+// Repository: data access only
+export const createAccountsRepository = (db: Db): AccountsRepository => ({
+    findByHashedSecret: async (hashedSecret: string) =>
+        db.collection<AccountDocument>('accounts')
             .find({ hashed_secret: hashedSecret })
-            .toArray();
-    };
-}
-```
+            .toArray(),
 
-**Services**: Business logic, depends on repositories
-```typescript
-export class AccountsService {
-    constructor(
-        private readonly repository: AccountsRepository,
-        private readonly suiService: SuiService,
-    ) {}
+    insert: async (doc: AccountDocument) =>
+        db.collection<AccountDocument>('accounts').insertOne(doc),
+});
 
-    createAccount = async (params: CreateAccountParams): Promise<Account> => {
+// Service: business logic
+export const createAccountsService = (
+    repository: AccountsRepository,
+    suiService: SuiService,
+): AccountsService => ({
+    createAccount: async (params: CreateAccountParams) => {
         // Business logic here
-    };
-}
+        const result = await suiService.sponsorAndExecute(tx);
+        return repository.insert(mapToDocument(result));
+    },
+});
 ```
 
-**Handlers**: HTTP concerns only, uses services from context
+**Handlers**: HTTP concerns only, wrapped with error handler
 ```typescript
-export const getAccounts = async (c: Context<AppBindings>): Promise<Response> => {
-    const accountsService = c.get('accountsService');
-    const validation = validateQuery(c, GetAccountsSchema);
-    if (!validation.success) return validation.response;
+export const getAccounts = withErrorHandler(
+    async (c: Context<AppBindings>): Promise<Response> => {
+        const accountsService = c.get('accountsService');
+        const validation = validateQuery(c, GetAccountsSchema);
+        if (!validation.success) return validation.response;
 
-    const data = await accountsService.findByHashedSecret(validation.data.hashed_secret);
-    return c.json({ success: true, data });
-};
+        const data = await accountsService.findByHashedSecret(validation.data.hashed_secret);
+        return c.json({ success: true, data });
+    },
+    'Failed to get accounts',
+);
 ```
 
 ### Route Structure
@@ -379,46 +518,26 @@ routes/v1/accounts/
 └── mappers.ts    # DB → API transformations
 ```
 
-### Async Patterns
+### Validation Pattern
 
 ```typescript
-// Use async/await over raw Promises
-const result = await service.process(data);
+// In handlers
+const validation = validateQuery(c, GetAccountsSchema);
+if (!validation.success) return validation.response;
 
-// Use Promise.all for concurrent independent operations
-const [pools, accounts, commitments] = await Promise.all([
-    poolsRepo.findAll(),
-    accountsRepo.findByOwner(owner),
-    commitmentsRepo.findByPool(poolId),
-]);
-
-// Handle fire-and-forget with .catch()
-logger.flush().catch(console.error);
+// validation.data is now typed correctly
+const data = await service.find(validation.data.hashed_secret);
 ```
 
 ### Commands
 
 ```bash
-# Development
-bun run dev
-
-# Type check (must pass before commit)
-bun run typecheck
-
-# Lint (must pass with zero warnings)
-bun run lint
-
-# Format
-bun run format
-
-# Run all quality checks
-bun run typecheck && bun run lint && bun run format
-
-# Tests
-bun test
-
-# Build for production
-bun run build
+bun run dev                    # Development
+bun run typecheck              # Type check (must pass)
+bun run lint                   # Lint (zero warnings)
+bun run format                 # Format code
+bun test                       # Run tests
+bun run build                  # Production build
 ```
 
 ---
@@ -427,28 +546,18 @@ bun run build
 
 ### Pre-Commit Checklist
 
-Before every commit, verify:
-
 | Language | Command | Requirement |
 |----------|---------|-------------|
 | Rust | `cargo check` | Zero errors |
 | Rust | `cargo clippy -- -D warnings` | Zero warnings |
-| Rust | `cargo test` | All tests pass |
+| Rust | `cargo test` | All pass |
 | Rust | `cargo fmt --check` | Formatted |
 | TypeScript | `bun run typecheck` | Zero errors |
 | TypeScript | `bun run lint` | Zero warnings |
 | TypeScript | `bun run format --check` | Formatted |
-| TypeScript | `bun test` | All tests pass |
+| TypeScript | `bun test` | All pass |
 | Move | `sui move build` | Zero errors |
-| Move | `sui move test` | All tests pass |
-
-### Implementation Verification
-
-When implementing features or APIs:
-1. Reference official documentation
-2. Verify correctness against authoritative sources
-3. Write tests that prove the implementation works
-4. When fixing bugs, write failing tests first
+| Move | `sui move test` | All pass |
 
 ---
 
@@ -514,22 +623,8 @@ api/src/
 │   ├── cors.ts             # CORS handling
 │   └── error.ts            # Global error handler
 ├── repositories/           # Data access layer
-│   ├── accounts.ts
-│   ├── commitments.ts
-│   ├── pools.ts
-│   └── index.ts
 ├── services/               # Business logic layer
-│   ├── accounts.ts
-│   ├── health.ts
-│   ├── merkle.ts
-│   ├── sui.ts
-│   └── index.ts
 ├── routes/v1/              # Route definitions
-│   ├── accounts/
-│   ├── commitments/
-│   ├── merkle/
-│   ├── pools/
-│   └── transactions/
 ├── types/
 │   └── index.ts            # AppBindings, shared types
 └── utils/
@@ -553,8 +648,6 @@ indexer/
     │   │   └── db/         # MongoDB operations
     │   └── tests/          # Integration tests
     └── schema/             # Shared data models
-        └── src/
-            └── lib.rs
 ```
 
 ### Contracts Layout
@@ -572,31 +665,23 @@ contracts/
 │       ├── constants.move
 │       └── errors.move
 ├── swap/                   # Swap functionality
-│   ├── Move.toml
-│   └── sources/
-│       └── swap.move
 └── test-coins/             # Test tokens
-    ├── Move.toml
-    └── sources/
-        ├── sui.move
-        └── usdc.move
 ```
 
 ---
 
-## Anti-Patterns to Avoid
+## Anti-Patterns
 
 ### Code Smells
 
 | Don't | Do |
 |-------|-----|
 | One-time-use variables | Inline values |
-| `Buffer.from(Buffer.from(...))` | Single conversion |
 | `arr[arr.length - 1]` | `arr.at(-1)` |
-| Sequential awaits for independent operations | `Promise.all()` |
+| Sequential awaits for independent ops | `Promise.all()` |
 | Dead code, unused exports | Delete completely |
 | Backwards-compatibility hacks | Clean removal |
-| Over-engineering, premature abstraction | Minimum viable solution |
+| Over-engineering | Minimum viable solution |
 
 ### Architectural Violations
 
@@ -604,25 +689,26 @@ contracts/
 |-------|-----|
 | Business logic in handlers | Use services |
 | Raw DB access in services | Use repositories |
-| Global state/singletons | Dependency injection |
+| Global state/singletons | Dependency injection (factory functions) |
 | Mixing refactoring with features | Separate commits |
 | Comments explaining what code does | Self-documenting names |
+| Classes for stateless operations | Factory functions |
 
 ---
 
-## Security Considerations
+## Security
 
 ### Never Commit
 
 - Private keys, secrets, API keys
 - `.env` files with real credentials
-- Hardcoded addresses for production
+- Hardcoded production addresses
 
 ### Input Validation
 
 - Validate all external input at system boundaries
 - Use Zod schemas for API requests
-- Use Move `assert!` for on-chain validation
+- Use Move `assert!` with error macros for on-chain validation
 - Never trust client-provided data
 
 ### Cryptographic Operations
