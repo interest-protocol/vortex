@@ -1,30 +1,30 @@
-# Move 2024 Semantic Rules
+# Move 2024 Semantic Rules for AI Coding Assistants
 
-A guide to the semantic restrictions enforced by the Move 2024 compiler.
+Rules enforced by the Move 2024 compiler. Violating these causes compilation errors.
 
 ---
 
-## 1. Implicit Imports and Aliases
+## 1. Implicit Imports (DO NOT import these)
 
-Move 2024 automatically imports common modules and types.
+Move 2024 auto-imports these - adding explicit imports is redundant.
 
-### Built-in Types (always available)
+### Built-in Types
 
 ```move
 bool, u8, u16, u32, u64, u128, u256, address, vector<T>
 ```
 
-### Standard Library (auto-imported)
+### Standard Library
 
-| Module/Type           | Available As |
-| --------------------- | ------------ |
-| `std::vector`         | `vector`     |
-| `std::option`         | `option`     |
-| `std::option::Option` | `Option`     |
+| Full Path             | Use As   |
+| --------------------- | -------- |
+| `std::vector`         | `vector` |
+| `std::option`         | `option` |
+| `std::option::Option` | `Option` |
 
-### Sui Framework (auto-imported)
+### Sui Framework
 
-| Module/Type                  | Available As |
+| Full Path                    | Use As       |
 | ---------------------------- | ------------ |
 | `sui::object`                | `object`     |
 | `sui::transfer`              | `transfer`   |
@@ -33,216 +33,227 @@ bool, u8, u16, u32, u64, u128, u256, address, vector<T>
 | `sui::object::UID`           | `UID`        |
 | `sui::tx_context::TxContext` | `TxContext`  |
 
-### Module-level Aliases
-
-- `Self` - alias for the current module
-- All defined structs, enums, functions, and constants by their name
-
 ```move
 module example::demo;
 
-// No imports needed - these are implicit in Sui mode:
-public struct MyObject has key {
-    id: UID,           // UID is implicit
-    data: Option<u64>, // Option is implicit
-}
+// WRONG: Redundant imports
+use sui::object::UID;
+use std::option::Option;
 
-public fun create(ctx: &mut TxContext): MyObject {
-    MyObject {
-        id: object::new(ctx),    // object module is implicit
-        data: option::none(),    // option module is implicit
-    }
+// CORRECT: Just use them directly
+public struct MyObject has key {
+    id: UID,
+    data: Option<u64>,
 }
 ```
 
 ---
 
-## 2. Naming Rules
+## 2. Naming Rules (Compiler Enforced)
 
-| Element               | Rule                             | Example                         |
-| --------------------- | -------------------------------- | ------------------------------- |
-| Variables             | Start with `a-z` or `_`          | `let count = 0;`                |
-| Functions             | Start with `a-z`, no leading `_` | `public fun transfer()`         |
-| Structs/Enums         | Start with `A-Z`                 | `public struct Coin { }`        |
-| Constants             | Start with `A-Z`                 | `const MAX_SUPPLY: u64 = 1000;` |
-| Type Parameters       | Start with `A-Z`                 | `public struct Box<T> { }`      |
-| Macro Parameters      | Must start with `$`              | `macro fun m($x: u64)`          |
-| Macro Type Parameters | Must start with `$`              | `macro fun m<$T>(x: $T)`        |
+| Element               | Rule                    | Valid              | Invalid            |
+| --------------------- | ----------------------- | ------------------ | ------------------ |
+| Variables             | Start with `a-z` or `_` | `count`, `_unused` | `Count`, `123x`    |
+| Functions             | Start with `a-z`        | `transfer`         | `_transfer`, `Transfer` |
+| Structs/Enums         | Start with `A-Z`        | `Coin`, `NFT`      | `coin`, `_Coin`    |
+| Constants             | Start with `A-Z`        | `MAX_SUPPLY`       | `max_supply`       |
+| Type Parameters       | Start with `A-Z`        | `T`, `CoinType`    | `t`, `_T`          |
+| Macro Parameters      | Start with `$`          | `$x`, `$value`     | `x`, `value`       |
 
 ---
 
 ## 3. Ability System
 
-| Ability | Meaning                                        |
-| ------- | ---------------------------------------------- |
-| `copy`  | Value can be copied                            |
-| `drop`  | Value can be implicitly discarded              |
-| `store` | Value can be used as a field of a `key` struct |
-| `key`   | Value can be a top-level storage object (Sui)  |
+Every type has abilities that control usage. Missing abilities cause errors.
 
-**Built-in type abilities:**
+| Ability | What It Allows                              | Without It                          |
+| ------- | ------------------------------------------- | ----------------------------------- |
+| `copy`  | Value can be duplicated                     | Value moves on assignment           |
+| `drop`  | Value can be implicitly discarded           | Must be explicitly consumed         |
+| `store` | Can be field of `key` struct                | Cannot be stored in objects         |
+| `key`   | Can be top-level Sui object                 | Cannot use `transfer::transfer`     |
 
-- Primitives (`u8`-`u256`, `bool`, `address`): `copy`, `drop`, `store`
-- References (`&T`, `&mut T`): `copy`, `drop` only
-- `vector<T>`: inherits from `T`
+### Built-in Abilities
 
-**Rules:**
+| Type                              | Abilities              |
+| --------------------------------- | ---------------------- |
+| `u8`-`u256`, `bool`, `address`    | `copy`, `drop`, `store`|
+| `&T`, `&mut T`                    | `copy`, `drop`         |
+| `vector<T>`                       | Same as `T`            |
 
-- Types without `drop` MUST be explicitly consumed
-- Types without `copy` are moved on use (single ownership)
+### Common Errors
 
 ```move
-public struct NoDrop { value: u64 }  // No abilities
+public struct NoDrop { value: u64 }  // No abilities declared
 
-fun bad() {
+fun error_no_drop() {
     let x = NoDrop { value: 1 };
-    // ERROR: x is not used and cannot be dropped
+    // ERROR: "x is not used and cannot be dropped"
+    // FIX: Either consume x or add `has drop` to struct
 }
 
-fun good() {
-    let x = NoDrop { value: 1 };
-    consume(x);  // x is explicitly consumed
+public struct NoCopy has drop { value: u64 }
+
+fun error_no_copy() {
+    let x = NoCopy { value: 1 };
+    let y = x;  // x is MOVED
+    let z = x;  // ERROR: "x was moved"
+    // FIX: Add `has copy, drop` to struct
 }
 ```
 
 ---
 
-## 4. Reference and Borrow Rules
+## 4. Reference Rules
 
-**Immutable borrows (`&T`):**
+### Borrowing Constraints
 
-- Multiple immutable borrows allowed simultaneously
-- Cannot modify through immutable reference
+| Borrow Type | Allowed Simultaneously | Can Modify |
+| ----------- | ---------------------- | ---------- |
+| `&T`        | Multiple `&T`          | No         |
+| `&mut T`    | Only one, no other borrows | Yes    |
 
-**Mutable borrows (`&mut T`):**
-
-- Only ONE mutable borrow at a time
-- No other borrows can coexist
-- Variable must be declared `mut`
-
-**Critical restrictions:**
-
-- Cannot return references to local variables (dangling)
-- Struct fields CANNOT contain references
-- References have `copy` and `drop` but NOT `store`
+### Compiler Errors
 
 ```move
-// WRONG: Cannot store references in structs
+// ERROR: "cannot store references in structs"
 public struct Bad { r: &u64 }
 
-// WRONG: Dangling reference
+// ERROR: "dangling reference" - returning ref to local
 fun bad(): &u64 {
     let x = 5;
-    &x  // ERROR: x is dropped, reference dangles
+    &x  // x is dropped when function returns
 }
 
-// CORRECT: Borrow from parameter
+// CORRECT: Return ref from parameter (outlives function)
 fun good(x: &u64): &u64 { x }
+
+// ERROR: "cannot borrow as mutable" - variable not declared mut
+fun bad_mut() {
+    let x = 5;
+    let r = &mut x;  // ERROR
+}
+
+// CORRECT
+fun good_mut() {
+    let mut x = 5;
+    let r = &mut x;  // OK
+}
 ```
 
 ---
 
-## 5. Mutability Rules
+## 5. Mutability
 
-Variables are immutable by default:
+Variables are immutable by default. Use `let mut` for mutability.
 
 ```move
 let x = 5;
-x = 6;  // ERROR: cannot mutate immutable variable
+x = 6;  // ERROR: "cannot mutate immutable variable"
 
 let mut y = 5;
 y = 6;  // OK
-```
 
-To take a mutable borrow, the variable must be `mut`:
+// Mutable borrow requires mut variable
+let a = 5;
+let r = &mut a;  // ERROR
 
-```move
-let x = 5;
-let r = &mut x;  // ERROR
-
-let mut y = 5;
-let r = &mut y;  // OK
+let mut b = 5;
+let r = &mut b;  // OK
 ```
 
 ---
 
-## 6. Move vs Copy Semantics
+## 6. Ownership (Move vs Copy)
 
 ```move
-public struct Coin has copy, drop { value: u64 }
-public struct NFT has drop { id: u64 }  // No copy
+public struct Copyable has copy, drop { v: u64 }
+public struct MoveOnly has drop { v: u64 }  // No copy
 
-fun example() {
-    let coin = Coin { value: 100 };
-    let c2 = coin;      // Copied (has copy)
-    let c3 = coin;      // Still valid
+fun ownership() {
+    // With copy: value is duplicated
+    let a = Copyable { v: 1 };
+    let b = a;  // a is copied
+    let c = a;  // a still valid
 
-    let nft = NFT { id: 1 };
-    let n2 = nft;       // Moved (no copy)
-    let n3 = nft;       // ERROR: nft was moved
+    // Without copy: value is moved
+    let x = MoveOnly { v: 1 };
+    let y = x;  // x is MOVED to y
+    let z = x;  // ERROR: "x was moved"
 }
 ```
 
 ---
 
-## 7. Visibility Rules
+## 7. Visibility
 
-| Visibility        | Accessible From   |
-| ----------------- | ----------------- |
-| `public`          | Anywhere          |
-| `public(package)` | Same package only |
-| (none)            | Same module only  |
+| Modifier          | Accessible From        |
+| ----------------- | ---------------------- |
+| `public`          | Any module, any package|
+| `public(package)` | Same package only      |
+| (none)            | Same module only       |
+
+```move
+module pkg::a;
+public fun anyone() { }           // Callable from anywhere
+public(package) fun pkg_only() { } // Only pkg::* modules
+fun private() { }                  // Only this module
+```
 
 ---
 
 ## 8. Type Restrictions
 
-**Recursive types are forbidden:**
+### No Recursive Types
 
 ```move
-// ERROR: Recursive type
+// ERROR: "recursive type"
 public struct Node { next: Node }
 
-// OK: Use Option for indirection
+// OK: Indirection via Option or vector
 public struct Node { next: Option<Node> }
 ```
 
-**Phantom type parameters:**
+### Phantom Type Parameters
+
+`phantom` types cannot appear in fields:
 
 ```move
-public struct Marker<phantom T> {}  // OK: T not used in fields
-public struct Bad<phantom T> { value: T }  // ERROR: phantom T in field
+public struct Marker<phantom T> {}  // OK
+public struct Bad<phantom T> { value: T }  // ERROR: phantom T used in field
 ```
 
 ---
 
-## 9. Constant Restrictions
+## 9. Constants
 
-Constants can only have these types:
+### Allowed Types Only
 
-- Primitives: `u8`, `u16`, `u32`, `u64`, `u128`, `u256`, `bool`, `address`
-- `vector` of primitives
-- Byte strings
+- Primitives: `u8`-`u256`, `bool`, `address`
+- `vector<primitive>`
+- Byte strings: `b"..."`
 
 ```move
-const MAX: u64 = 100;               // OK
-const BYTES: vector<u8> = b"hello"; // OK
-const BAD: Coin = Coin { };         // ERROR: struct not allowed
+const MAX: u64 = 100;                // OK
+const BYTES: vector<u8> = b"hello";  // OK
+const BAD: MyStruct = MyStruct {};   // ERROR: struct not allowed
 ```
 
-Constant expressions cannot contain function calls, control flow, references, or non-constant values.
+### No Expressions
+
+Constants cannot contain function calls, control flow, or references.
 
 ---
 
-## 10. Pattern Matching Rules
+## 10. Pattern Matching
 
 Patterns must be exhaustive:
 
 ```move
-// ERROR: Non-exhaustive
+// ERROR: "non-exhaustive pattern"
 match (opt) {
     Option::Some(x) => x,
-    // Missing None case
+    // Missing Option::None
 }
 
 // CORRECT
@@ -254,213 +265,297 @@ match (opt) {
 
 ---
 
-## 11. Common Errors and Fixes
+## 11. Error Quick Reference
 
-| Error                | Cause                           | Fix                                         |
-| -------------------- | ------------------------------- | ------------------------------------------- |
-| "value without drop" | Type lacks `drop`, not consumed | Explicitly use or destroy the value         |
-| "cannot copy"        | Type lacks `copy`               | Use `move` or add `copy` ability            |
-| "invalid borrow"     | Borrowing moved value           | Borrow before move, or copy first           |
-| "cannot mutate"      | Variable not `mut`              | Add `mut` to declaration                    |
-| "dangling reference" | Returning local ref             | Return owned value or borrow param          |
-| "recursive type"     | Self-referential struct         | Use `Option` or `vector` indirection        |
-| "visibility"         | Calling private function        | Make function `public` or `public(package)` |
+| Error Message                 | Cause                        | Fix                                    |
+| ----------------------------- | ---------------------------- | -------------------------------------- |
+| "value without drop"          | No `drop`, value unused      | Consume value or add `has drop`        |
+| "cannot copy value"           | No `copy`, used after move   | Add `has copy` or restructure          |
+| "cannot borrow as mutable"    | Variable not `mut`           | Use `let mut`                          |
+| "dangling reference"          | Returning ref to local       | Return owned or borrow from param      |
+| "recursive type"              | Direct self-reference        | Use `Option<Self>` indirection         |
+| "cannot access private"       | Calling non-public function  | Make it `public` or `public(package)`  |
+| "phantom type used in field"  | `phantom T` in struct field  | Remove `phantom` or remove field       |
 
 ---
 
-## 12. Sui-Specific Rules
+## 12. Sui Object Rules
 
-### Object Rules
-
-**Objects must have `id: UID` as first field:**
+### UID Must Be First Field
 
 ```move
 // CORRECT
 public struct MyObject has key {
-    id: UID,
+    id: UID,  // MUST be first
     data: u64,
 }
 
-// ERROR: Missing UID or wrong position
+// ERROR: "first field must be UID"
 public struct Bad has key { data: u64 }
+
+// ERROR: "UID must be first field"
 public struct AlsoBad has key { data: u64, id: UID }
 ```
 
-**Enums cannot have `key` ability.**
-
-**Fresh UID required for object creation:**
+### Enums Cannot Have `key`
 
 ```move
-// CORRECT
-let obj = MyObject { id: object::new(ctx), data: 0 };
-
-// ERROR: Reusing UID from elsewhere
-let obj = MyObject { id: some_other_uid, data: 0 };
+// ERROR: "enums cannot have key ability"
+public enum Status has key { Active, Inactive }
 ```
 
-### `init` Function Rules
+### Fresh UID Required
+
+```move
+// CORRECT: UID from object::new()
+let obj = MyObject { id: object::new(ctx), data: 0 };
+
+// ERROR at runtime: Cannot reuse/pass UID
+fun bad(uid: UID) {
+    let obj = MyObject { id: uid, data: 0 };  // Will fail
+}
+```
+
+---
+
+## 13. `init` Function Rules
+
+The `init` function is special - called once at publish time.
 
 ```move
 module example::my_module;
 
 public struct MY_MODULE has drop {}
 
-// CORRECT init signatures:
+// Valid signatures:
 fun init(ctx: &mut TxContext) { }
 fun init(otw: MY_MODULE, ctx: &mut TxContext) { }
+
+// ERRORS:
+public fun init(...) { }     // ERROR: must be private
+entry fun init(...) { }      // ERROR: cannot be entry
+fun init<T>(...) { }         // ERROR: no type parameters
+fun init(...): u64 { }       // ERROR: must return ()
+fun init(a: u64, b: u64, ctx: &mut TxContext) { }  // ERROR: max 2 params
 ```
 
 **Rules:**
+- Private only (no `public`, no `entry`)
+- No type parameters
+- Returns `()`
+- Last param: `&TxContext` or `&mut TxContext`
+- Max 2 params: optional OTW + TxContext
 
-- Must be private (no visibility modifier)
-- Cannot be `entry`
-- No type parameters allowed
-- Must return `()`
-- Last parameter must be `&TxContext` or `&mut TxContext`
-- Maximum 2 parameters (OTW + TxContext)
-- Cannot be called directly (only at publish time)
+---
 
-### One-Time Witness (OTW)
+## 14. One-Time Witness (OTW)
+
+OTW proves module publisher authority. Created by runtime, not constructable.
 
 ```move
 module example::my_coin;
 
+// OTW: UPPERCASE module name, only `drop`
 public struct MY_COIN has drop {}
 
 fun init(otw: MY_COIN, ctx: &mut TxContext) {
-    // otw can only be received here, never constructed
+    // otw is created by runtime, cannot be constructed manually
+    // Used to prove this code is running at publish time
 }
 ```
 
-**OTW Requirements:**
-
-- Name must be uppercase version of module name
-- Only `drop` ability (no `copy`, `store`, `key`)
+**Requirements:**
+- Name = UPPERCASE(module_name)
+- Only `drop` ability (not `copy`, `store`, `key`)
 - No type parameters
-- No fields, or single `bool` field
-- Cannot be manually constructed
+- No fields (or single `bool` field)
 
-### Public vs Entry Functions
+---
 
-| Modifier       | Callable From            | Restrictions       |
-| -------------- | ------------------------ | ------------------ |
-| `public fun`   | PTBs + other modules     | None               |
-| `entry fun`    | PTBs only                | Signature rules    |
-| `public entry` | PTBs + other modules     | Signature rules    |
+## 15. Public vs Entry Functions
 
-**`entry` signature restrictions:**
+| Modifier       | From PTB | From Move | Restrictions     |
+| -------------- | -------- | --------- | ---------------- |
+| `public`       | Yes      | Yes       | None             |
+| `entry`        | Yes      | No        | Signature rules  |
+| `public entry` | Yes      | Yes       | Signature rules  |
 
-- Valid params: primitives, strings, `ID`, `Option<primitive>`, `vector<T>`, objects (`key` types), `Receiving<T>`
-- Invalid params: `&mut Clock`, `&mut Random`, non-object structs
-- Return type must have `drop` (or be `()`)
+### Entry Signature Restrictions
 
-**Avoid `public entry`** - adds restrictions without benefit.
+**Valid parameters:**
+- Primitives: `u8`-`u256`, `bool`, `address`
+- `String`, `ascii::String`, `ID`
+- `Option<primitive>`, `vector<T>`
+- Objects (types with `key`)
+- `Receiving<T>`
 
-### Transfer Rules
+**Invalid parameters:**
+- `&mut Clock` (use `&Clock`)
+- `&mut Random` (use `&Random`)
+- Structs without `key`
+
+**Return:** Must have `drop` or be `()`
+
+**Avoid `public entry`** - `public` already works from PTBs, `entry` just adds restrictions.
+
+---
+
+## 16. Transfer Rules
 
 ```move
-// These require T defined in SAME module:
+// Private transfers - T must be defined in THIS module:
 transfer::transfer(obj, recipient);
 transfer::freeze_object(obj);
 transfer::share_object(obj);
 
-// For types with `store`, use public versions:
+// Public transfers - T must have `store`:
 transfer::public_transfer(obj, recipient);
 transfer::public_freeze_object(obj);
 transfer::public_share_object(obj);
 ```
 
-### Event Rules
-
-Events must use types defined in the current module:
-
-```move
-// CORRECT
-event::emit(MyEvent { value: 42 });
-
-// ERROR: Cannot emit external types
-event::emit(other_module::TheirEvent { });
-```
-
-### Sui Linter Warnings
-
-| Filter                | Issue                                    | Fix                                     |
-| --------------------- | ---------------------------------------- | --------------------------------------- |
-| `share_owned`         | Sharing object from parameter            | Create fresh and share in same function |
-| `self_transfer`       | Transferring to `tx_context::sender()`   | Return object for composability         |
-| `custom_state_change` | Custom transfer on types with `store`    | Use `public_transfer`                   |
-| `coin_field`          | `Coin` in struct field                   | Use `Balance` instead                   |
-| `freeze_wrapped`      | Freezing struct with nested `key` types  | Nested objects become inaccessible      |
-| `collection_equality` | Comparing `Table`, `Bag` with `==`       | Structural equality not checked         |
-| `public_random`       | Public function taking `Random`          | Make private or add access control      |
-| `missing_key`         | Struct has `id: UID` but no `key`        | Add `key` ability                       |
-| `public_entry`        | `public entry fun`                       | Remove `entry` or make non-public       |
+**Rule:** Use private for module-defined types, public for types with `store`.
 
 ---
 
-## 13. Sui Storage Model
+## 17. Event Rules
 
-### Object Ownership States
-
-| State         | Owner          | Consensus | Mutable    | Use Case                   |
-| ------------- | -------------- | --------- | ---------- | -------------------------- |
-| **Owned**     | Single address | No        | Yes        | User assets, personal data |
-| **Shared**    | None (global)  | Yes       | Yes        | AMM pools, registries      |
-| **Immutable** | None (frozen)  | No        | No         | Config, constants          |
-| **Wrapped**   | Parent object  | Via parent| Via parent | Composition, bundling      |
-
-### Owned Objects
+Events must use types from the current module:
 
 ```move
-let obj = MyObject { id: object::new(ctx), value: 0 };
-transfer::transfer(obj, ctx.sender());
+public struct MyEvent has copy, drop { value: u64 }
+
+// CORRECT
+event::emit(MyEvent { value: 42 });
+
+// ERROR: "cannot emit external type"
+event::emit(other_module::TheirEvent { });
 ```
 
-- Fast path execution (no consensus)
-- Can be transferred, shared, or frozen
+---
 
-### Shared Objects
+## 18. Linter Warnings
+
+These are warnings, not errors. Fix them for better code.
+
+| Lint                  | Trigger                                  | Fix                                        |
+| --------------------- | ---------------------------------------- | ------------------------------------------ |
+| `share_owned`         | `share_object` on parameter/unpacked obj | Create fresh object, share in same function|
+| `self_transfer`       | `transfer(obj, ctx.sender())`            | Return object instead                      |
+| `custom_state_change` | Private transfer on type with `store`    | Use `public_transfer`                      |
+| `coin_field`          | `Coin<T>` as struct field                | Use `Balance<T>` instead                   |
+| `freeze_wrapped`      | Freezing struct with nested `key` fields | Don't - nested objects become inaccessible |
+| `collection_equality` | `table == other_table`                   | Don't compare collections with `==`        |
+| `public_random`       | Public function taking `Random`          | Make private or add access control         |
+| `missing_key`         | Struct has `id: UID` but no `key`        | Add `has key`                              |
+| `public_entry`        | `public entry fun`                       | Remove `entry` modifier                    |
+
+Suppress with: `#[allow(lint(share_owned))]`
+
+---
+
+## 19. Storage Model
+
+### Object States
+
+| State         | Access              | Consensus | Mutable | Transition From      |
+| ------------- | ------------------- | --------- | ------- | -------------------- |
+| **Owned**     | Owner only          | No        | Yes     | Fresh                |
+| **Shared**    | Anyone              | Yes       | Yes     | Fresh only           |
+| **Immutable** | Anyone (read)       | No        | No      | Fresh only           |
+| **Wrapped**   | Via parent          | Via parent| Via parent | Fresh             |
+
+### Creating and Transferring
 
 ```move
-// CORRECT: Create and share in same function
+// Owned: transfer to address
+let obj = MyObject { id: object::new(ctx), value: 0 };
+transfer::transfer(obj, ctx.sender());
+
+// Shared: anyone can access (requires consensus)
 let obj = MyObject { id: object::new(ctx), value: 0 };
 transfer::share_object(obj);
 
-// WRONG: Sharing object from parameter
-public fun bad(obj: MyObject) {
-    transfer::share_object(obj);  // Lint: share_owned
-}
-```
-
-- Requires consensus ordering (slower)
-- Cannot be transferred once shared
-- **Must share freshly created objects**
-
-### Immutable Objects
-
-```move
+// Immutable: frozen forever
+let obj = MyObject { id: object::new(ctx), value: 0 };
 transfer::freeze_object(obj);
-```
 
-- Read-only forever
-- No consensus needed (fast reads)
-
-### Wrapped Objects
-
-```move
+// Wrapped: store as field (no longer independently accessible)
 public struct Wrapper has key {
     id: UID,
-    inner: InnerObject,  // wrapped - not in global storage
+    inner: MyObject,  // wrapped
 }
 ```
 
-- Not directly accessible
-- Can be unwrapped by extracting and transferring
+### Critical Rules
 
-### State Transitions
+1. **Share only fresh objects** - sharing from parameter fails at runtime
+   ```move
+   // WRONG - will abort
+   public fun bad(obj: MyObject) {
+       transfer::share_object(obj);
+   }
 
-- Fresh → Shared: `share_object()` (irreversible)
-- Fresh → Immutable: `freeze_object()` (irreversible)
-- Fresh → Wrapped: Store as field
-- Wrapped → Owned: Extract and `transfer()`
-- Shared/Immutable: Cannot change state
+   // CORRECT
+   public fun good(ctx: &mut TxContext) {
+       let obj = MyObject { id: object::new(ctx), value: 0 };
+       transfer::share_object(obj);
+   }
+   ```
+
+2. **State transitions are irreversible**
+   - Shared → Cannot transfer or freeze
+   - Immutable → Cannot modify or transfer
+
+3. **Wrapped objects lose independent identity**
+   - UID exists but object not addressable
+   - Access only through parent
+   - Can unwrap by extracting and transferring
+
+---
+
+## 20. Quick Reference: Valid Patterns
+
+```move
+module example::valid;
+
+// Object with abilities
+public struct MyObject has key, store {
+    id: UID,      // First field must be UID for key
+    value: u64,
+}
+
+// Data struct (no UID needed)
+public struct Data has copy, drop, store {
+    amount: u64,
+}
+
+// OTW for init
+public struct VALID has drop {}
+
+// Event
+public struct ValueChanged has copy, drop {
+    old_value: u64,
+    new_value: u64,
+}
+
+// Private init
+fun init(_otw: VALID, ctx: &mut TxContext) {
+    let obj = MyObject { id: object::new(ctx), value: 0 };
+    transfer::share_object(obj);
+}
+
+// Public function (preferred over entry)
+public fun update(self: &mut MyObject, new_value: u64) {
+    event::emit(ValueChanged {
+        old_value: self.value,
+        new_value
+    });
+    self.value = new_value;
+}
+
+// Generic with ability constraint
+public fun transfer_any<T: key + store>(obj: T, recipient: address) {
+    transfer::public_transfer(obj, recipient);
+}
+```
