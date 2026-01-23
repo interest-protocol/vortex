@@ -296,4 +296,36 @@ impl Connection for MongoConnection {
 
         Ok(result.modified_count > 0)
     }
+
+    async fn init_watermark(&mut self, pipeline: &str, start: u64) -> Result<Option<u64>> {
+        let now = bson::DateTime::now();
+
+        self.watermarks()
+            .update_one(
+                doc! { "_id": pipeline },
+                doc! {
+                    "$setOnInsert": {
+                        "_id": pipeline,
+                        "epoch_hi_inclusive": 0_i64,
+                        "checkpoint_hi_inclusive": (start as i64) - 1,
+                        "tx_hi": 0_i64,
+                        "timestamp_ms_hi_inclusive": 0_i64,
+                        "reader_lo": 0_i64,
+                        "pruner_hi": 0_i64,
+                        "pruner_timestamp": now,
+                    }
+                },
+            )
+            .upsert(true)
+            .await
+            .context("Failed to init watermark")?;
+
+        let result = self
+            .watermarks()
+            .find_one(doc! { "_id": pipeline })
+            .await
+            .context("Failed to query watermark after init")?;
+
+        Ok(result.map(|w| w.checkpoint_hi_inclusive))
+    }
 }

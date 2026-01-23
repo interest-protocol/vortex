@@ -8,7 +8,6 @@ use sui_indexer_alt_framework::{
     pipeline::concurrent::ConcurrentConfig,
     Indexer, IndexerArgs, TaskArgs,
 };
-use tokio_util::sync::CancellationToken;
 use tracing::info;
 
 use vortex_indexer::{
@@ -95,7 +94,6 @@ async fn main() -> anyhow::Result<()> {
         task: TaskArgs::default(),
     };
 
-    let cancel = CancellationToken::new();
     let mut indexer = Indexer::new(
         store,
         indexer_args,
@@ -103,7 +101,6 @@ async fn main() -> anyhow::Result<()> {
         IngestionConfig::default(),
         None,
         &prometheus::Registry::new(),
-        cancel,
     )
     .await
     .context("Failed to create indexer")?;
@@ -125,9 +122,12 @@ async fn main() -> anyhow::Result<()> {
 
     info!("All pipelines registered, starting indexer...");
 
-    let handle = indexer.run().await.context("Failed to start indexer")?;
-
-    handle.await.context("Indexer service failed")?;
+    indexer
+        .run()
+        .await
+        .context("Failed to start indexer")?
+        .join()
+        .await?;
 
     info!("Indexer stopped");
 
