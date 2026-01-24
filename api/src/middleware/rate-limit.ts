@@ -97,8 +97,8 @@ export const createRateLimiter = (
     };
 
     return async (c, next) => {
-        const apiKey = c.req.header('x-api-key');
-        if (apiKey && env.API_KEY && apiKey === env.API_KEY) {
+        const apiKey = c.req.header('x-api-key')?.trim();
+        if (apiKey && env.API_KEY && apiKey === env.API_KEY.trim()) {
             await next();
             return;
         }
