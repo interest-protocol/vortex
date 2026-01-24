@@ -121,8 +121,8 @@ const tx = await withdraw({ amount: 500_000_000n, recipient: '0x...', ... });
 ## Deployed contracts (Testnet)
 
 ```
-Package:   0xcf81b96e392f82b776ee980108357426b726c4043c838822545a307e12c5ded6
-Registry:  0xf2c11c297e0581e0279714f6ba47e26d03d9a70756036fab5882ebc0f1d2b3b1
+Package:   0xd9d3b65c318e7d7dd208050a28e113a45256765b4c45acd119626d8a228d7555
+Registry:  0x6cec550fb43435462f34b15aee9f8b8030e0433e16c8104e966013f0443b2e36
 ```
 
 ## Privacy considerations

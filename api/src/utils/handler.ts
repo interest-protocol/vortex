@@ -11,7 +11,18 @@ export const withErrorHandler =
         try {
             return await handler(c);
         } catch (error) {
-            logger.error({ error }, errorMessage);
+            if (env.NODE_ENV !== 'production') {
+                const errorDetails =
+                    error instanceof Error
+                        ? { message: error.message, stack: error.stack, name: error.name }
+                        : { message: String(error) };
+                logger.error(
+                    { error: errorDetails, context: errorMessage },
+                    `[DEV] ${errorMessage}`
+                );
+            } else {
+                logger.error({ error }, errorMessage);
+            }
 
             if (env.NODE_ENV !== 'production') {
                 const details =

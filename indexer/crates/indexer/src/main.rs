@@ -18,7 +18,8 @@ use vortex_indexer::{
 };
 
 const DEFAULT_VORTEX_PACKAGE: &str =
-    "0xcf81b96e392f82b776ee980108357426b726c4043c838822545a307e12c5ded6";
+    "0xd9d3b65c318e7d7dd208050a28e113a45256765b4c45acd119626d8a228d7555";
+const DEFAULT_FIRST_CHECKPOINT: &str = "289686093";
 
 #[derive(Parser)]
 #[clap(
@@ -38,8 +39,8 @@ struct Config {
     #[clap(long, env, default_value = DEFAULT_VORTEX_PACKAGE)]
     vortex_package: String,
 
-    #[clap(long, env)]
-    first_checkpoint: Option<u64>,
+    #[clap(long, env, default_value = DEFAULT_FIRST_CHECKPOINT)]
+    first_checkpoint: u64,
 
     #[clap(long, env)]
     last_checkpoint: Option<u64>,
@@ -88,7 +89,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let indexer_args = IndexerArgs {
-        first_checkpoint: config.first_checkpoint,
+        first_checkpoint: Some(config.first_checkpoint),
         last_checkpoint: config.last_checkpoint,
         pipeline: vec![],
         task: TaskArgs::default(),
