@@ -92,8 +92,13 @@ where
     match collection.insert_many(batch).with_options(options).await {
         Ok(result) => Ok(result.inserted_ids.len()),
         Err(e) => {
-            if let mongodb::error::ErrorKind::BulkWrite(ref bulk_err) = *e.kind {
-                let inserted = batch.len() - bulk_err.write_errors.len();
+            if let mongodb::error::ErrorKind::InsertMany(ref insert_err) = *e.kind {
+                let errors_count = insert_err
+                    .write_errors
+                    .as_ref()
+                    .map(|errs| errs.len())
+                    .unwrap_or(0);
+                let inserted = batch.len().saturating_sub(errors_count);
                 return Ok(inserted);
             }
             Err(e.into())
