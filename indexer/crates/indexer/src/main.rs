@@ -19,7 +19,7 @@ use vortex_indexer::{
 
 const DEFAULT_VORTEX_PACKAGE: &str =
     "0xd9d3b65c318e7d7dd208050a28e113a45256765b4c45acd119626d8a228d7555";
-const DEFAULT_FIRST_CHECKPOINT: &str = "289686093";
+const DEFAULT_FIRST_CHECKPOINT: &str = "289686776";
 
 #[derive(Parser)]
 #[clap(
