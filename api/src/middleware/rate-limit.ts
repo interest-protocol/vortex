@@ -97,6 +97,11 @@ export const createRateLimiter = (
     };
 
     return async (c, next) => {
+        if (c.req.path === '/api/health') {
+            await next();
+            return;
+        }
+
         const apiKey = c.req.header('x-api-key')?.trim();
         if (apiKey && env.API_KEY && apiKey === env.API_KEY.trim()) {
             await next();
