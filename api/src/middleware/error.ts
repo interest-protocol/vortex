@@ -7,12 +7,22 @@ export const errorHandler: ErrorHandler<AppBindings> = (err, c) => {
     logger.error({ err }, 'Unhandled error');
 
     const status = 'status' in err && typeof err.status === 'number' ? err.status : 500;
-    const message = env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message;
+
+    if (env.NODE_ENV !== 'production') {
+        return c.json(
+            {
+                success: false,
+                error: err.message,
+                stack: err.stack,
+            },
+            status as 500
+        );
+    }
 
     return c.json(
         {
             success: false,
-            error: message,
+            error: 'Internal Server Error',
         },
         status as 500
     );
