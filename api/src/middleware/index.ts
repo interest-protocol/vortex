@@ -1,5 +1,5 @@
-export { apiKeyMiddleware } from './apiKey.ts';
+export { apiKeyMiddleware } from './api-key.ts';
 export { corsMiddleware } from './cors.ts';
 export { databaseMiddleware } from './database.ts';
 export { errorHandler } from './error.ts';
-export { rateLimitMiddleware, createRateLimiter } from './rate-limit.ts';
+export { createRateLimiter, rateLimitMiddleware } from './rate-limit.ts';
