@@ -74,6 +74,8 @@ pub fn extract_coin_type(type_str: &str) -> Option<String> {
         .map(|m| m.as_str().to_string())
 }
 
+const DUPLICATE_KEY_ERROR_CODE: i32 = 11000;
+
 /// Performs an unordered bulk insert into MongoDB, continuing on duplicate key errors.
 /// Returns the number of successfully inserted documents.
 pub async fn bulk_insert_unordered<T>(
@@ -93,13 +95,16 @@ where
         Ok(result) => Ok(result.inserted_ids.len()),
         Err(e) => {
             if let mongodb::error::ErrorKind::InsertMany(ref insert_err) = *e.kind {
-                let errors_count = insert_err
-                    .write_errors
-                    .as_ref()
-                    .map(|errs| errs.len())
-                    .unwrap_or(0);
-                let inserted = batch.len().saturating_sub(errors_count);
-                return Ok(inserted);
+                if let Some(write_errors) = &insert_err.write_errors {
+                    let all_duplicates = write_errors
+                        .iter()
+                        .all(|err| err.code == DUPLICATE_KEY_ERROR_CODE);
+
+                    if all_duplicates {
+                        let inserted = batch.len().saturating_sub(write_errors.len());
+                        return Ok(inserted);
+                    }
+                }
             }
             Err(e.into())
         }
