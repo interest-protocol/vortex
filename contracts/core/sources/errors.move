@@ -61,3 +61,7 @@ public(package) macro fun invalid_vortex(): u64 {
 public(package) macro fun invalid_hashed_secret(): u64 {
     14
 }
+
+public(package) macro fun value_exceeds_field_modulus(): u64 {
+    15
+}

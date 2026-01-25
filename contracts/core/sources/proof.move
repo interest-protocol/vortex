@@ -25,6 +25,11 @@ public fun new<CoinType>(
     output_commitment0: u256,
     output_commitment1: u256,
 ): Proof<CoinType> {
+    input_nullifier0.assert_is_valid_field_element!();
+    input_nullifier1.assert_is_valid_field_element!();
+    output_commitment0.assert_is_valid_field_element!();
+    output_commitment1.assert_is_valid_field_element!();
+
     Proof {
         root,
         points: groth16::proof_points_from_bytes(proof_points),
@@ -96,6 +101,16 @@ fun to_field(value: u256): vector<u8> {
     bcs::to_bytes(&(value % vortex::vortex_constants::bn254_field_modulus!()))
 }
 
+// === Macros ===
+
+macro fun assert_is_valid_field_element($value: u256) {
+    assert!(
+        $value < vortex::vortex_constants::bn254_field_modulus!(),
+        vortex::vortex_errors::value_exceeds_field_modulus!(),
+    );
+}
+
 // === Aliases ===
 
 use fun to_field as u256.to_field;
+use fun assert_is_valid_field_element as u256.assert_is_valid_field_element;
