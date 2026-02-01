@@ -13,9 +13,11 @@ const getCommitmentsHandler = async (c: Context<AppBindings>) => {
     const { coinType, index, mongoOp, limit } = validation.data;
     const filter = { coin_type: coinType, index: { [mongoOp]: index } };
 
-    const docs = await commitments.find({ filter, skip: 0, limit });
+    const docs = await commitments.find({ filter, skip: 0, limit: limit + 1 });
+    const hasNext = docs.length > limit;
+    const items = (hasNext ? docs.slice(0, limit) : docs).map(toCommitment);
 
-    return c.json({ success: true, data: docs.map(toCommitment) });
+    return c.json({ success: true, data: { items, hasNext } });
 };
 
 export const getCommitments = withErrorHandler(
