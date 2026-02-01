@@ -1,6 +1,5 @@
 import type { Context } from 'hono';
 import type { AppBindings } from '@/types/index.ts';
-import { buildPaginatedResponse } from '@/types/index.ts';
 import { validateQuery } from '@/utils/validation.ts';
 import { withErrorHandler } from '@/utils/handler.ts';
 import { getCommitmentsQuerySchema } from './schema.ts';
@@ -11,18 +10,12 @@ const getCommitmentsHandler = async (c: Context<AppBindings>) => {
     if (!validation.success) return validation.response;
 
     const commitments = c.get('commitments');
-    const { coinType, index, mongoOp, page, limit } = validation.data;
-    const skip = (page - 1) * limit;
+    const { coinType, index, mongoOp, limit } = validation.data;
     const filter = { coin_type: coinType, index: { [mongoOp]: index } };
 
-    const [docs, total] = await Promise.all([
-        commitments.find({ filter, skip, limit }),
-        commitments.count(filter),
-    ]);
+    const docs = await commitments.find({ filter, skip: 0, limit });
 
-    const data = buildPaginatedResponse(docs, toCommitment, { page, limit, total });
-
-    return c.json({ success: true, data });
+    return c.json({ success: true, data: docs.map(toCommitment) });
 };
 
 export const getCommitments = withErrorHandler(
