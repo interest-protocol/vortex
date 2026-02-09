@@ -5,7 +5,7 @@ use sui_indexer_alt_framework::{
         ingestion_client::IngestionClientArgs, streaming_client::StreamingClientArgs, ClientArgs,
         IngestionConfig,
     },
-    pipeline::concurrent::ConcurrentConfig,
+    pipeline::{concurrent::ConcurrentConfig, CommitterConfig},
     Indexer, IndexerArgs, TaskArgs,
 };
 use tracing::info;
@@ -44,6 +44,9 @@ struct Config {
 
     #[clap(long, env)]
     last_checkpoint: Option<u64>,
+
+    #[clap(long, env, default_value = "10")]
+    write_concurrency: usize,
 }
 
 #[tokio::main]
@@ -61,11 +64,20 @@ async fn main() -> anyhow::Result<()> {
 
     let env = VortexEnv::new(config.sui_network, package_address);
 
+    let pipeline_config = ConcurrentConfig {
+        committer: CommitterConfig {
+            write_concurrency: config.write_concurrency,
+            ..Default::default()
+        },
+        pruner: None,
+    };
+
     info!(
         network = %config.sui_network,
         package = %config.vortex_package,
         mongodb = %config.mongodb_uri,
         database = %config.mongodb_database,
+        write_concurrency = config.write_concurrency,
         "Starting Vortex Indexer"
     );
 
@@ -107,17 +119,17 @@ async fn main() -> anyhow::Result<()> {
     .context("Failed to create indexer")?;
 
     indexer
-        .concurrent_pipeline(NewPoolHandler::new(env), ConcurrentConfig::default())
+        .concurrent_pipeline(NewPoolHandler::new(env), pipeline_config.clone())
         .await
         .context("Failed to register NewPoolHandler pipeline")?;
 
     indexer
-        .concurrent_pipeline(NewCommitmentHandler::new(env), ConcurrentConfig::default())
+        .concurrent_pipeline(NewCommitmentHandler::new(env), pipeline_config.clone())
         .await
         .context("Failed to register NewCommitmentHandler pipeline")?;
 
     indexer
-        .concurrent_pipeline(NullifierSpentHandler::new(env), ConcurrentConfig::default())
+        .concurrent_pipeline(NullifierSpentHandler::new(env), pipeline_config)
         .await
         .context("Failed to register NullifierSpentHandler pipeline")?;
 

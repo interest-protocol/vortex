@@ -18,11 +18,11 @@ regex = "1.11"
 scoped-futures = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sui-indexer-alt-framework = { git = "https://github.com/MystenLabs/sui.git", rev = "363bb937dce4962f449b33bc061bc5e20aaa2994" }
-sui-indexer-alt-framework-store-traits = { git = "https://github.com/MystenLabs/sui.git", rev = "363bb937dce4962f449b33bc061bc5e20aaa2994" }
-sui-indexer-alt-metrics = { git = "https://github.com/MystenLabs/sui.git", rev = "363bb937dce4962f449b33bc061bc5e20aaa2994" }
-sui-types = { git = "https://github.com/MystenLabs/sui.git", rev = "363bb937dce4962f449b33bc061bc5e20aaa2994" }
-telemetry-subscribers = { git = "https://github.com/MystenLabs/sui.git", rev = "363bb937dce4962f449b33bc061bc5e20aaa2994" }
+sui-indexer-alt-framework = { git = "https://github.com/MystenLabs/sui.git", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+sui-indexer-alt-framework-store-traits = { git = "https://github.com/MystenLabs/sui.git", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+sui-indexer-alt-metrics = { git = "https://github.com/MystenLabs/sui.git", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+sui-types = { git = "https://github.com/MystenLabs/sui.git", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+telemetry-subscribers = { git = "https://github.com/MystenLabs/sui.git", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
 tokio = { version = "1.40", features = ["full", "signal"] }
 tokio-util = "0.7"
 tracing = "0.1"
