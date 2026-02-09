@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { AppBindings } from '@/types/index.ts';
-import type { HealthStatus } from '@/services/health.ts';
+import type { HealthStatus, IndexerStatus } from '@/services/health.ts';
 import { withErrorHandler } from '@/utils/handler.ts';
 
 type HealthData = {
@@ -9,6 +9,7 @@ type HealthData = {
         mongodb: HealthStatus;
         redis: HealthStatus;
         sui: HealthStatus;
+        indexer: IndexerStatus;
     };
     timestamp: string;
 };
@@ -20,7 +21,8 @@ const checkHealthHandler = withErrorHandler(async (c) => {
     const isHealthy =
         services.mongodb === 'healthy' &&
         services.redis === 'healthy' &&
-        services.sui === 'healthy';
+        services.sui === 'healthy' &&
+        services.indexer === 'synced';
 
     const data: HealthData = {
         status: isHealthy ? 'healthy' : 'degraded',

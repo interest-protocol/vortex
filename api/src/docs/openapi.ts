@@ -30,7 +30,8 @@ export const openApiSpec: OpenAPIV3.Document = {
             get: {
                 tags: ['Health'],
                 summary: 'Health check',
-                description: 'Check the health status of all services (MongoDB, Redis, Sui)',
+                description:
+                    'Check the health status of all services (MongoDB, Redis, Sui) and indexer sync status. Returns "degraded" if any service is unhealthy or if the indexer is more than 1000 checkpoints behind.',
                 responses: {
                     '200': {
                         description: 'All services healthy',
@@ -401,6 +402,12 @@ export const openApiSpec: OpenAPIV3.Document = {
                                     mongodb: { type: 'string', enum: ['healthy', 'unhealthy'] },
                                     redis: { type: 'string', enum: ['healthy', 'unhealthy'] },
                                     sui: { type: 'string', enum: ['healthy', 'unhealthy'] },
+                                    indexer: {
+                                        type: 'string',
+                                        enum: ['synced', 'behind', 'unknown'],
+                                        description:
+                                            'Indexer sync status. "synced" if within 1000 checkpoints of current Sui checkpoint, "behind" if lagging, "unknown" if status cannot be determined.',
+                                    },
                                 },
                             },
                             timestamp: { type: 'string', format: 'date-time' },
